@@ -32,11 +32,15 @@
 | [progression-and-economy](design/progression-and-economy.md) | Grist-augment builds and the grist economy (currency = fuel = grind) | 2026-06-27 |
 | [open-world](design/open-world.md) | Vanta's tiers, the Reach, traversal, soft gating, the two world-states | 2026-06-27 |
 | [side-content](design/side-content.md) | Side-stories, faction reputation, the moral economy, meta-systems | 2026-06-27 |
+| [art-direction](design/art-direction.md) | The FFVI-grade pixel-art bible: look, palettes, the desaturation motif | 2026-06-27 |
+| [audio-direction](design/audio-direction.md) | Score, the Choir leitmotif system, SFX, accessibility | 2026-06-27 |
+| [ui-ux-and-controls](design/ui-ux-and-controls.md) | Menus, the ATB battle HUD, controls, accessibility | 2026-06-27 |
 
 ## Production
 | Page | Summary | Updated |
 |---|---|---|
 | [roadmap](production/roadmap.md) | Scope reality, how we work, and the phased build plan | 2026-06-27 |
+| [gdd — master plan & index](production/gdd.md) | The full documentation plan and its live status checklist | 2026-06-27 |
 | [vertical-slice](production/vertical-slice.md) | "The Bound in the Marrow" — the first build target and its acceptance criteria | 2026-06-27 |
 
 ## Architecture
@@ -55,6 +59,7 @@
 | [0001 — Locked architecture decisions](decisions/0001-locked-architecture-decisions.md) | The opinionated, locked choices and why | 2026-06-27 |
 | [0002 — Core game-design pillars](decisions/0002-core-game-design-pillars.md) | ATB combat + grist-augment progression, and why | 2026-06-27 |
 | [0003 — Build order & scope strategy](decisions/0003-build-order-and-scope.md) | Build in verified slices; vertical slice first | 2026-06-27 |
+| [0004 — Complete pre-production before build](decisions/0004-complete-pre-production-before-build.md) | Write the full GDD before any code | 2026-06-27 |
 
 ## Playbooks
 | Page | Summary | Updated |
