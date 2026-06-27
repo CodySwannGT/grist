@@ -10,3 +10,4 @@
 | 2026-06-27 | CREATE | design/ | Authored the game-design layer: overview, combat (ATB), progression-and-economy (grist-augment), open-world, side-content. Added the `design` category and decision 0002. |
 | 2026-06-27 | CREATE | production/ | Authored the production plan: roadmap (phased, slice-based) and the vertical-slice definition ("The Bound in the Marrow"). Added the `production` category and decision 0003. |
 | 2026-06-27 | CREATE | production/, design/ | Began full pre-production: GDD master index/plan + decision 0004 (document everything before coding); creative-direction pillar — art-direction, audio-direction, ui-ux-and-controls. |
+| 2026-06-27 | CREATE | narrative/, design/ | Pre-production groups B+C: lore-and-history, main-quest beat sheet, character-bios, quest-design, and regions (Vanta tiers + the Reach in both world-states). |

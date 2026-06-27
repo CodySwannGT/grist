@@ -27,10 +27,10 @@ left, and the order we write it in. It is a living checklist — keep it current
 | Design (systems) | overview, combat, progression-and-economy, open-world, side-content | ✅ done |
 | Production | roadmap, vertical-slice, this GDD index | ✅ done |
 | Technical (foundation) | architecture/overview, conventions | ✅ done |
-| **A. Creative direction** | art-direction, audio-direction, ui-ux-and-controls | 🚧 in progress |
-| **B. Narrative depth** | lore-and-history, main-quest, character-bios, quest-design | ⬜ to do |
-| **C. World/level depth** | regions (Vanta tiers + the Reach, both states) | ⬜ to do |
-| **D. Systems specs** | combat-spec, economy-spec, bestiary, catalog | ⬜ to do |
+| **A. Creative direction** | art-direction, audio-direction, ui-ux-and-controls | ✅ done |
+| **B. Narrative depth** | lore-and-history, main-quest, character-bios, quest-design | ✅ done |
+| **C. World/level depth** | regions (Vanta tiers + the Reach, both states) | ✅ done |
+| **D. Systems specs** | combat-spec, economy-spec, bestiary, catalog | 🚧 in progress |
 | **E. Tech/production final** | game-tech-design, final roadmap pass | ⬜ to do |
 
 ## The writing order (and why)
@@ -52,19 +52,19 @@ target.
 - [ui-ux-and-controls](../design/ui-ux-and-controls.md) — ✅ menus, HUD, battle UI, input
 
 ### B. Narrative & world depth (the content backbone)
-- `narrative/lore-and-history.md` — ⬜ the timeline, the Choir/pantheon, languages &
-  naming conventions, culture & daily life
-- `narrative/main-quest.md` — ⬜ the critical-path beat sheet (chapter outline, both
-  acts, the Reckoning)
-- `narrative/character-bios.md` — ⬜ full per-character bios, relationships, party
-  banter, side-story beats
-- `design/quest-design.md` — ⬜ quest structure & flow (main + side), the side-story
-  framework
+- [lore-and-history](../narrative/lore-and-history.md) — ✅ the timeline, the
+  Choir/pantheon, languages & naming conventions, culture & daily life
+- [main-quest](../narrative/main-quest.md) — ✅ the critical-path beat sheet (chapter
+  outline, both acts, the Reckoning)
+- [character-bios](../narrative/character-bios.md) — ✅ full per-character bios,
+  relationships, party banter, side-story beats
+- [quest-design](../design/quest-design.md) — ✅ quest structure & flow (main + side),
+  the side-story framework
 
 ### C. World / level design depth
-- `design/regions.md` — ⬜ Vanta's tiers and each region of the Reach, detailed in
-  both world-states (Reach ↔ Ashfall), with key locations, encounters, and the
-  Bound sites
+- [regions](../design/regions.md) — ✅ Vanta's tiers and each region of the Reach,
+  detailed in both world-states (Reach ↔ Ashfall), with key locations, encounters,
+  and the Bound sites
 
 ### D. Systems specs (the numbers & tables layer)
 - `design/combat-spec.md` — ⬜ damage/turn formulas, stat curves, element & status
