@@ -1,0 +1,33 @@
+{
+  "schemaVersion": "1.0.0",
+  "org": "Collector",
+  "displayName": "Collector — Game Docs Wiki",
+  "purpose": "The durable knowledge base and source of documentation for the Collector Phaser 4 starter — architecture, conventions, design decisions, and playbooks. This wiki is the canonical reference; the README is a thin pointer. Keep it current as the game evolves.",
+  "mode": "embedded",
+  "wikiRoot": "wiki",
+  "frontmatter": true,
+  "categories": [
+    "architecture",
+    "concepts",
+    "conventions",
+    "decisions",
+    "playbooks",
+    "open-questions"
+  ],
+  "sources": { "layout": "by-system" },
+  "git": {
+    "prPerIngestion": true,
+    "autoMerge": true,
+    "targetBranch": "main",
+    "branchPrefix": "wiki/"
+  },
+  "sensitivity": { "enabled": false, "default": "internal" },
+  "sourceRetention": "sanitized-note-only",
+  "readme": { "mode": "rich" },
+  "documentation": { "absorb": true },
+  "staff": [],
+  "connectors": {
+    "git": { "enabled": true, "sideEffects": "read-only-ingest" },
+    "memory": { "enabled": true, "sideEffects": "read-only-ingest" }
+  }
+}
