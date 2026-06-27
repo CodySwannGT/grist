@@ -30,8 +30,11 @@ left, and the order we write it in. It is a living checklist — keep it current
 | **A. Creative direction** | art-direction, audio-direction, ui-ux-and-controls | ✅ done |
 | **B. Narrative depth** | lore-and-history, main-quest, character-bios, quest-design | ✅ done |
 | **C. World/level depth** | regions (Vanta tiers + the Reach, both states) | ✅ done |
-| **D. Systems specs** | combat-spec, economy-spec, bestiary, catalog | 🚧 in progress |
-| **E. Tech/production final** | game-tech-design, final roadmap pass | ⬜ to do |
+| **D. Systems specs** | combat-spec, economy-spec, bestiary, catalog | ✅ done |
+| **E. Tech/production final** | game-tech-design, final roadmap pass | ✅ done |
+
+**Pre-production is complete — every group is ✅. Coding (Phase 1 of the
+[roadmap](roadmap.md)) may begin.**
 
 ## The writing order (and why)
 
@@ -67,19 +70,23 @@ target.
   and the Bound sites
 
 ### D. Systems specs (the numbers & tables layer)
-- `design/combat-spec.md` — ⬜ damage/turn formulas, stat curves, element & status
-  tables, the Bound kits
-- `design/economy-spec.md` — ⬜ level curves, grist values, source/sink tuning
-- `design/bestiary.md` — ⬜ enemy roster + the full Bound roster
-- `design/catalog.md` — ⬜ items, equipment, augments, and the ability/spell list
+- [combat-spec](../design/combat-spec.md) — ✅ damage/turn formulas, stats, ATB timing,
+  element & status tables, the Bound-kit template
+- [economy-spec](../design/economy-spec.md) — ✅ level curve, grist values, source/sink
+  tuning, the learning loop
+- [bestiary](../design/bestiary.md) — ✅ enemy families + the named Bound roster
+- [catalog](../design/catalog.md) — ✅ items, equipment, augments, and the ability/spell
+  list
 
 ### E. Technical & production finalization
-- `architecture/game-tech-design.md` — ⬜ game data model, save schema, settings,
-  localization/i18n plan, telemetry (extends [architecture/overview](../architecture/overview.md))
-- Final [roadmap](roadmap.md) pass — ⬜ re-scope Phase 1+ with the full GDD in hand
+- [architecture/game-tech-design](../architecture/game-tech-design.md) — ✅ design→logic
+  mapping, data model, save schema, settings, i18n, telemetry, determinism
+- Final [roadmap](roadmap.md) pass — ✅ pre-production marked complete; Phase 1
+  re-scoped against the full GDD
 
 ## Definition of "documentation done"
 
 Pre-production is complete — and coding (Phase 1 of the [roadmap](roadmap.md)) may
 begin — when every row above is ✅, this index reflects it, and the wiki lints
-clean. Then, and only then, we build.
+clean. **As of 2026-06-27, that bar is met: every group is ✅ and the wiki lints
+clean. We are clear to build.**

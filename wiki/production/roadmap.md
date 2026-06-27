@@ -53,11 +53,24 @@ current one is provably done.
 
 ### Phase 0 — Foundations ✅ (done)
 
-The engine + governance (the Phaser 4 starter), and the full design bible
-([narrative](../narrative/pitch.md), [design](../design/overview.md)). The game
-currently runs the starter's placeholder slice.
+The engine + governance (the Phaser 4 starter), and — per
+[decisions/0004](../decisions/0004-complete-pre-production-before-build.md) — the
+**complete pre-production GDD**: vision, narrative, full design systems, creative
+direction, lore/quests/regions, systems specs, and the
+[game technical design](../architecture/game-tech-design.md). The
+[GDD index](gdd.md) is fully ✅. The game currently runs the starter's placeholder
+slice. **Pre-production is complete; Phase 1 may begin.**
 
-### Phase 1 — Combat prototype
+### Phase 1 — Combat prototype *(re-scoped with the full GDD)*
+
+One hard-coded ATB battle, no exploration, no real art. Party vs enemies; turn
+gauges; the action menu (Strike / Craft / Bind / Item / Defend); the **two-resource
+model** (Anima + spending real grist); damage, status, win/lose. Now backed by
+concrete specs — implement against [combat-spec](../design/combat-spec.md) (formulas,
+ATB timing, elements/status, the Ashling Bound kit) using the data-driven approach in
+[game-tech-design](../architecture/game-tech-design.md). **Goal: prove the combat
+*feels* good.** All combat rules in `src/logic`, unit-tested and deterministic; thin
+Phaser battle scene; one e2e spec that plays a battle to victory.
 
 One hard-coded ATB battle, no exploration, no real art. Party vs enemies; turn
 gauges; the action menu (Strike / Craft / Bind / Item / Defend); the **two-resource

@@ -40,6 +40,10 @@
 | [ui-ux-and-controls](design/ui-ux-and-controls.md) | Menus, the ATB battle HUD, controls, accessibility | 2026-06-27 |
 | [quest-design](design/quest-design.md) | The quest framework: types, anatomy, side-stories, branching | 2026-06-27 |
 | [regions](design/regions.md) | Vanta's tiers + the Reach regions, detailed in both world-states | 2026-06-27 |
+| [combat-spec](design/combat-spec.md) | Stats, damage/ATB formulas, element/status tables, the Bound-kit template | 2026-06-27 |
+| [economy-spec](design/economy-spec.md) | Level curve, grist values, source/sink tuning, the learning loop | 2026-06-27 |
+| [bestiary](design/bestiary.md) | Enemy families + the named Bound roster | 2026-06-27 |
+| [catalog](design/catalog.md) | Weapons, equipment, augments, items, the spell/ability list | 2026-06-27 |
 
 ## Production
 | Page | Summary | Updated |
@@ -52,6 +56,7 @@
 | Page | Summary | Updated |
 |---|---|---|
 | [overview](architecture/overview.md) | Pure-logic core, thin scenes, services, and the verification bridge | 2026-06-27 |
+| [game-tech-design](architecture/game-tech-design.md) | How the GDD maps to code: data model, save schema, determinism, i18n | 2026-06-27 |
 
 ## Conventions
 | Page | Summary | Updated |
