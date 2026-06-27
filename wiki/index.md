@@ -14,6 +14,16 @@
 |---|---|---|
 | [game-vision](concepts/game-vision.md) | The pitch, pillars, and what they mean for the build | 2026-06-27 |
 
+## Narrative
+| Page | Summary | Updated |
+|---|---|---|
+| [pitch](narrative/pitch.md) | The Square-grade pitch: logline, hook, comps, scope | 2026-06-27 |
+| [world](narrative/world.md) | Setting bible — the Choir, the Sundering, grist, Vanta, the peoples | 2026-06-27 |
+| [factions](narrative/factions.md) | The Concord & Houses, the undercity, the old powers | 2026-06-27 |
+| [characters](narrative/characters.md) | The ensemble cast and the antagonist, Mr. Sallow | 2026-06-27 |
+| [story](narrative/story.md) | **Spoilers** — the mystery layers, act structure, pacing, endings | 2026-06-27 |
+| [themes-and-tone](narrative/themes-and-tone.md) | Themes, tone, aesthetic, and the craft target | 2026-06-27 |
+
 ## Architecture
 | Page | Summary | Updated |
 |---|---|---|
