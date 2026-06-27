@@ -33,6 +33,12 @@
 | [open-world](design/open-world.md) | Vanta's tiers, the Reach, traversal, soft gating, the two world-states | 2026-06-27 |
 | [side-content](design/side-content.md) | Side-stories, faction reputation, the moral economy, meta-systems | 2026-06-27 |
 
+## Production
+| Page | Summary | Updated |
+|---|---|---|
+| [roadmap](production/roadmap.md) | Scope reality, how we work, and the phased build plan | 2026-06-27 |
+| [vertical-slice](production/vertical-slice.md) | "The Bound in the Marrow" — the first build target and its acceptance criteria | 2026-06-27 |
+
 ## Architecture
 | Page | Summary | Updated |
 |---|---|---|
@@ -48,6 +54,7 @@
 |---|---|---|
 | [0001 — Locked architecture decisions](decisions/0001-locked-architecture-decisions.md) | The opinionated, locked choices and why | 2026-06-27 |
 | [0002 — Core game-design pillars](decisions/0002-core-game-design-pillars.md) | ATB combat + grist-augment progression, and why | 2026-06-27 |
+| [0003 — Build order & scope strategy](decisions/0003-build-order-and-scope.md) | Build in verified slices; vertical slice first | 2026-06-27 |
 
 ## Playbooks
 | Page | Summary | Updated |
