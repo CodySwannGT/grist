@@ -1,4 +1,4 @@
-# Collector — Game Docs Wiki — Index
+# GRIST — Game Docs Wiki — Index
 
 > The navigation map of this wiki. Maintained on every ingestion. One table per category;
 > rows are `| Page | Summary | Updated |`. Read this first when looking for anything.
@@ -8,6 +8,11 @@
 |---|---|---|
 | [start-here](start-here.md) | Orientation and the wiki's purpose | 2026-06-27 |
 | [LLM Wiki Contract](schema/llm-wiki-contract.md) | The rules this wiki follows | 2026-06-27 |
+
+## Concepts
+| Page | Summary | Updated |
+|---|---|---|
+| [game-vision](concepts/game-vision.md) | The pitch, pillars, and what they mean for the build | 2026-06-27 |
 
 ## Architecture
 | Page | Summary | Updated |

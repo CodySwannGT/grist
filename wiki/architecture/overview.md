@@ -10,7 +10,7 @@ sources: []
 
 ## Overview
 
-The Collector starter separates **pure game logic** from the **Phaser engine
+GRIST separates **pure game logic** from the **Phaser engine
 adapter**. All game rules live in `src/logic/**` as plain TypeScript with zero
 Phaser imports (lint-enforced); scenes/objects/services are thin orchestrators
 that render that state and feed it input. This is what makes the game

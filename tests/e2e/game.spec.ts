@@ -25,7 +25,7 @@ async function startRun(page: Page): Promise<void> {
   await waitForScene(page, "Game");
 }
 
-test.describe("Collector — verification (UAT)", () => {
+test.describe("GRIST — verification (UAT)", () => {
   test("boots to the main menu with a canvas and no console errors", async ({
     page,
   }) => {

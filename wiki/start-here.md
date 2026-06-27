@@ -1,10 +1,10 @@
-# Start here — Collector — Game Docs Wiki
+# Start here — GRIST — Game Docs Wiki
 
 ## Purpose
-The durable knowledge base and source of documentation for the Collector Phaser 4 starter — architecture, conventions, design decisions, and playbooks. This wiki is the canonical reference; the README is a thin pointer. Keep it current as the game evolves.
+{NEWPURPOSE}
 
 ## What this is
-A git-native LLM Wiki owned by **Collector** and maintained by the `lisa-wiki` kernel. It is the
+A git-native LLM Wiki owned by **Grist** and maintained by the `lisa-wiki` kernel. It is the
 durable home for this project's knowledge (and documentation). Raw sources are preserved under
 `wiki/sources/`; distilled knowledge lives in the category pages; the rules are in
 `wiki/schema/llm-wiki-contract.md`.

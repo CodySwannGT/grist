@@ -73,11 +73,11 @@
   "dependencies": {
     "phaser": "^4.2.0"
   },
-  "name": "phaser-starter",
+  "name": "grist",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Opinionated, agent-maintained Phaser 4 + TypeScript + Vite starter (Lisa-governed)",
+  "description": "GRIST — a slow, grindy cyberpunk-fantasy JRPG. Built on the Lisa-governed Phaser 4 starter.",
   "resolutions": {
     "@isaacs/brace-expansion": "^5.0.1",
     "axios": ">=1.15.2",

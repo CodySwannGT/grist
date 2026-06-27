@@ -1,14 +1,19 @@
-# Phaser 4 Starter — Collector
+# GRIST
 
-An opinionated, **agent-maintained** Phaser 4 + TypeScript + Vite starter, governed
-by [Lisa](https://github.com/CodySwannGT/lisa). Every best practice is enforced by
-lint rules, type checks, git hooks, and CI — and nothing is "done" until an agent
-has actually **played the game** and confirmed it (verification = UAT).
+A slow, grindy **cyberpunk-fantasy JRPG** — chrome and ash, where megacorp
+silicon is grafted onto high fantasy. Targeting 16-bit, FFVI-grade pixel art.
 
-The included game ("Collector" — slide to catch falling items) is a vertical slice
-whose job is to exercise every enforced pattern: a pure deterministic simulation,
-pooled sprites, semantic input, save/persistence, audio, scene flow, and the
-verification bridge.
+Built on an opinionated, **agent-maintained** Phaser 4 + TypeScript + Vite
+foundation, governed by [Lisa](https://github.com/CodySwannGT/lisa). Every best
+practice is enforced by lint rules, type checks, git hooks, and CI — and nothing
+is "done" until an agent has actually **played the game** and confirmed it
+(verification = UAT).
+
+> **Status:** early scaffold. The currently playable build is the starter's
+> placeholder vertical slice (slide to catch falling items) — it exercises every
+> enforced pattern (pure deterministic sim, pooled sprites, semantic input,
+> save/persistence, audio, scene flow, the verification bridge) and will be
+> replaced by the JRPG. See the [wiki](./wiki/start-here.md) for the game design.
 
 ## Quick start
 

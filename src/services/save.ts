@@ -6,7 +6,7 @@
  * @module services/save
  */
 
-const SAVE_KEY = "phaser-starter:save";
+const SAVE_KEY = "grist:save";
 const CURRENT_VERSION = 1;
 
 /** Versioned save payload. Bump the version and extend the migration chain when the shape changes. */
