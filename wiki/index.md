@@ -22,6 +22,9 @@
 | [factions](narrative/factions.md) | The Concord & Houses, the undercity, the old powers | 2026-06-27 |
 | [characters](narrative/characters.md) | The ensemble cast and the antagonist, Mr. Sallow | 2026-06-27 |
 | [story](narrative/story.md) | **Spoilers** — the mystery layers, act structure, pacing, endings | 2026-06-27 |
+| [lore-and-history](narrative/lore-and-history.md) | The pantheon, the timeline, languages & naming, culture | 2026-06-27 |
+| [main-quest](narrative/main-quest.md) | **Spoilers** — the critical-path chapter beat sheet | 2026-06-27 |
+| [character-bios](narrative/character-bios.md) | Full bios, arcs, combat identity, side-stories, banter | 2026-06-27 |
 | [themes-and-tone](narrative/themes-and-tone.md) | Themes, tone, aesthetic, and the craft target | 2026-06-27 |
 
 ## Design
@@ -35,6 +38,8 @@
 | [art-direction](design/art-direction.md) | The FFVI-grade pixel-art bible: look, palettes, the desaturation motif | 2026-06-27 |
 | [audio-direction](design/audio-direction.md) | Score, the Choir leitmotif system, SFX, accessibility | 2026-06-27 |
 | [ui-ux-and-controls](design/ui-ux-and-controls.md) | Menus, the ATB battle HUD, controls, accessibility | 2026-06-27 |
+| [quest-design](design/quest-design.md) | The quest framework: types, anatomy, side-stories, branching | 2026-06-27 |
+| [regions](design/regions.md) | Vanta's tiers + the Reach regions, detailed in both world-states | 2026-06-27 |
 
 ## Production
 | Page | Summary | Updated |
