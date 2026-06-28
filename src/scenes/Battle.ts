@@ -30,6 +30,7 @@ import { BattleRunner } from "../game/battle-runner";
 import {
   AtbTuning,
   BattleSides,
+  hashState,
   type BattleSide,
   type Combatant,
 } from "../logic/combat";
@@ -293,10 +294,11 @@ export class Battle extends Phaser.Scene {
   }
 
   /**
-   * The live link handed to the verification bridge: read state, the *applied*
-   * integer scale (native resolution + the post-scale display factor, so it stays
-   * correct across resizes), restart under a seed, and emit an action onto the bus
-   * (the scene is the action sender).
+   * The live link handed to the verification bridge: read state, the HUD model,
+   * the *applied* integer scale (native resolution + the post-scale display
+   * factor, so it stays correct across resizes), and the stable state hash;
+   * restart under a seed; emit an action onto the bus (the scene is the action
+   * sender); and deterministically advance to the next player turn.
    * @returns The battle view.
    */
   #bridgeView(): BattleView {
@@ -311,11 +313,13 @@ export class Battle extends Phaser.Scene {
         };
       },
       hud: () => this.#controller.model(),
+      hash: () => hashState(this.#runner.state()),
       restart: (seed: number) => {
         this.#runner.restart(seed);
         this.#controller.reset();
       },
       act: action => eventsCenter.emit(BattleEvents.ActionRequested, action),
+      advanceTurn: () => this.#runner.advanceTurn(),
     };
   }
 

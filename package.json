@@ -44,7 +44,7 @@
     "test:integration": "vitest run tests/integration --passWithNoTests",
     "dev": "vite",
     "preview": "vite preview",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright install --with-deps chromium && playwright test",
     "size": "size-limit",
     "setup:deploy-key": "setup-deploy-key",
     "lint": "oxlint && eslint . --quiet",

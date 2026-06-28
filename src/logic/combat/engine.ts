@@ -10,7 +10,7 @@
  * @module logic/combat/engine
  */
 import { ENEMIES, type EncounterDef, type PartyMemberDef } from "../../content";
-import { tickStatuses } from "./effects";
+import { lootGristFor, tickStatuses } from "./effects";
 import { isResolved, resolveOutcome } from "./outcome";
 import { resolveTurn } from "./resolve";
 import { regenAp } from "./resource";
@@ -115,16 +115,37 @@ function applyTick(state: BattleState): BattleState {
 }
 
 /**
+ * Credit the shared grist pool with the loot of every enemy this step's action
+ * just defeated (alive in `before`, down in `after`). A Rendering-killed corpse
+ * is `spent` and yields nothing — {@link lootGristFor} denies it — so a DoT kill
+ * forfeits its grist exactly as the combat-spec demands. Pure and RNG-free, and
+ * it returns the post-action state unchanged (same reference) when no enemy newly
+ * fell, so structural sharing and the reducer's same-reference contract hold.
+ * @param before - The pre-action battle state.
+ * @param after - The post-action battle state (same-length enemy array).
+ * @returns The state with newly-earned loot grist added, or `after` unchanged.
+ */
+function creditLoot(before: BattleState, after: BattleState): BattleState {
+  const loot = after.enemies.reduce((sum, enemy, index) => {
+    const wasAlive = (before.enemies[index]?.hp ?? 0) > 0;
+    return wasAlive && enemy.hp <= 0 ? sum + lootGristFor(enemy) : sum;
+  }, 0);
+  return loot === 0 ? after : { ...after, grist: after.grist + loot };
+}
+
+/**
  * The pure battle reducer: apply one {@link BattleAction} and return the next
  * {@link BattleState}, mutating nothing and reading nothing ambient. A `tick`
  * advances every ATB gauge by `SPD × fillPerSpd` and ticks status DoTs; an
  * acting kind delegates to {@link resolveTurn}, which spends the actor's turn
- * (gauge → 0), threads the seeded RNG, and applies the action's effect. After
- * the action lands, {@link resolveOutcome} flips the battle to `won`/`lost` when
- * the last enemy or the last party member falls — including a kill dealt by a
- * Rendering DoT on a `tick`. A battle already resolved is terminal: every further
- * action (including a `tick`) is rejected and the state returned unchanged, so
- * the outcome is stable. Same `(state, action, seed)` → same next state, always.
+ * (gauge → 0), threads the seeded RNG, and applies the action's effect. Any enemy
+ * the action defeats credits its loot to the shared grist pool ({@link creditLoot}
+ * — the economy that funds Binds). After the action lands, {@link resolveOutcome}
+ * flips the battle to `won`/`lost` when the last enemy or the last party member
+ * falls — including a kill dealt by a Rendering DoT on a `tick`. A battle already
+ * resolved is terminal: every further action (including a `tick`) is rejected and
+ * the state returned unchanged, so the outcome is stable. Same `(state, action,
+ * seed)` → same next state, always.
  * @param state - The current battle state (never mutated).
  * @param action - The action to apply.
  * @returns The next battle state.
@@ -137,5 +158,5 @@ export function step(state: BattleState, action: BattleAction): BattleState {
     action.kind === ActionKinds.tick
       ? applyTick(state)
       : resolveTurn(state, action);
-  return resolveOutcome(next);
+  return resolveOutcome(creditLoot(state, next));
 }
