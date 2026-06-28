@@ -12,3 +12,4 @@
 | 2026-06-27 | CREATE | production/, design/ | Began full pre-production: GDD master index/plan + decision 0004 (document everything before coding); creative-direction pillar — art-direction, audio-direction, ui-ux-and-controls. |
 | 2026-06-27 | CREATE | narrative/, design/ | Pre-production groups B+C: lore-and-history, main-quest beat sheet, character-bios, quest-design, and regions (Vanta tiers + the Reach in both world-states). |
 | 2026-06-27 | CREATE | design/, architecture/ | Pre-production groups D+E: combat-spec, economy-spec, bestiary, catalog, and the game technical design. Final roadmap pass; GDD index marked fully complete — clear to build. |
+| 2026-06-27 | CREATE | open-questions/, playbooks/, concepts/ | Rounded out pre-production: the open-questions register (the deferred-decisions tracker), the development-workflow playbook (PRD→ticket→build→verify, branch rules, multi-harness), and the glossary. |
