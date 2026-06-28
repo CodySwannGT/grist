@@ -57,8 +57,11 @@ src/scenes,services # thin Phaser adapters (battle scene, field, menus)
 
 ## Save schema
 
-Extends the starter's versioned `SaveService` (migration chain;
-[architecture/overview](overview.md)). The GRIST save records at least:
+**Local-only and offline** ([decisions/0007](../decisions/0007-local-only-offline.md),
+[technical-requirements](technical-requirements.md)): on-device via the `SaveService`
+over IndexedDB / SQLite-in-browser (upgrading the starter's `localStorage`), with
+export/import — no cloud. Versioned with a migration chain. See the concrete shape in
+[engineering-spec](engineering-spec.md). The GRIST save records at least:
 
 - party roster, levels/stats, equipped shards (+ learning progress) & augments
 - grist wallet, inventory, learned spells
@@ -86,11 +89,12 @@ from day one.
 
 ## Telemetry & error capture
 
-Opt-in, privacy-respecting analytics on the design's key questions (build choices,
-render-or-not rates, where players stall, ending distribution) plus in-game error
-capture, through the starter's telemetry/Sentry abstraction
-([architecture/overview](overview.md)). Tuning the [economy-spec](../design/economy-spec.md)
-and [combat-spec](../design/combat-spec.md) will lean on this.
+**Off by default; optional; never required for play** — GRIST is offline-first
+([decisions/0007](../decisions/0007-local-only-offline.md),
+[technical-requirements](technical-requirements.md)). Prefer **local logs** for tuning
+the [economy-spec](../design/economy-spec.md) and [combat-spec](../design/combat-spec.md).
+Any analytics/error upload (e.g. via the starter's Sentry abstraction) is **opt-in
+only**, carries no PII, and must degrade silently offline.
 
 ## Performance
 

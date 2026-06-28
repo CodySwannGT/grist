@@ -32,6 +32,7 @@ left, and the order we write it in. It is a living checklist — keep it current
 | **C. World/level depth** | regions (Vanta tiers + the Reach, both states) | ✅ done |
 | **D. Systems specs** | combat-spec, economy-spec, bestiary, catalog | ✅ done |
 | **E. Tech/production final** | game-tech-design, final roadmap pass | ✅ done |
+| **F. Build-readiness** | platform-and-target, technical-requirements, engineering-spec, vertical-slice-build, test-plan; decisions 0005–0007 | ✅ done |
 
 **Pre-production is complete — every group is ✅. Coding (Phase 1 of the
 [roadmap](roadmap.md)) may begin.**
@@ -83,6 +84,20 @@ target.
   mapping, data model, save schema, settings, i18n, telemetry, determinism
 - Final [roadmap](roadmap.md) pass — ✅ pre-production marked complete; Phase 1
   re-scoped against the full GDD
+
+### F. Build-readiness (make the first slice buildable; foundational specs)
+- [platform-and-target](platform-and-target.md) — ✅ web + mobile/tablet, touch-first
+- [technical-requirements](../architecture/technical-requirements.md) — ✅ NFRs:
+  offline-first, local-only saves, performance, privacy, security
+- [engineering-spec](../architecture/engineering-spec.md) — ✅ type definitions, the
+  combat-sim contract, the scene/state machine, the save schema
+- [vertical-slice-build](vertical-slice-build.md) — ✅ concrete slice content, asset
+  manifest, the UAT script
+- [test-plan](../playbooks/test-plan.md) — ✅ the testing strategy & gates
+- Decisions [0005](../decisions/0005-platform-target.md) /
+  [0006](../decisions/0006-phase-1-technical-decisions.md) /
+  [0007](../decisions/0007-local-only-offline.md) — ✅ platform, Phase-1 tech,
+  local-only/offline
 
 ## Definition of "documentation done"
 
