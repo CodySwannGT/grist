@@ -1,20 +1,23 @@
 /**
- * Preloader scene — builds the placeholder textures used by the game. This
- * starter generates art programmatically (zero binary assets); a real project
- * loads packed atlases here via the asset pipeline. Then it starts the menu.
+ * Preloader scene — builds the placeholder combatant texture used by the Battle
+ * scene. This slice generates its art programmatically (zero binary assets); a
+ * real project loads packed atlases here via the asset pipeline. Then it starts
+ * the battle.
  * @module scenes/Preloader
  */
 import Phaser from "phaser";
-import { SceneKeys, Tunables } from "../consts";
 import { TextureKeys } from "../assets";
+import { BattleLayout, SceneKeys } from "../consts";
 import { verifyBridge } from "../uat/bridge";
 
-const ITEM_COLOR = 0xffd166;
-const PLAYER_COLOR = 0x06d6a0;
-const PLAYER_HEIGHT = 20;
-const PLAYER_CORNER = 6;
+const HEAD_RADIUS = 6;
+const HEAD_CENTER_Y = 8;
+const BODY_TOP = 11;
+const BODY_INSET = 4;
+const BODY_CORNER = 5;
+const UNIT_COLOR = 0xffffff;
 
-/** Generates placeholder textures, then transitions to the main menu. */
+/** Generates the placeholder unit texture, then transitions to the battle. */
 export class Preloader extends Phaser.Scene {
   /** Register the scene key. */
   constructor() {
@@ -22,43 +25,34 @@ export class Preloader extends Phaser.Scene {
   }
 
   /**
-   * Build textures and start the main menu.
+   * Build the unit texture and start the battle.
    * @returns void
    */
   create(): void {
-    this.#makeItemTexture();
-    this.#makePlayerTexture();
+    this.#makeUnitTexture();
     verifyBridge.attach(SceneKeys.Preloader, null);
-    this.scene.start(SceneKeys.MainMenu);
+    this.scene.start(SceneKeys.Battle);
   }
 
   /**
-   * Generate the falling-item texture (a filled circle).
+   * Generate the white, tintable combatant placeholder (a head + body). White so
+   * the Battle scene can tint it per side.
    * @returns void
    */
-  #makeItemTexture(): void {
-    const size = Tunables.itemRadius * 2;
+  #makeUnitTexture(): void {
+    const width = BattleLayout.unitWidth;
+    const height = BattleLayout.unitHeight;
     const graphics = this.add.graphics();
-    graphics.fillStyle(ITEM_COLOR, 1);
-    graphics.fillCircle(
-      Tunables.itemRadius,
-      Tunables.itemRadius,
-      Tunables.itemRadius
+    graphics.fillStyle(UNIT_COLOR, 1);
+    graphics.fillRoundedRect(
+      BODY_INSET,
+      BODY_TOP,
+      width - BODY_INSET * 2,
+      height - BODY_TOP,
+      BODY_CORNER
     );
-    graphics.generateTexture(TextureKeys.Item, size, size);
-    graphics.destroy();
-  }
-
-  /**
-   * Generate the player texture (a rounded bar).
-   * @returns void
-   */
-  #makePlayerTexture(): void {
-    const width = Tunables.playerHalfWidth * 2;
-    const graphics = this.add.graphics();
-    graphics.fillStyle(PLAYER_COLOR, 1);
-    graphics.fillRoundedRect(0, 0, width, PLAYER_HEIGHT, PLAYER_CORNER);
-    graphics.generateTexture(TextureKeys.Player, width, PLAYER_HEIGHT);
+    graphics.fillCircle(width / 2, HEAD_CENTER_Y, HEAD_RADIUS);
+    graphics.generateTexture(TextureKeys.Unit, width, height);
     graphics.destroy();
   }
 }
