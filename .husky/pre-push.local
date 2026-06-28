@@ -15,3 +15,13 @@
 #
 # $RUNNER is set by the parent hook based on the detected package manager
 # (bun run / yarn run / npm run).
+
+# --- Verification IS UAT (local mirror of the CI verification_coverage gate) ---
+# Blocks a push whose feat/fix commits ship no verification (e2e) spec delta.
+# The script falls back to diffing origin/main...HEAD and derives change types
+# from commit subjects. Escape hatch for a genuinely non-behavioral change:
+#   VERIFY_LABELS=verification-exempt git push
+if [ -f scripts/check-verification-coverage.mjs ]; then
+  echo "✅ Verification (UAT) coverage check..."
+  node scripts/check-verification-coverage.mjs || exit 1
+fi
