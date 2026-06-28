@@ -1,3 +1,19 @@
 {
-  "exclusions": []
+  "exclusions": [
+    {
+      "id": "GHSA-xvch-5gv4-984h",
+      "package": "minimist",
+      "reason": "Prototype Pollution in minimist <0.2.4, reachable only through dev/build-time transitive chains (@commitlint/cli, @codyswann/lisa › ts-jest, audiosprite › optimist, eslint-plugin-import › tsconfig-paths, @stryker-mutator, vite-plugin-pwa › workbox-build). minimist parses developer-controlled CLI argv / build config at lint/test/asset-pack/build time only; it is never in the shipped browser bundle (the sole runtime dependency is phaser) and no runtime code path passes attacker-controlled input to minimist."
+    },
+    {
+      "id": "GHSA-cf4h-3jhx-xvhq",
+      "package": "underscore",
+      "reason": "Arbitrary Code Execution in underscore via _.template, reachable only through dev/build-time tooling (audiosprite audio-sprite packer and @stryker-mutator/core › typed-rest-client mutation-test runner). underscore is never in the shipped browser bundle and no runtime/production code path invokes it; no fixed version is reachable through these unmaintained transitive chains."
+    },
+    {
+      "id": "GHSA-qpx9-hpmf-5gmw",
+      "package": "underscore",
+      "reason": "DoS via unlimited recursion in underscore _.flatten/_.isEqual; identical dev/build-time-only exposure (audiosprite, @stryker-mutator/core › typed-rest-client). Not in the shipped browser bundle; no runtime code path passes attacker-controlled input to underscore."
+    }
+  ]
 }
