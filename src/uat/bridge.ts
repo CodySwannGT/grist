@@ -197,10 +197,13 @@ class VerifyController {
       return;
     }
     const targetIndex = state.enemies.findIndex(enemy => enemy.hp > 0);
+    if (targetIndex < 0) {
+      return;
+    }
     this.act({
       kind: "strike",
       actor: { side: BattleSides.party, index: 0 },
-      target: { side: BattleSides.enemies, index: Math.max(targetIndex, 0) },
+      target: { side: BattleSides.enemies, index: targetIndex },
     });
   }
 }

@@ -286,18 +286,23 @@ export class Battle extends Phaser.Scene {
   }
 
   /**
-   * The live link handed to the verification bridge: read state/scale, restart
-   * under a seed, and emit an action onto the bus (the scene is the action sender).
+   * The live link handed to the verification bridge: read state, the *applied*
+   * integer scale (native resolution + the post-scale display factor, so it stays
+   * correct across resizes), restart under a seed, and emit an action onto the bus
+   * (the scene is the action sender).
    * @returns The battle view.
    */
   #bridgeView(): BattleView {
     return {
       state: () => this.#runner.state(),
-      resolution: () => ({
-        width: this.scale.gameSize.width,
-        height: this.scale.gameSize.height,
-        zoom: this.scale.zoom,
-      }),
+      resolution: () => {
+        const { gameSize, displaySize } = this.scale;
+        return {
+          width: gameSize.width,
+          height: gameSize.height,
+          zoom: displaySize.width / gameSize.width,
+        };
+      },
       restart: (seed: number) => this.#runner.restart(seed),
       act: action => eventsCenter.emit(BattleEvents.ActionRequested, action),
     };
