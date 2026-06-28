@@ -18,7 +18,7 @@ const FNV_PRIME = 0x01000193;
  */
 function serializeCombatant(combatant: Combatant): string {
   const statuses = combatant.statuses
-    .map(status => `${status.id}:${status.turns}`)
+    .map(status => `${status.id}:${status.turns}:${status.power ?? 0}`)
     .join(",");
   return [
     combatant.ref,
@@ -27,6 +27,7 @@ function serializeCombatant(combatant: Combatant): string {
     combatant.atb,
     combatant.pressure,
     combatant.broken ? 1 : 0,
+    combatant.spent ? 1 : 0,
     statuses,
   ].join("|");
 }

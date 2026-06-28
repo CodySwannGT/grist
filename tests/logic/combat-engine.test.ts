@@ -122,6 +122,7 @@ function makeCombatant(ref: string, spd: number, atb: number): Combatant {
     statuses: [],
     pressure: 0,
     broken: false,
+    spent: false,
   };
 }
 
@@ -301,9 +302,20 @@ describe("the reducer is pure (AC3)", () => {
     expect(get(next, WREN).atb).toBe(wrenSpd);
   });
 
-  it("structurally shares the untouched side (no needless copy, no mutation)", () => {
+  it("a resolved strike updates both the actor's and the target's side", () => {
+    // #35 left effect resolution to #27: a strike now damages its target, so the
+    // enemy side is rebuilt (was structurally shared before effects existed).
     const start = newBattle(7);
     const next = step(start, { kind: "strike", actor: WREN, target: SCRAPPER });
+    expect(next.party).not.toBe(start.party);
+    expect(next.enemies).not.toBe(start.enemies);
+    expect(get(next, WREN).atb).toBe(0);
+    expect(get(next, SCRAPPER).hp).toBeLessThan(get(start, SCRAPPER).hp);
+  });
+
+  it("leaves the untouched side structurally shared on a no-target turn", () => {
+    const start = newBattle(7);
+    const next = step(start, { kind: "defend", actor: WREN });
     expect(next.enemies).toBe(start.enemies);
     expect(next.party).not.toBe(start.party);
     expect(get(next, WREN).atb).toBe(0);
