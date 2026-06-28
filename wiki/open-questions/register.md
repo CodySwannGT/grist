@@ -55,7 +55,7 @@ if it's load-bearing).
 | T1 | **Content-data format** — TS modules vs. JSON + schema | [game-tech-design](../architecture/game-tech-design.md) | Phase 1 | **resolved**: TS modules ([0006](../decisions/0006-phase-1-technical-decisions.md)) |
 | T2 | **Region-streaming** strategy within the Phaser/Beam pipeline | [game-tech-design](../architecture/game-tech-design.md) | Phase 4 | open |
 | T3 | How much of the battle is **sim-driven vs. scene-driven** | [game-tech-design](../architecture/game-tech-design.md) · [combat-spec](../design/combat-spec.md) | Phase 1 | **resolved**: sim-authoritative ([0006](../decisions/0006-phase-1-technical-decisions.md)) |
-| T4 | **Local-storage mechanism** — IndexedDB vs. SQLite-in-browser (OPFS) | [technical-requirements](../architecture/technical-requirements.md) | Phase 1–2 | leaning: IndexedDB (local-only per [0007](../decisions/0007-local-only-offline.md)) |
+| T4 | **Local-storage mechanism** — IndexedDB vs. SQLite-in-browser (OPFS) | [technical-requirements](../architecture/technical-requirements.md) | Phase 1–2 | **resolved**: IndexedDB via `idb` ([0008](../decisions/0008-local-persistence-indexeddb.md)) |
 | T5 | **Touch control scheme** — tap-to-move vs. virtual stick (and battle touch UX) | [ui-ux-and-controls](../design/ui-ux-and-controls.md) | Phase 1–2 | open (touch is in scope per [0005](../decisions/0005-platform-target.md)) |
 
 ## How to use this register

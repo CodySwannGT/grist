@@ -30,12 +30,15 @@ engineering works within, distinct from *how* systems are built
 
 - **All save data lives on-device.** No cloud save, no remote sync
   ([decisions/0007](../decisions/0007-local-only-offline.md)).
-- **Storage mechanism:** a structured local store behind the `SaveService`
-  abstraction. **Recommended: IndexedDB** (universal in evergreen browsers, async,
-  ample quota) — or **SQLite-in-browser** (wa-sqlite + OPFS) if we want relational
-  querying; native wrappers (Capacitor) could use device SQLite. *The starter's
-  `localStorage` default is upgraded* to one of these for a JRPG's save size/shape.
-  Final pick is a tracked decision ([open-questions/register](../open-questions/register.md)).
+- **Storage mechanism: IndexedDB** (via the tiny `idb` wrapper) behind the
+  `SaveService` abstraction — decided in
+  [decisions/0008](../decisions/0008-local-persistence-indexeddb.md) (SQLite-in-browser
+  rejected: bundle weight + OPFS/iOS risk + no need for runtime SQL). This upgrades the
+  starter's `localStorage` default. Settings may stay in `localStorage` for fast
+  synchronous boot reads; saves use IndexedDB.
+- **Don't get evicted.** Request `navigator.storage.persist()` at boot so saves survive
+  storage pressure (eviction = a lost playthrough with no cloud backup); handle a denied
+  request gracefully.
 - **Requirements regardless of mechanism:** multiple save slots + autosave; **versioned
   schema with migrations** ([engineering-spec](engineering-spec.md)); graceful handling
   of missing/corrupt saves; and — since there's no cloud backup — **manual
