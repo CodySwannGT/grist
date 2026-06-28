@@ -1,24 +1,23 @@
 /**
  * The deterministic ATB combat core: build a battle from the typed CP-1.0
  * content ({@link startBattle}) and advance it with a pure reducer
- * ({@link step}). A `tick` fills every ATB gauge proportionally to SPD; an
- * acting kind spends the actor's ready turn and consumes one seeded roll from
- * the RNG stream threaded through `BattleState`. The reducer mutates nothing and
- * reads nothing ambient — no Phaser, no `Math.random` / `Date.now` — so the same
+ * ({@link step}). A `tick` fills every ATB gauge proportionally to SPD and ticks
+ * each combatant's status DoTs (Rendering); an acting kind delegates to the
+ * effect resolver ({@link resolveTurn}) — spending the actor's ready turn and
+ * threading the seeded RNG. The reducer mutates nothing and reads nothing
+ * ambient — no Phaser, no `Math.random` / `Date.now` — so the same
  * `(state, action, seed)` always produces the same next state.
  * @module logic/combat/engine
  */
 import { ENEMIES, type EncounterDef, type PartyMemberDef } from "../../content";
-import { rngStep } from "../rng";
+import { tickStatuses } from "./effects";
+import { resolveTurn } from "./resolve";
 import {
   ActionKinds,
   BattlePhases,
-  BattleSides,
   type BattleAction,
-  type BattleEvent,
   type BattleState,
   type Combatant,
-  type CombatantRef,
   type Stats,
 } from "./types";
 
@@ -49,6 +48,7 @@ function buildCombatant(ref: string, stats: Stats): Combatant {
     statuses: [],
     pressure: 0,
     broken: false,
+    spent: false,
   };
 }
 
@@ -83,98 +83,38 @@ export function startBattle(
 }
 
 /**
- * The combatant a ref points at, or null when the index is out of range.
- * @param state - The battle state.
- * @param ref - The combatant ref.
- * @returns The combatant, or null.
- */
-export function combatantAt(
-  state: BattleState,
-  ref: CombatantRef
-): Combatant | null {
-  const side = ref.side === BattleSides.party ? state.party : state.enemies;
-  return side[ref.index] ?? null;
-}
-
-/**
- * Return a copy of a side's combatant array with the combatant at `index` reset
- * to a 0 ATB gauge. Mutates nothing.
- * @param side - The side's combatant array.
- * @param index - The combatant index to reset.
- * @returns A new array with that combatant's gauge cleared.
- */
-function resetGauge(
-  side: readonly Combatant[],
-  index: number
-): readonly Combatant[] {
-  return side.map((combatant, i) =>
-    i === index ? { ...combatant, atb: 0 } : combatant
-  );
-}
-
-/**
  * Advance every combatant's ATB gauge by `SPD × fillPerSpd`, clamped to `ready`,
- * bump the tick counter, and append a tick event. Deterministic — the fill
- * depends only on SPD, never on the RNG.
+ * tick each combatant's status DoTs (Rendering), bump the tick counter, and
+ * append a tick event. Deterministic — both the fill and the DoT depend only on
+ * stored state, never on the RNG.
  * @param state - The battle state.
  * @returns The state after one ATB tick.
  */
 function applyTick(state: BattleState): BattleState {
   const tick = state.tick + 1;
-  const fill = (combatant: Combatant): Combatant => ({
-    ...combatant,
-    atb: Math.min(
-      combatant.atb + combatant.stats.spd * AtbTuning.fillPerSpd,
-      AtbTuning.ready
-    ),
-  });
+  const advance = (combatant: Combatant): Combatant =>
+    tickStatuses({
+      ...combatant,
+      atb: Math.min(
+        combatant.atb + combatant.stats.spd * AtbTuning.fillPerSpd,
+        AtbTuning.ready
+      ),
+    });
   return {
     ...state,
     tick,
-    party: state.party.map(fill),
-    enemies: state.enemies.map(fill),
+    party: state.party.map(advance),
+    enemies: state.enemies.map(advance),
     log: [...state.log, { tick, kind: ActionKinds.tick }],
-  };
-}
-
-/**
- * Resolve a combatant spending its turn: reset the actor's ATB gauge to 0 and
- * consume one seeded roll (the variance the action's later effect will use),
- * advancing the threaded RNG and logging the event. An actor-less or
- * out-of-range action is a no-op, so the reducer stays total. Effect resolution
- * itself (damage / heal / resource spend) is delegated to later sub-tasks.
- * @param state - The battle state.
- * @param action - An acting (non-tick) action.
- * @returns The state after the actor's turn is spent.
- */
-function applyTurn(state: BattleState, action: BattleAction): BattleState {
-  const actor = action.actor;
-  if (!actor || !combatantAt(state, actor)) {
-    return state;
-  }
-  const stepped = rngStep(state.rngState);
-  const onParty = actor.side === BattleSides.party;
-  const event: BattleEvent = {
-    tick: state.tick,
-    kind: action.kind,
-    actor,
-    ...(action.target ? { target: action.target } : {}),
-    roll: stepped.value,
-  };
-  return {
-    ...state,
-    rngState: stepped.state,
-    party: onParty ? resetGauge(state.party, actor.index) : state.party,
-    enemies: onParty ? state.enemies : resetGauge(state.enemies, actor.index),
-    log: [...state.log, event],
   };
 }
 
 /**
  * The pure battle reducer: apply one {@link BattleAction} and return the next
  * {@link BattleState}, mutating nothing and reading nothing ambient. A `tick`
- * advances every ATB gauge by `SPD × fillPerSpd`; an acting kind spends the
- * actor's ready turn (gauge → 0) and consumes one seeded roll. Same
+ * advances every ATB gauge by `SPD × fillPerSpd` and ticks status DoTs; an
+ * acting kind delegates to {@link resolveTurn}, which spends the actor's turn
+ * (gauge → 0), threads the seeded RNG, and applies the action's effect. Same
  * `(state, action, seed)` → same next state, always.
  * @param state - The current battle state (never mutated).
  * @param action - The action to apply.
@@ -183,5 +123,5 @@ function applyTurn(state: BattleState, action: BattleAction): BattleState {
 export function step(state: BattleState, action: BattleAction): BattleState {
   return action.kind === ActionKinds.tick
     ? applyTick(state)
-    : applyTurn(state, action);
+    : resolveTurn(state, action);
 }

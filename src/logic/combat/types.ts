@@ -66,17 +66,25 @@ export interface Stats {
   readonly lck: number;
 }
 
-/** A status effect riding on a combatant, with its remaining turn count. */
+/**
+ * A status effect riding on a combatant, with its remaining turn count.
+ * `power` is the per-tick magnitude for damage-over-time statuses (Rendering):
+ * it is captured from the caster's FOC at application time so each tick is a
+ * fixed, RNG-free amount. It is absent for non-DoT statuses (silenced, rooted,
+ * stagger).
+ */
 export interface CombatantStatus {
   readonly id: StatusId;
   readonly turns: number;
+  readonly power?: number;
 }
 
 /**
  * A party member or enemy as it exists inside a battle: the runtime state the
  * pure sim advances. `ref` points back to the content id (party member / enemy)
  * it was built from; `atb` is the 0–100 turn gauge; `broken` is the post-Break
- * vulnerable state. This is plain data — scenes only render it.
+ * vulnerable state; `spent` marks a corpse killed by a Rendering tick, whose
+ * loot is forfeit. This is plain data — scenes only render it.
  */
 export interface Combatant {
   readonly ref: string;
@@ -87,6 +95,7 @@ export interface Combatant {
   readonly statuses: readonly CombatantStatus[];
   readonly pressure: number;
   readonly broken: boolean;
+  readonly spent: boolean;
 }
 
 /**
@@ -156,7 +165,8 @@ export type BattlePhase = (typeof BattlePhases)[keyof typeof BattlePhases];
 /**
  * An append-only record of one resolved action — the observable trail the
  * determinism check (and, later, the verification bridge) reads. `roll` is the
- * seeded variance value the action consumed from the RNG stream, when any.
+ * seeded variance value the action consumed from the RNG stream, when any;
+ * `damage` is the HP delta a resolved hit applied to its target, when any.
  */
 export interface BattleEvent {
   readonly tick: number;
@@ -164,6 +174,7 @@ export interface BattleEvent {
   readonly actor?: CombatantRef;
   readonly target?: CombatantRef;
   readonly roll?: number;
+  readonly damage?: number;
 }
 
 /**

@@ -2,7 +2,9 @@
  * Public surface of the pure combat-logic core. The typed foundation (elements,
  * statuses, stat / combatant shapes, battle state + action types), the
  * deterministic ATB engine (`startBattle` / `step`), the turn-order derivation,
- * and the determinism hash. Re-export only — no logic lives in the barrel.
+ * the determinism hash, and the combat-rules layer (damage/heal formula, the
+ * element multiplier, Rendering DoT + loot denial, and Pressure → Break →
+ * Severance). Re-export only — no logic lives in the barrel.
  * @module logic/combat
  */
 export {
@@ -26,6 +28,22 @@ export {
   type BattleEvent,
   type BattleState,
 } from "./types";
-export { startBattle, step, combatantAt, AtbTuning } from "./engine";
+export { startBattle, step, AtbTuning } from "./engine";
+export { combatantAt } from "./select";
 export { readyActors, nextActor, advanceToNextTurn } from "./turn-order";
 export { hashState } from "./hash";
+export {
+  CombatTuning,
+  computeDamage,
+  computeHeal,
+  computeRenderingTick,
+  elementMultiplier,
+  varianceFromRoll,
+} from "./formula";
+export {
+  applyRendering,
+  tickStatuses,
+  addPressure,
+  severanceAvailable,
+  lootGristFor,
+} from "./effects";
