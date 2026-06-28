@@ -2,9 +2,11 @@
  * Public surface of the pure combat-logic core. The typed foundation (elements,
  * statuses, stat / combatant shapes, battle state + action types), the
  * deterministic ATB engine (`startBattle` / `step`), the turn-order derivation,
- * the determinism hash, and the combat-rules layer (damage/heal formula, the
+ * the determinism hash, the combat-rules layer (damage/heal formula, the
  * element multiplier, Rendering DoT + loot denial, and Pressure → Break →
- * Severance). Re-export only — no logic lives in the barrel.
+ * Severance), and the two-resource economy (per-turn AP regen, AP-costed Craft,
+ * grist-costed Bind from the shared party pool). Re-export only — no logic lives
+ * in the barrel.
  * @module logic/combat
  */
 export {
@@ -47,3 +49,10 @@ export {
   severanceAvailable,
   lootGristFor,
 } from "./effects";
+export {
+  ResourceTuning,
+  regenAp,
+  actionCost,
+  canAfford,
+  type ActionCost,
+} from "./resource";

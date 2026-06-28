@@ -8,9 +8,15 @@
  * delegates every non-`tick` action here; a `tick` (status DoT) stays RNG-free.
  * @module logic/combat/resolve
  */
-import { SPELLS, type SpellDef } from "../../content";
+import { type SpellDef } from "../../content";
 import { rngStep } from "../rng";
 import { addPressure, applyRendering } from "./effects";
+import {
+  actionCost,
+  canAfford,
+  craftSpellById,
+  type ActionCost,
+} from "./resource";
 import {
   CombatTuning,
   computeDamage,
@@ -79,18 +85,6 @@ interface Rolls {
 }
 
 /**
- * Look up a castable spell by id, or null when the id is absent/unknown.
- * @param id - The action's spell id.
- * @returns The spell definition, or null.
- */
-function spellById(id: string | undefined): SpellDef | null {
-  if (id === undefined) {
-    return null;
-  }
-  return (SPELLS as Record<string, SpellDef>)[id] ?? null;
-}
-
-/**
  * Derive the attack profile from an action's kind and spell id. Only `strike`
  * (physical) and a `craft` naming a defined spell produce a damaging profile;
  * every other kind returns null (the turn is spent without an effect).
@@ -113,7 +107,7 @@ function attackProfile(
     };
   }
   if (action.kind === ActionKinds.craft) {
-    const spell = spellById(action.id);
+    const spell = craftSpellById(action.id);
     return spell ? craftProfile(actor, spell) : null;
   }
   return null;
@@ -324,10 +318,83 @@ function resolveHit(
 }
 
 /**
+ * Pay an action's resource cost: debit the actor's AP and the shared grist pool.
+ * A zero cost returns the state untouched (structural sharing); only a positive
+ * AP cost rebuilds the actor's side. Callers gate affordability first, so the
+ * debit never drives either resource negative.
+ * @param state - The battle state (already known affordable).
+ * @param actorRef - The acting combatant's ref.
+ * @param cost - The action's resolved AP + grist cost.
+ * @returns The state with the cost debited.
+ */
+function payActionCost(
+  state: BattleState,
+  actorRef: CombatantRef,
+  cost: ActionCost
+): BattleState {
+  if (cost.ap === 0 && cost.grist === 0) {
+    return state;
+  }
+  const sides =
+    cost.ap > 0
+      ? updateAt(
+          { party: state.party, enemies: state.enemies },
+          actorRef,
+          c => ({
+            ...c,
+            ap: c.ap - cost.ap,
+          })
+        )
+      : { party: state.party, enemies: state.enemies };
+  return {
+    ...state,
+    grist: state.grist - cost.grist,
+    party: sides.party,
+    enemies: sides.enemies,
+  };
+}
+
+/**
+ * Resolve an action the actor can afford: a damaging strike/craft against a
+ * valid target lands the hit; any other kind (or a missing target/profile —
+ * e.g. an AoE Bind) spends the turn without an effect. The cost is already paid
+ * into `state`, so both paths preserve the AP/grist debit.
+ * @param state - The cost-paid battle state.
+ * @param action - The acting action.
+ * @param actorRef - The acting combatant's ref.
+ * @param actor - The acting combatant (pre-debit; only stats are read).
+ * @returns The next battle state.
+ */
+function resolveAffordable(
+  state: BattleState,
+  action: BattleAction,
+  actorRef: CombatantRef,
+  actor: Combatant
+): BattleState {
+  const profile = attackProfile(action, actor);
+  const targetRef = action.target;
+  const target = targetRef ? combatantAt(state, targetRef) : null;
+  if (!profile || !targetRef || !target) {
+    return spendTurn(state, action, actorRef);
+  }
+  return resolveHit(
+    state,
+    action,
+    { actorRef, targetRef },
+    actor,
+    target,
+    profile
+  );
+}
+
+/**
  * Resolve one acting (non-`tick`) action into the next battle state. An
- * actor-less or out-of-range action is a no-op (the reducer stays total); an
- * action with no target or a non-damaging kind spends the turn without effect;
- * a damaging strike/craft against a valid target resolves the full hit.
+ * actor-less or out-of-range action is a no-op (the reducer stays total). The
+ * two-resource gate runs next: a Craft the actor cannot pay in AP, or a Bind the
+ * shared grist pool cannot pay, is **blocked** — the input state is returned
+ * untouched (no debit, no damage, no turn spent, no RNG consumed). An affordable
+ * action debits its cost and then resolves: a strike/craft lands its hit; a Bind
+ * (or any non-damaging kind) spends the turn.
  * @param state - The battle state.
  * @param action - The acting action.
  * @returns The next battle state.
@@ -344,18 +411,14 @@ export function resolveTurn(
   if (!actor) {
     return state;
   }
-  const profile = attackProfile(action, actor);
-  const targetRef = action.target;
-  const target = targetRef ? combatantAt(state, targetRef) : null;
-  if (!profile || !targetRef || !target) {
-    return spendTurn(state, action, actorRef);
+  const cost = actionCost(action);
+  if (!canAfford(actor.ap, state.grist, cost)) {
+    return state;
   }
-  return resolveHit(
-    state,
+  return resolveAffordable(
+    payActionCost(state, actorRef, cost),
     action,
-    { actorRef, targetRef },
-    actor,
-    target,
-    profile
+    actorRef,
+    actor
   );
 }

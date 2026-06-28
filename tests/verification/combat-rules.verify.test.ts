@@ -121,7 +121,11 @@ describe("GRIST combat rules — codified played-battle (verification)", () => {
     // Wren casts Render on a construct hardy enough to survive the direct hit,
     // then time passes (ATB ticks) and the DoT chips it down.
     const construct = combatant("render-construct", { hp: 200, wrd: 6 });
-    let state = arena(combatant("wren", { foc: 10, spd: 0 }), construct);
+    // Ample AP so the Craft is affordable (#36); this test isolates the DoT.
+    let state = arena(
+      combatant("wren", { foc: 10, spd: 0, ap: 100 }),
+      construct
+    );
     state = step(state, {
       kind: "craft",
       id: RENDER,
@@ -196,7 +200,8 @@ describe("GRIST combat rules — codified played-battle (verification)", () => {
       actor: WREN,
       target: FOE,
     };
-    let state = arena(combatant("wren", { foc: 10, pow: 40 }), boss);
+    // Ample AP so both Sparks are affordable (#36); this test isolates Break.
+    let state = arena(combatant("wren", { foc: 10, pow: 40, ap: 100 }), boss);
 
     state = step(state, flux);
     expect(at(state, FOE).broken).toBe(false); // one weakness hit: not yet Broken.
@@ -232,7 +237,9 @@ describe("GRIST combat rules — codified played-battle (verification)", () => {
     ];
     const play = (seed: number): string[] => {
       let state = arena(
-        combatant("wren", { foc: 12, pow: 16, lck: 8 }),
+        // Ample AP so the Render + Spark casts resolve (#36) and are part of the
+        // reproduced battle rather than being blocked as unaffordable no-ops.
+        combatant("wren", { foc: 12, pow: 16, lck: 8, ap: 100 }),
         combatant("render-construct", { hp: 400, wrd: 6 }),
         seed
       );
