@@ -122,8 +122,10 @@ describe("GRIST combat rules — codified played-battle (verification)", () => {
     // then time passes (ATB ticks) and the DoT chips it down.
     const construct = combatant("render-construct", { hp: 200, wrd: 6 });
     // Ample AP so the Craft is affordable (#36); this test isolates the DoT.
+    // Wren is a live actor (positive HP) so the party is not wiped: the battle
+    // stays live across the Rendering ticks rather than resolving to a loss.
     let state = arena(
-      combatant("wren", { foc: 10, spd: 0, ap: 100 }),
+      combatant("wren", { hp: 100, foc: 10, spd: 0, ap: 100 }),
       construct
     );
     state = step(state, {
@@ -201,7 +203,12 @@ describe("GRIST combat rules — codified played-battle (verification)", () => {
       target: FOE,
     };
     // Ample AP so both Sparks are affordable (#36); this test isolates Break.
-    let state = arena(combatant("wren", { foc: 10, pow: 40, ap: 100 }), boss);
+    // Wren stays alive (positive HP) so the party is not wiped while Pressure
+    // accumulates over the two Sparks.
+    let state = arena(
+      combatant("wren", { hp: 100, foc: 10, pow: 40, ap: 100 }),
+      boss
+    );
 
     state = step(state, flux);
     expect(at(state, FOE).broken).toBe(false); // one weakness hit: not yet Broken.
@@ -237,9 +244,10 @@ describe("GRIST combat rules — codified played-battle (verification)", () => {
     ];
     const play = (seed: number): string[] => {
       let state = arena(
-        // Ample AP so the Render + Spark casts resolve (#36) and are part of the
-        // reproduced battle rather than being blocked as unaffordable no-ops.
-        combatant("wren", { foc: 12, pow: 16, lck: 8, ap: 100 }),
+        // Ample AP so the Render + Spark casts resolve (#36), and positive HP so
+        // Wren survives the whole script — otherwise a wiped party would resolve
+        // the battle to a loss and the later actions would no-op against it.
+        combatant("wren", { hp: 100, foc: 12, pow: 16, lck: 8, ap: 100 }),
         combatant("render-construct", { hp: 400, wrd: 6 }),
         seed
       );

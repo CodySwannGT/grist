@@ -163,7 +163,13 @@ describe("Craft spends AP (AC: cast reduces AP by the spell cost)", () => {
 describe("Craft is blocked when AP is insufficient (AC: cast blocked, AP unchanged)", () => {
   it("a craft the actor cannot afford is a no-op: AP unchanged, no damage", () => {
     const start = arena(
-      [combatant("wren", { ap: 20, foc: 10 }, { ap: SPARK.apCost - 1 })],
+      [
+        combatant(
+          "wren",
+          { hp: 100, ap: 20, foc: 10 },
+          { ap: SPARK.apCost - 1 }
+        ),
+      ],
       [combatant("foe", { hp: 1000 })]
     );
     const after = step(start, {
@@ -201,8 +207,8 @@ describe("Bind spends grist from the shared pool (AC: Bind reduces the pool)", (
   it("the grist pool is a single shared wallet drawn by any party member", () => {
     const start = arena(
       [
-        combatant("wren", { ap: 20 }, { ap: 20 }),
-        combatant("tobi", { ap: 20 }, { ap: 20 }),
+        combatant("wren", { hp: 100, ap: 20 }, { ap: 20 }),
+        combatant("tobi", { hp: 100, ap: 20 }, { ap: 20 }),
       ],
       [combatant("foe", { hp: 50 })],
       1,
@@ -223,7 +229,7 @@ describe("Bind spends grist from the shared pool (AC: Bind reduces the pool)", (
 describe("Bind is blocked when grist is insufficient (AC: blocked, pool unchanged)", () => {
   it("a Bind the shared pool cannot afford is a no-op: pool unchanged", () => {
     const start = arena(
-      [combatant("wren", { ap: 20 }, { ap: 20, atb: 100 })],
+      [combatant("wren", { hp: 100, ap: 20 }, { ap: 20, atb: 100 })],
       [combatant("foe", { hp: 50 })],
       1,
       (BIND_WISP.gristCost ?? 0) - 1

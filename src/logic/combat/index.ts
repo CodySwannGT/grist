@@ -4,9 +4,10 @@
  * deterministic ATB engine (`startBattle` / `step`), the turn-order derivation,
  * the determinism hash, the combat-rules layer (damage/heal formula, the
  * element multiplier, Rendering DoT + loot denial, and Pressure → Break →
- * Severance), and the two-resource economy (per-turn AP regen, AP-costed Craft,
- * grist-costed Bind from the shared party pool). Re-export only — no logic lives
- * in the barrel.
+ * Severance), the two-resource economy (per-turn AP regen, AP-costed Craft,
+ * grist-costed Bind from the shared party pool), and the terminal-outcome
+ * resolution (Victory when all enemies fall, Defeat on a party wipe). Re-export
+ * only — no logic lives in the barrel.
  * @module logic/combat
  */
 export {
@@ -31,6 +32,13 @@ export {
   type BattleState,
 } from "./types";
 export { startBattle, step, AtbTuning } from "./engine";
+export {
+  isDefeated,
+  isResolved,
+  isVictory,
+  isDefeat,
+  resolveOutcome,
+} from "./outcome";
 export { combatantAt } from "./select";
 export { readyActors, nextActor, advanceToNextTurn } from "./turn-order";
 export { hashState } from "./hash";

@@ -151,7 +151,11 @@ export interface BattleAction {
   readonly id?: string;
 }
 
-/** The high-level battle phase (win / lose transitions land in a later sub-task). */
+/**
+ * The high-level battle phase. `won` / `lost` are the terminal outcomes the
+ * `step` reducer flips to via `resolveOutcome` when the last enemy or the last
+ * party member falls; a battle in either is resolved and rejects further actions.
+ */
 export const BattlePhases = {
   select: "select",
   resolve: "resolve",
