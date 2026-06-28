@@ -13,6 +13,7 @@
 | Page | Summary | Updated |
 |---|---|---|
 | [game-vision](concepts/game-vision.md) | The pitch, pillars, and what they mean for the build | 2026-06-27 |
+| [glossary](concepts/glossary.md) | Canonical vocabulary — world, systems, and project terms | 2026-06-27 |
 
 ## Narrative
 | Page | Summary | Updated |
@@ -75,6 +76,12 @@
 | Page | Summary | Updated |
 |---|---|---|
 | [run-and-verify](playbooks/run-and-verify.md) | How to run the game and the verification = UAT loop | 2026-06-27 |
+| [development-workflow](playbooks/development-workflow.md) | PRD → ticket → build → verify; branch rules; multi-harness | 2026-06-27 |
+
+## Open questions
+| Page | Summary | Updated |
+|---|---|---|
+| [register](open-questions/register.md) | The deferred decisions tracker (resolve against the build) | 2026-06-27 |
 
 <!-- Additional category sections are added/maintained by ingestion. -->
 
