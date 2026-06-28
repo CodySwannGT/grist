@@ -78,6 +78,7 @@
 | [0005 — Platform target](decisions/0005-platform-target.md) | Web + mobile/tablet; touch-first | 2026-06-27 |
 | [0006 — Phase-1 technical decisions](decisions/0006-phase-1-technical-decisions.md) | Side-view, 384×216, TS-module content, sim-authoritative | 2026-06-27 |
 | [0007 — Local-only, offline](decisions/0007-local-only-offline.md) | Local saves only; no remote connectivity | 2026-06-27 |
+| [0008 — Local persistence: IndexedDB](decisions/0008-local-persistence-indexeddb.md) | IndexedDB (via `idb`) for saves, and why not SQLite | 2026-06-27 |
 
 ## Playbooks
 | Page | Summary | Updated |

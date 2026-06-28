@@ -128,9 +128,11 @@ Boot → Preloader → Title
 
 **Local-only, offline** ([decisions/0007](../decisions/0007-local-only-offline.md),
 [technical-requirements](technical-requirements.md)): on-device storage via
-`SaveService` over **IndexedDB** (or SQLite-in-browser via OPFS) — upgrading the
-starter's `localStorage` default — with multiple slots, autosave, and **save
-export/import** as the user's backup (no cloud). The shape:
+`SaveService` over **IndexedDB** (the `idb` wrapper;
+[decisions/0008](../decisions/0008-local-persistence-indexeddb.md)) — upgrading the
+starter's `localStorage` default — with multiple slots, autosave, a
+`navigator.storage.persist()` request, and **save export/import** as the user's backup
+(no cloud). The shape:
 
 ```ts
 interface SaveDataV1 {

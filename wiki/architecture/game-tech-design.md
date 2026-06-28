@@ -59,8 +59,9 @@ src/scenes,services # thin Phaser adapters (battle scene, field, menus)
 
 **Local-only and offline** ([decisions/0007](../decisions/0007-local-only-offline.md),
 [technical-requirements](technical-requirements.md)): on-device via the `SaveService`
-over IndexedDB / SQLite-in-browser (upgrading the starter's `localStorage`), with
-export/import — no cloud. Versioned with a migration chain. See the concrete shape in
+over **IndexedDB** (the `idb` wrapper;
+[decisions/0008](../decisions/0008-local-persistence-indexeddb.md)) — upgrading the
+starter's `localStorage` — with export/import, no cloud. Versioned with a migration chain. See the concrete shape in
 [engineering-spec](engineering-spec.md). The GRIST save records at least:
 
 - party roster, levels/stats, equipped shards (+ learning progress) & augments

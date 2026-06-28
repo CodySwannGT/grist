@@ -41,7 +41,8 @@ Steam/console are **not** v1 targets (possible later ports;
 - **Saves: local-only, offline.** No cloud save, no accounts, no required network —
   GRIST is offline-first ([decisions/0007](../decisions/0007-local-only-offline.md),
   [technical-requirements](../architecture/technical-requirements.md)). On-device
-  persistence via the `SaveService` (IndexedDB / SQLite-in-browser), with save
+  persistence via the `SaveService` (**IndexedDB**;
+  [decisions/0008](../decisions/0008-local-persistence-indexeddb.md)), with save
   **export/import** as the user's own backup.
 
 ## Minimum spec (first-pass)
