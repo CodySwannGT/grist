@@ -4,7 +4,18 @@
   "source": "github",
   "github": {
     "org": "CodySwannGT",
-    "repo": "grist"
+    "repo": "grist",
+    "labels": {
+      "build": {
+        "done": "status:done"
+      }
+    }
+  },
+  "deploy": {
+    "branches": {
+      "production": "main"
+    },
+    "order": ["production"]
   },
   "wiki": {
     "source": {
