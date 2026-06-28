@@ -10,7 +10,7 @@ import {
   SpellTargets,
   type ElementId,
   type Stats,
-} from "../logic/combat";
+} from "../logic/combat/types";
 import { BindSpellIds, SpellIds, type SpellDef, type SpellId } from "./spells";
 
 /**

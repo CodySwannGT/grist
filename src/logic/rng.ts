@@ -11,6 +11,32 @@
 const UINT32 = 4294967296;
 const MULBERRY_INCREMENT = 0x6d2b79f5;
 
+/** One advance of the mulberry32 stream: the next value and the successor state. */
+interface RngStep {
+  /** The pseudo-random float in the half-open range [0, 1). */
+  readonly value: number;
+  /** The 32-bit generator state to feed into the next {@link rngStep}. */
+  readonly state: number;
+}
+
+/**
+ * Pure mulberry32 advance: given a 32-bit generator state, return the next float
+ * in [0, 1) and the successor state, mutating nothing and reading nothing
+ * ambient. This is the engine-free core the seeded {@link Rng} class wraps, and
+ * the form the pure combat reducer threads through `BattleState` — so the sim
+ * stays a side-effect-free function while reusing one RNG implementation.
+ * @param state - The current 32-bit generator state.
+ * @returns The next value and the successor state.
+ */
+export function rngStep(state: number): RngStep {
+  const next = (state + MULBERRY_INCREMENT) >>> 0;
+  const mixed = Math.imul(next ^ (next >>> 15), next | 1);
+  const scrambled =
+    mixed ^ (mixed + Math.imul(mixed ^ (mixed >>> 7), mixed | 61));
+  const value = ((scrambled ^ (scrambled >>> 14)) >>> 0) / UINT32;
+  return { value, state: next };
+}
+
 /**
  * A seeded PRNG. Holds 32 bits of mutable state; advance with {@link Rng.next}.
  */
@@ -39,11 +65,9 @@ export class Rng {
    * @returns A pseudo-random float.
    */
   next(): number {
-    this.#state = (this.#state + MULBERRY_INCREMENT) >>> 0;
-    const a = this.#state;
-    const b = Math.imul(a ^ (a >>> 15), a | 1);
-    const c = b ^ (b + Math.imul(b ^ (b >>> 7), b | 61));
-    return ((c ^ (c >>> 14)) >>> 0) / UINT32;
+    const stepped = rngStep(this.#state);
+    this.#state = stepped.state;
+    return stepped.value;
   }
 
   /**

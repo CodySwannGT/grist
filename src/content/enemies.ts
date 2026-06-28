@@ -5,7 +5,7 @@
  * placeholders scaled to each enemy's role. Pure data — no Phaser.
  * @module content/enemies
  */
-import { type ElementId, type Stats } from "../logic/combat";
+import { type ElementId, type Stats } from "../logic/combat/types";
 
 /**
  * An enemy definition. `elements` maps an element to its damage multiplier

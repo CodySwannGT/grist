@@ -88,3 +88,98 @@ export interface Combatant {
   readonly pressure: number;
   readonly broken: boolean;
 }
+
+/**
+ * Which side of a battle a combatant fights on. The party and enemies live in
+ * separate arrays on {@link BattleState}; a side id plus an index addresses one.
+ */
+export const BattleSides = {
+  party: "party",
+  enemies: "enemies",
+} as const;
+
+/** A battle side id (`"party" | "enemies"`). */
+export type BattleSide = (typeof BattleSides)[keyof typeof BattleSides];
+
+/**
+ * A stable handle to one combatant inside a {@link BattleState}: the side it is
+ * on plus its index within that side's array. The reducer addresses actors and
+ * targets by ref so state stays plain, serializable data (no object identity).
+ */
+export interface CombatantRef {
+  readonly side: BattleSide;
+  readonly index: number;
+}
+
+/**
+ * The action kinds the battle reducer accepts. `tick` advances every ATB gauge;
+ * the rest are a combatant spending its ready turn. Mirrors the engineering-spec
+ * `step()` contract. Effect resolution (damage / heal / resource spend) lands in
+ * the follow-up combat-rules sub-tasks — this engine owns turn flow + RNG.
+ */
+export const ActionKinds = {
+  tick: "tick",
+  strike: "strike",
+  craft: "craft",
+  bind: "bind",
+  augment: "augment",
+  item: "item",
+  defend: "defend",
+} as const;
+
+/** A battle action kind. */
+export type ActionKind = (typeof ActionKinds)[keyof typeof ActionKinds];
+
+/**
+ * One command applied to the battle via the reducer. `actor` / `target`
+ * reference combatants by {@link CombatantRef}; `id` names the spell / item for
+ * actions that need it (resolved by later sub-tasks). A `tick` carries none.
+ */
+export interface BattleAction {
+  readonly kind: ActionKind;
+  readonly actor?: CombatantRef;
+  readonly target?: CombatantRef;
+  readonly id?: string;
+}
+
+/** The high-level battle phase (win / lose transitions land in a later sub-task). */
+export const BattlePhases = {
+  select: "select",
+  resolve: "resolve",
+  won: "won",
+  lost: "lost",
+} as const;
+
+/** A battle phase id. */
+export type BattlePhase = (typeof BattlePhases)[keyof typeof BattlePhases];
+
+/**
+ * An append-only record of one resolved action — the observable trail the
+ * determinism check (and, later, the verification bridge) reads. `roll` is the
+ * seeded variance value the action consumed from the RNG stream, when any.
+ */
+export interface BattleEvent {
+  readonly tick: number;
+  readonly kind: ActionKind;
+  readonly actor?: CombatantRef;
+  readonly target?: CombatantRef;
+  readonly roll?: number;
+}
+
+/**
+ * The whole pure battle state the reducer advances: plain, frozen-safe data that
+ * scenes render and feed {@link BattleAction}s. `seed` is the immutable origin
+ * seed; `rngState` is the live mulberry32 state threaded through every step, so
+ * the same `(state, action, seed)` always yields the same next state — the sim
+ * never reads `Math.random` / `Date.now` / `performance.now`.
+ */
+export interface BattleState {
+  readonly party: readonly Combatant[];
+  readonly enemies: readonly Combatant[];
+  readonly grist: number;
+  readonly seed: number;
+  readonly rngState: number;
+  readonly tick: number;
+  readonly phase: BattlePhase;
+  readonly log: readonly BattleEvent[];
+}

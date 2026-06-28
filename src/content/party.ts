@@ -4,7 +4,7 @@
  * reference resolves to a defined {@link BoundId}. Pure data — no Phaser.
  * @module content/party
  */
-import { type Stats } from "../logic/combat";
+import { type Stats } from "../logic/combat/types";
 import { BoundIds, type BoundId } from "./bounds";
 
 /**
