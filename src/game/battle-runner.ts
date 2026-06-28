@@ -9,7 +9,7 @@
  * combat-spec), so the event log never grows unbounded.
  * @module game/battle-runner
  */
-import { BattleEvents, BattleTiming } from "../consts";
+import { BattleEvents } from "../consts";
 import { type EncounterDef, type PartyMemberDef } from "../content";
 import {
   ActionKinds,
@@ -21,6 +21,7 @@ import {
   type BattleState,
 } from "../logic/combat";
 import { eventsCenter } from "../services/events";
+import { DEFAULT_SPEED, speedTickMs, type BattleSpeed } from "./speed";
 
 /** Owns and advances one battle's pure state; renders nothing. */
 export class BattleRunner {
@@ -28,6 +29,7 @@ export class BattleRunner {
   readonly #encounter: EncounterDef;
   #state: BattleState;
   #accumulatorMs = 0;
+  #speed: BattleSpeed = DEFAULT_SPEED;
 
   /**
    * Build the initial battle and subscribe to the action bus.
@@ -65,25 +67,51 @@ export class BattleRunner {
   };
 
   /**
-   * Fill ATB gauges for the elapsed real time on a fixed step, pausing the moment
-   * a combatant is ready to act (ATB-Wait) or the battle resolves. Deterministic
-   * in elapsed sim-time: the same total delta applies the same number of ticks
-   * regardless of frame rate. Allocation-free in the caller's `update` loop.
+   * The current battle speed (Wait / Normal / Fast).
+   * @returns The active speed setting.
+   */
+  speed(): BattleSpeed {
+    return this.#speed;
+  }
+
+  /**
+   * Set the battle speed mid-fight. The new cadence applies to the next
+   * {@link advance}; the accumulator is reset so a slow→fast switch never dumps a
+   * backlog of ticks at once.
+   * @param speed - The speed to switch to.
+   * @returns void
+   */
+  setSpeed(speed: BattleSpeed): void {
+    this.#speed = speed;
+    this.#accumulatorMs = 0;
+  }
+
+  /**
+   * Fill ATB gauges for the elapsed real time at the current speed's cadence,
+   * pausing the moment a combatant is ready to act (ATB-Wait), the battle
+   * resolves, or the speed is full-Wait (frozen fill). Deterministic in elapsed
+   * sim-time at a fixed speed: the same total delta applies the same number of
+   * ticks regardless of frame rate. Allocation-free in the caller's `update` loop.
    * @param deltaMs - Milliseconds elapsed since the previous frame.
    * @returns void
    */
   advance(deltaMs: number): void {
-    if (isResolved(this.#state) || nextActor(this.#state) !== null) {
+    const tickMs = speedTickMs(this.#speed);
+    if (
+      tickMs === null ||
+      isResolved(this.#state) ||
+      nextActor(this.#state) !== null
+    ) {
       this.#accumulatorMs = 0;
       return;
     }
     this.#accumulatorMs += deltaMs;
     while (
-      this.#accumulatorMs >= BattleTiming.atbTickMs &&
+      this.#accumulatorMs >= tickMs &&
       nextActor(this.#state) === null &&
       !isResolved(this.#state)
     ) {
-      this.#accumulatorMs -= BattleTiming.atbTickMs;
+      this.#accumulatorMs -= tickMs;
       this.#state = step(this.#state, { kind: ActionKinds.tick });
     }
   }

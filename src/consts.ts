@@ -19,14 +19,20 @@ export const SceneKeys = {
 
 /**
  * Cross-cutting battle event names emitted on the EventsCenter bus (never on
- * `game.events`). The scene publishes a player/verification-driven
+ * `game.events`). The scene/controller publishes a player/verification-driven
  * {@link import("./logic/combat").BattleAction} as `ActionRequested`; the battle
- * adapter (sim owner) subscribes and threads it through the pure reducer. This is
- * the decoupled action channel the HUD/input layer (CP-1.5 follow-up) plugs into.
+ * adapter (sim owner) subscribes and threads it through the pure reducer. The
+ * semantic {@link import("./services/input").InputService} publishes device-tagged
+ * UI intents as `Input`; the HUD controller subscribes and drives the menu. Raw
+ * keys/pointers never leave the InputService — only these named intents do.
  */
 export const BattleEvents = {
   ActionRequested: "battle-action-requested",
+  Input: "battle-input",
 } as const;
+
+/** Render depth of the battle HUD, above the pooled combatant views (depth 0). */
+export const HUD_DEPTH = 100;
 
 /**
  * The native (internal) render resolution. Locked to 384×216, integer-scaled and
@@ -87,10 +93,13 @@ export const BattleColors = {
 } as const;
 
 /**
- * Battle timing. `atbTickMs` is the fixed real-time step at which the adapter
- * applies one ATB `tick` to the sim while a side is filling its gauges; ticking
- * pauses (ATB-Wait mode, combat-spec) the moment a combatant is ready to act.
+ * Battle timing. `atbTickMs` is the Normal-speed real-time step at which the
+ * adapter applies one ATB `tick` to the sim while a side is filling its gauges;
+ * `fastTickMs` is the shorter Fast-speed step (the same number of ticks over less
+ * wall-clock — a faster observable cadence). Ticking pauses the moment a combatant
+ * is ready to act, and the full-Wait speed pauses it outright (combat-spec).
  */
 export const BattleTiming = {
   atbTickMs: 100,
+  fastTickMs: 50,
 } as const;

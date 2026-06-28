@@ -242,3 +242,6 @@ expo-env.d.ts
 # Lisa backup snapshots (created by `lisa` runs).
 /.lisabak/
 # END: AI GUARDRAILS WIKI
+
+# Playwright MCP scratch artifacts
+.playwright-mcp/
