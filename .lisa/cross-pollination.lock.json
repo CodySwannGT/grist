@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "entries": {
+    "mcp:project": {
+      "source": {
+        "agent": "claude",
+        "path": ".mcp.json",
+        "hash": "fca9306b83520dbf5e2caa4d13190474d68833acd12e603586aa6e3d92a5017d"
+      },
+      "targets": [
+        {
+          "agent": "cursor",
+          "path": ".cursor/mcp.json",
+          "generatedHash": "0556195342dddea9fbd87cdce030a5d765eb56a200deb8dc5ca371b3ca4304f7"
+        }
+      ]
+    },
+    "rule:PROJECT_RULES": {
+      "source": {
+        "agent": "claude",
+        "path": ".claude/rules/PROJECT_RULES.md",
+        "hash": "d677effcdbedaa42faa06721e4db2a6a7a385cf2bed76e1d262bc0acce0aa0ad"
+      },
+      "targets": [
+        {
+          "agent": "cursor",
+          "path": ".cursor/rules/PROJECT_RULES.mdc",
+          "generatedHash": "0115ab7248e93eb659701205b7b5e3e9ae620bce62d131abbe6bd886a0ddd25f"
+        }
+      ]
+    }
+  }
+}
