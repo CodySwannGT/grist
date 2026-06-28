@@ -15,6 +15,8 @@ import {
   ActionKinds,
   isResolved,
   nextActor,
+  resolveEnemyTurns,
+  runToNextDecision,
   startBattle,
   step,
   type BattleAction,
@@ -97,11 +99,15 @@ export class BattleRunner {
    */
   advance(deltaMs: number): void {
     const tickMs = speedTickMs(this.#speed);
-    if (
-      tickMs === null ||
-      isResolved(this.#state) ||
-      nextActor(this.#state) !== null
-    ) {
+    if (tickMs === null || isResolved(this.#state)) {
+      this.#accumulatorMs = 0;
+      return;
+    }
+    // Auto-resolve any enemy whose gauge has filled (deterministic AI) so the ATB
+    // loop never stalls on a ready enemy that has no player to act for it; pause
+    // only for a ready *party* member, whose turn waits for input.
+    this.#state = resolveEnemyTurns(this.#state);
+    if (isResolved(this.#state) || nextActor(this.#state) !== null) {
       this.#accumulatorMs = 0;
       return;
     }
@@ -112,8 +118,23 @@ export class BattleRunner {
       !isResolved(this.#state)
     ) {
       this.#accumulatorMs -= tickMs;
-      this.#state = step(this.#state, { kind: ActionKinds.tick });
+      this.#state = resolveEnemyTurns(
+        step(this.#state, { kind: ActionKinds.tick })
+      );
     }
+  }
+
+  /**
+   * Deterministically fast-forward to the next player decision point — filling
+   * the ATB and auto-resolving enemy turns until a party member is ready or the
+   * battle resolves — independent of wall-clock pacing. The verification bridge
+   * drives a seeded battle through this so an e2e (and the determinism gate) can
+   * play turn-by-turn without racing the per-frame {@link advance} loop.
+   * @returns void
+   */
+  advanceTurn(): void {
+    this.#state = runToNextDecision(this.#state);
+    this.#accumulatorMs = 0;
   }
 
   /**

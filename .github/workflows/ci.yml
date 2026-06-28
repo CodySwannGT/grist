@@ -14,7 +14,15 @@ jobs:
     with:
       node_version: '22.21.1'
       package_manager: 'bun'
-      skip_jobs: ''
+      # The reusable `playwright_e2e` job hard-codes `npx expo export --platform
+      # web` as its build step — an Expo/Metro assumption that cannot succeed for
+      # this Vite/Phaser project (it errors "No platforms are configured to use
+      # the Metro bundler"). It is NOT a required check. Our real Playwright UAT
+      # runs in the required `test_e2e` job via `bun run test:e2e`, whose script
+      # now installs the Chromium browser itself (`playwright install --with-deps
+      # chromium && playwright test`), so the e2e gate runs green there without
+      # the old admin-bypass. Skip only the Expo-shaped job; everything else runs.
+      skip_jobs: 'playwright_e2e'
       # Verification IS UAT: a feat/fix must ship a tests/e2e verification spec
       # (an agent playing the game), unless labeled verification-exempt.
       verify_enforced: true

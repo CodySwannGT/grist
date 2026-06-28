@@ -1,14 +1,17 @@
 /**
  * Verification (UAT) test bridge. Exposes a tiny, typed `window.__VERIFY__` API so
  * the Playwright verification suite can drive the canvas deterministically: read
- * the active scene, the live {@link BattleState}, and the integer render scale;
- * seed/restart the battle; and push a {@link BattleAction} into the sim. It is OFF
- * in normal builds — enabled only in dev or when the page is loaded with `?uat=1`
- * — and never referenced by gameplay code outside this module.
+ * the active scene, the live {@link BattleState} + HUD model, the integer render
+ * scale, and the stable state {@link hashState hash}; seed/restart the battle;
+ * push a {@link BattleAction} into the sim; and fast-forward to the next player
+ * decision (`advanceTurn`). It is OFF in normal builds — enabled only in dev or
+ * when the page is loaded with `?uat=1` — and never referenced by gameplay code
+ * outside this module.
  *
- * This is the minimal battle-facing bridge CP-1.5 needs to prove its scene boots,
- * renders at 384×216 integer-scaled, and turns a Strike into an HP change. The
- * full determinism/replay surface lands with the verification sub-task (#40).
+ * Together these let an e2e play a seeded encounter to victory (Strike / Craft /
+ * Bind), assert the resource economy (AP on Craft, grist on Bind), and run the
+ * determinism state-hash gate (same seed + same action sequence ⇒ identical hash
+ * progression) — the "an agent actually played it" definition of done for #40.
  * @module uat/bridge
  */
 import {
@@ -57,8 +60,10 @@ export interface BattleView {
   readonly state: () => BattleState | null;
   readonly resolution: () => VerifyResolution;
   readonly hud: () => HudModel | null;
+  readonly hash: () => string | null;
   readonly restart: (seed: number) => void;
   readonly act: (action: BattleAction) => void;
+  readonly advanceTurn: () => void;
 }
 
 /** The shape installed on `window.__VERIFY__`. */
@@ -67,8 +72,10 @@ interface VerifyApi {
   readonly state: () => VerifyBattleState | null;
   readonly resolution: () => VerifyResolution | null;
   readonly hud: () => HudModel | null;
+  readonly hash: () => string | null;
   readonly seed: (seed: number) => void;
   readonly act: (action: BattleAction) => void;
+  readonly advanceTurn: () => void;
   readonly strike: () => void;
 }
 
@@ -182,12 +189,34 @@ class VerifyController {
   }
 
   /**
+   * The stable digest of the live {@link BattleState} ({@link hashState}), or null
+   * outside a battle scene. The determinism gate samples this across two seeded
+   * play-throughs and asserts an identical progression — same seed + same action
+   * sequence ⇒ identical hashes.
+   * @returns The 8-char state hash, or null.
+   */
+  hash(): string | null {
+    return this.#view?.hash() ?? null;
+  }
+
+  /**
    * Push an action into the sim via the active battle view.
    * @param action - The battle action to apply.
    * @returns void
    */
   act(action: BattleAction): void {
     this.#view?.act(action);
+  }
+
+  /**
+   * Deterministically advance the sim to the next player decision point (fill the
+   * ATB, auto-resolving enemy turns, until a party member is ready or the battle
+   * resolves). Lets the verification suite drive a seeded battle turn-by-turn
+   * without depending on wall-clock pacing.
+   * @returns void
+   */
+  advanceTurn(): void {
+    this.#view?.advanceTurn();
   }
 
   /**
@@ -263,8 +292,10 @@ export function installVerifyBridge(): void {
     state: () => verifyBridge.state(),
     resolution: () => verifyBridge.resolution(),
     hud: () => verifyBridge.hud(),
+    hash: () => verifyBridge.hash(),
     seed: (seed: number) => verifyBridge.seed(seed),
     act: (action: BattleAction) => verifyBridge.act(action),
+    advanceTurn: () => verifyBridge.advanceTurn(),
     strike: () => verifyBridge.strike(),
   };
 }
