@@ -22,10 +22,10 @@ if it's load-bearing).
 
 | # | Question | Owner doc | Decide by | Status |
 |---|---|---|---|---|
-| V1 | **Battle camera/view** — FFVI-style side-view sprites vs. a 3/4 field view | [combat](../design/combat.md) · [ui-ux-and-controls](../design/ui-ux-and-controls.md) | Phase 1 | open |
-| V2 | Final **native resolution** & integer-scale target | [art-direction](../design/art-direction.md) | Phase 1 | open |
+| V1 | **Battle camera/view** — FFVI-style side-view sprites vs. a 3/4 field view | [combat](../design/combat.md) · [ui-ux-and-controls](../design/ui-ux-and-controls.md) | Phase 1 | **resolved**: side-view ([0006](../decisions/0006-phase-1-technical-decisions.md)) |
+| V2 | Final **native resolution** & integer-scale target | [art-direction](../design/art-direction.md) | Phase 1 | **resolved**: 384×216, landscape ([0006](../decisions/0006-phase-1-technical-decisions.md)) |
 | V3 | The exact **desaturation curve** over the campaign (how fast color drains) | [art-direction](../design/art-direction.md) | Phase 3 | open |
-| V4 | **Pixel-vs-modern-lighting** balance (how much bloom/lighting over pixels) | [art-direction](../design/art-direction.md) | Phase 1 | open |
+| V4 | **Pixel-vs-modern-lighting** balance (how much bloom/lighting over pixels) | [art-direction](../design/art-direction.md) | Phase 1 | **resolved**: pixels authoritative, restrained glow ([0006](../decisions/0006-phase-1-technical-decisions.md)) |
 | V5 | How **diegetic** to push the menus without hurting readability | [ui-ux-and-controls](../design/ui-ux-and-controls.md) | Phase 2 | open |
 
 ## Audio
@@ -52,9 +52,11 @@ if it's load-bearing).
 
 | # | Question | Owner doc | Decide by | Status |
 |---|---|---|---|---|
-| T1 | **Content-data format** — TS modules vs. JSON + schema | [game-tech-design](../architecture/game-tech-design.md) | Phase 1 | open |
+| T1 | **Content-data format** — TS modules vs. JSON + schema | [game-tech-design](../architecture/game-tech-design.md) | Phase 1 | **resolved**: TS modules ([0006](../decisions/0006-phase-1-technical-decisions.md)) |
 | T2 | **Region-streaming** strategy within the Phaser/Beam pipeline | [game-tech-design](../architecture/game-tech-design.md) | Phase 4 | open |
-| T3 | How much of the battle is **sim-driven vs. scene-driven** | [game-tech-design](../architecture/game-tech-design.md) · [combat-spec](../design/combat-spec.md) | Phase 1 | open |
+| T3 | How much of the battle is **sim-driven vs. scene-driven** | [game-tech-design](../architecture/game-tech-design.md) · [combat-spec](../design/combat-spec.md) | Phase 1 | **resolved**: sim-authoritative ([0006](../decisions/0006-phase-1-technical-decisions.md)) |
+| T4 | **Local-storage mechanism** — IndexedDB vs. SQLite-in-browser (OPFS) | [technical-requirements](../architecture/technical-requirements.md) | Phase 1–2 | leaning: IndexedDB (local-only per [0007](../decisions/0007-local-only-offline.md)) |
+| T5 | **Touch control scheme** — tap-to-move vs. virtual stick (and battle touch UX) | [ui-ux-and-controls](../design/ui-ux-and-controls.md) | Phase 1–2 | open (touch is in scope per [0005](../decisions/0005-platform-target.md)) |
 
 ## How to use this register
 
@@ -63,5 +65,8 @@ if it's load-bearing).
   *resolved* here (keep the row for history), and add a
   [decision](../decisions/0001-locked-architecture-decisions.md) if it changes a
   locked pillar.
-- **Phase 1** ([roadmap](../production/roadmap.md)) should close V1, V2, V4, T1, T3,
-  and start S6 — they block the combat prototype's foundations.
+- **Phase-1-blocking questions are now resolved** (V1, V2, V4, T1, T3 →
+  [0006](../decisions/0006-phase-1-technical-decisions.md); platform →
+  [0005](../decisions/0005-platform-target.md); local-only/offline →
+  [0007](../decisions/0007-local-only-offline.md)). Remaining for Phase 1–2: T4
+  (storage mechanism), T5 (touch scheme), and starting S6 (tuning constants).

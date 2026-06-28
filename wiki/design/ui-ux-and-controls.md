@@ -82,18 +82,21 @@ The battle HUD must make the readable ATB ([combat](combat.md)) legible at a gla
 
 ## Controls
 
-Designed for **gamepad-first, full keyboard/mouse parity** (the game targets the
-web/desktop Phaser stack — [architecture/overview](../architecture/overview.md)):
+Designed **touch-first, with full keyboard and gamepad parity** — GRIST targets
+web + mobile/tablet ([decisions/0005](../decisions/0005-platform-target.md),
+[platform-and-target](../production/platform-and-target.md)). The methodical, no-twitch
+ATB suits touch well. Battle is fully playable by tap; the field uses tap-to-move /
+virtual stick (scheme TBD — T5 in [open-questions/register](../open-questions/register.md)).
 
-| Context | Gamepad | Keyboard (default) |
-|---|---|---|
-| Move | Left stick / D-pad | WASD / arrows |
-| Confirm / Interact | A | Enter / E |
-| Cancel / Back | B | Esc / Q |
-| Menu | Start | Tab / Esc |
-| Map | Select | M |
-| Cycle target / page | Bumpers | Q / E |
-| Battle speed toggle | Trigger | Shift |
+| Context | Touch | Gamepad | Keyboard (default) |
+|---|---|---|---|
+| Move | Tap-to-move / virtual stick | Left stick / D-pad | WASD / arrows |
+| Confirm / Interact | Tap target | A | Enter / E |
+| Cancel / Back | Back button / swipe | B | Esc / Q |
+| Menu | On-screen button | Start | Tab / Esc |
+| Map | On-screen button | Select | M |
+| Cycle target / page | Tap / swipe | Bumpers | Q / E |
+| Battle speed toggle | On-screen toggle | Trigger | Shift |
 
 All bindings are **remappable**; input is routed through the starter's semantic
 `InputService` (actions, not raw keys —
@@ -123,6 +126,8 @@ proven. Information architecture first; skin second.
 
 ## Open questions
 
-Tracked in [open-questions](../open-questions/): battle view (side-view sprites vs.
-3/4 field), how diegetic to push the menus without hurting readability, and touch
-support if a mobile/tablet target is ever in scope.
+Tracked in [open-questions/register](../open-questions/register.md): the **touch control
+scheme** (tap-to-move vs. virtual stick; battle touch UX — T5) and how diegetic to push
+the menus without hurting readability (V5). Battle view is resolved to **side-view**
+and touch is **in scope** ([0006](../decisions/0006-phase-1-technical-decisions.md),
+[0005](../decisions/0005-platform-target.md)).

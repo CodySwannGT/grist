@@ -51,13 +51,17 @@
 |---|---|---|
 | [roadmap](production/roadmap.md) | Scope reality, how we work, and the phased build plan | 2026-06-27 |
 | [gdd — master plan & index](production/gdd.md) | The full documentation plan and its live status checklist | 2026-06-27 |
+| [platform-and-target](production/platform-and-target.md) | Web + mobile/tablet: targets, min spec, constraints, distribution | 2026-06-27 |
 | [vertical-slice](production/vertical-slice.md) | "The Bound in the Marrow" — the first build target and its acceptance criteria | 2026-06-27 |
+| [vertical-slice-build](production/vertical-slice-build.md) | The build-ready slice spec: concrete content, asset manifest, UAT script | 2026-06-27 |
 
 ## Architecture
 | Page | Summary | Updated |
 |---|---|---|
 | [overview](architecture/overview.md) | Pure-logic core, thin scenes, services, and the verification bridge | 2026-06-27 |
 | [game-tech-design](architecture/game-tech-design.md) | How the GDD maps to code: data model, save schema, determinism, i18n | 2026-06-27 |
+| [engineering-spec](architecture/engineering-spec.md) | Buildable detail: type definitions, the combat-sim contract, scene/state machine | 2026-06-27 |
+| [technical-requirements](architecture/technical-requirements.md) | NFRs: offline-first, local-only saves, performance, privacy, security | 2026-06-27 |
 
 ## Conventions
 | Page | Summary | Updated |
@@ -71,12 +75,16 @@
 | [0002 — Core game-design pillars](decisions/0002-core-game-design-pillars.md) | ATB combat + grist-augment progression, and why | 2026-06-27 |
 | [0003 — Build order & scope strategy](decisions/0003-build-order-and-scope.md) | Build in verified slices; vertical slice first | 2026-06-27 |
 | [0004 — Complete pre-production before build](decisions/0004-complete-pre-production-before-build.md) | Write the full GDD before any code | 2026-06-27 |
+| [0005 — Platform target](decisions/0005-platform-target.md) | Web + mobile/tablet; touch-first | 2026-06-27 |
+| [0006 — Phase-1 technical decisions](decisions/0006-phase-1-technical-decisions.md) | Side-view, 384×216, TS-module content, sim-authoritative | 2026-06-27 |
+| [0007 — Local-only, offline](decisions/0007-local-only-offline.md) | Local saves only; no remote connectivity | 2026-06-27 |
 
 ## Playbooks
 | Page | Summary | Updated |
 |---|---|---|
 | [run-and-verify](playbooks/run-and-verify.md) | How to run the game and the verification = UAT loop | 2026-06-27 |
 | [development-workflow](playbooks/development-workflow.md) | PRD → ticket → build → verify; branch rules; multi-harness | 2026-06-27 |
+| [test-plan](playbooks/test-plan.md) | The testing strategy: unit/e2e, the runtime gates, coverage, device matrix | 2026-06-27 |
 
 ## Open questions
 | Page | Summary | Updated |
