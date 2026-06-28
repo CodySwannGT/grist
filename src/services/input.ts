@@ -13,7 +13,6 @@
  */
 import Phaser from "phaser";
 import { BattleEvents } from "../consts";
-import { type CommandId } from "../ui/commands";
 import { eventsCenter } from "./events";
 import {
   InputDevices,
@@ -59,11 +58,13 @@ export class InputService {
   };
 
   /**
-   * Publish a touch/pointer command selection (tapping a command button).
+   * Publish a touch/pointer command selection (tapping a command button). The id
+   * travels as a plain string so this layer stays free of the UI command catalog;
+   * the HUD controller validates it.
    * @param command - The tapped command id.
    * @returns void
    */
-  tapCommand(command: CommandId): void {
+  tapCommand(command: string): void {
     this.#emit({ kind: "select-command", command }, InputDevices.pointer);
   }
 

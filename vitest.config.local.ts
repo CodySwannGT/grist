@@ -25,15 +25,15 @@
 import type { ViteUserConfig } from "vitest/config";
 
 /**
- * Phaser-coupled adapters (scenes, game objects, services, the HUD/UI layer, the
- * Phaser.Game bootstrap, and the verification bridge) are not unit-tested — they
- * import Phaser (which cannot load in the headless vitest environment) and are
- * verified instead by the Playwright UAT/verification suite (tests/e2e). Unit
- * coverage is measured on the pure, engine-free core in src/logic and the typed
- * constant/content modules. This mirrors the upstream config, which already
- * excludes scenes; the pure UI helpers (commands, the key→intent map, the speed
- * model) still carry their own unit tests in tests/logic — they simply live in
- * Phaser-adapter directories, exactly like the already-excluded services layer.
+ * Phaser-coupled adapters (scenes, game objects, services, the Phaser.Game
+ * bootstrap, the verification bridge, and the Phaser-bound HUD adapters) are not
+ * unit-tested — they import Phaser (which cannot load in the headless vitest
+ * environment) and are verified instead by the Playwright UAT/verification suite
+ * (tests/e2e). Unit coverage is measured on the pure, engine-free core. The HUD's
+ * *pure* helpers — `src/ui/commands.ts` and `src/ui/layout.ts` — are Phaser-free
+ * and carry their own unit tests, so they stay IN coverage; only the three
+ * Phaser-bound `src/ui` adapters are excluded, named individually rather than by
+ * a blanket `src/ui/**` glob.
  */
 const config: ViteUserConfig = {
   test: {
@@ -42,7 +42,9 @@ const config: ViteUserConfig = {
         "src/services/**",
         "src/objects/**",
         "src/game/**",
-        "src/ui/**",
+        "src/ui/battle-hud.ts",
+        "src/ui/battle-controller.ts",
+        "src/ui/hud-text.ts",
         "src/uat/**",
         "src/main.ts",
         "src/scenes/**",

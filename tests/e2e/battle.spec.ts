@@ -55,6 +55,17 @@ async function waitForMenu(page: Page): Promise<void> {
  */
 async function restart(page: Page): Promise<void> {
   await page.evaluate(seed => window.__VERIFY__?.seed(seed), FIXED_SEED);
+  // Wait for the bridge to expose the restarted battle before any caller samples
+  // it, so a transient null state can never collapse to a misleading 0.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          window.__VERIFY__?.state() !== null &&
+          window.__VERIFY__?.hud() !== null
+      )
+    )
+    .toBe(true);
 }
 
 /**
@@ -180,11 +191,15 @@ test.describe("GRIST — battle scene verification (UAT)", () => {
         commands: hud.commands.map(c => c.id),
         grist: hud.grist,
         stateGrist: state.grist,
-        party: state.party.map(p => ({
-          hasHp: p.maxHp > 0,
-          hasAp: typeof p.ap === "number",
-          hasAtb: typeof p.atb === "number",
+        // Compare the HUD's own party rows against the sim, so the test fails if
+        // the HUD/UAT model ever stops exposing per-member HP / AP / ATB.
+        party: hud.party.map((row, index) => ({
+          hpMatches: row.hp === state.party[index]?.hp,
+          maxHpPositive: row.maxHp > 0,
+          apMatches: row.ap === state.party[index]?.ap,
+          atbMatches: row.atb === state.party[index]?.atb,
         })),
+        partyCountMatches: hud.party.length === state.party.length,
         enemyBreaksExposed: hud.enemies.every(
           e => typeof e.broken === "boolean"
         ),
@@ -205,11 +220,13 @@ test.describe("GRIST — battle scene verification (UAT)", () => {
     ]);
     // The shared grist pool the HUD shows matches the sim.
     expect(view?.grist).toBe(view?.stateGrist);
-    // Every party member contributes HP / AP / ATB.
+    // The HUD exposes every party member's HP / AP / ATB, matching the sim.
+    expect(view?.partyCountMatches).toBe(true);
     for (const member of view?.party ?? []) {
-      expect(member.hasHp).toBe(true);
-      expect(member.hasAp).toBe(true);
-      expect(member.hasAtb).toBe(true);
+      expect(member.hpMatches).toBe(true);
+      expect(member.maxHpPositive).toBe(true);
+      expect(member.apMatches).toBe(true);
+      expect(member.atbMatches).toBe(true);
     }
     // The target and per-enemy Break state are exposed.
     expect(view?.targetInRange).toBe(true);
@@ -293,9 +310,10 @@ test.describe("GRIST — battle scene verification (UAT)", () => {
     ).toBeNull();
 
     // Behavioral proof on a fresh fill window: in Wait the ATB is frozen, and
-    // switching to Normal mid-fight resumes the cadence.
-    await reachSpeed(page, "wait");
+    // switching to Normal mid-fight resumes the cadence. Restart first (a reseed
+    // resets the speed to default) and only then select the speed under test.
     await restart(page);
+    await reachSpeed(page, "wait");
     const waitStart = await page.evaluate(
       () => window.__VERIFY__?.state()?.tick ?? 0
     );
@@ -305,8 +323,8 @@ test.describe("GRIST — battle scene verification (UAT)", () => {
     );
     expect(waitEnd).toBe(waitStart);
 
-    await reachSpeed(page, "normal");
     await restart(page);
+    await reachSpeed(page, "normal");
     const normalStart = await page.evaluate(
       () => window.__VERIFY__?.state()?.tick ?? 0
     );

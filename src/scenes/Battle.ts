@@ -311,7 +311,10 @@ export class Battle extends Phaser.Scene {
         };
       },
       hud: () => this.#controller.model(),
-      restart: (seed: number) => this.#runner.restart(seed),
+      restart: (seed: number) => {
+        this.#runner.restart(seed);
+        this.#controller.reset();
+      },
       act: action => eventsCenter.emit(BattleEvents.ActionRequested, action),
     };
   }
@@ -323,6 +326,9 @@ export class Battle extends Phaser.Scene {
    * @returns void
    */
   #shutdown(): void {
+    // Detach the bridge first so __VERIFY__.state()/hud() return null (their
+    // documented out-of-battle contract) instead of reading disposed objects.
+    verifyBridge.attach("", null);
     this.#hud.destroy();
     this.#controller.dispose();
     this.#input.dispose();

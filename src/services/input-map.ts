@@ -4,9 +4,11 @@
  * from {@link import("./input").InputService} (which wires this to Phaser's
  * keyboard/pointer plugins) so the keyboard scheme is a total function that
  * unit-tests headless, with no Phaser import. Remapping a key is a change here.
+ * Deliberately free of any `src/ui` import so the low-level input layer never
+ * depends on the UI: a tapped command travels as a plain id string that the HUD
+ * controller validates against its catalog.
  * @module services/input-map
  */
-import { type CommandId } from "../ui/commands";
 
 /** Which device a semantic intent originated from (for verification + telemetry). */
 export const InputDevices = {
@@ -29,7 +31,7 @@ export type InputIntent =
   | { readonly kind: "confirm" }
   | { readonly kind: "cancel" }
   | { readonly kind: "toggle-speed" }
-  | { readonly kind: "select-command"; readonly command: CommandId }
+  | { readonly kind: "select-command"; readonly command: string }
   | { readonly kind: "select-target"; readonly index: number };
 
 const NAV_PREV: InputIntent = { kind: "navigate", delta: -1 };

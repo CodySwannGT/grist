@@ -63,6 +63,18 @@ export interface HudActionModel {
   readonly device: InputDevice;
 }
 
+/** One party member's HUD row — exactly what the HUD draws for it. */
+export interface HudPartyModel {
+  readonly ref: string;
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly ap: number;
+  readonly maxAp: number;
+  readonly atb: number;
+  readonly ready: boolean;
+  readonly active: boolean;
+}
+
 /** The whole HUD view-model the verification bridge exposes under `?uat=1`. */
 export interface HudModel {
   readonly speed: BattleSpeed;
@@ -72,6 +84,7 @@ export interface HudModel {
   readonly targetEnemy: number;
   readonly menuOpen: boolean;
   readonly grist: number;
+  readonly party: readonly HudPartyModel[];
   readonly commands: readonly HudCommandModel[];
   readonly enemies: readonly HudEnemyModel[];
   readonly lastInput: HudInputModel | null;
@@ -267,17 +280,21 @@ export class BattleController {
   }
 
   /**
-   * Highlight then confirm a tapped command (the touch path).
-   * @param command - The tapped command id.
+   * Highlight then confirm a tapped command (the touch path). The id arrives as a
+   * plain string from the device layer, so it is validated against the catalog
+   * here; an unknown id is ignored.
+   * @param command - The tapped command id (validated against the catalog).
    * @param device - The originating device.
    * @returns void
    */
-  #selectCommand(command: CommandId, device: InputDevice): void {
-    const index = COMMAND_ORDER.indexOf(command);
-    if (index >= 0) {
-      this.#highlight = index;
+  #selectCommand(command: string, device: InputDevice): void {
+    const index = COMMAND_ORDER.findIndex(id => id === command);
+    const resolved = COMMAND_ORDER[index];
+    if (resolved === undefined) {
+      return;
     }
-    this.#confirm(command, device);
+    this.#highlight = index;
+    this.#confirm(resolved, device);
   }
 
   /**
@@ -321,6 +338,22 @@ export class BattleController {
   }
 
   /**
+   * Reset all controller-owned selection state to its battle-open defaults — the
+   * highlight, target, speed, and the last input/action. Called when the
+   * verification bridge reseeds the battle so `model()` reflects the fresh fight
+   * rather than carrying the prior run's selection forward.
+   * @returns void
+   */
+  reset(): void {
+    this.#highlight = 0;
+    this.#target = 0;
+    this.#speed = DEFAULT_SPEED;
+    this.#lastInput = null;
+    this.#lastAction = null;
+    this.#runner.setSpeed(this.#speed);
+  }
+
+  /**
    * Build the full HUD view-model for the verification bridge. Allocates — called
    * on demand under `?uat=1`, never from the per-frame render path.
    * @returns The HUD view-model.
@@ -339,6 +372,16 @@ export class BattleController {
       targetEnemy: target,
       menuOpen: actor !== null,
       grist,
+      party: state.party.map((seat, index) => ({
+        ref: seat.ref,
+        hp: seat.hp,
+        maxHp: seat.stats.hp,
+        ap: seat.ap,
+        maxAp: seat.stats.ap,
+        atb: seat.atb,
+        ready: seat.hp > 0 && seat.atb >= AtbTuning.ready,
+        active: index === actor,
+      })),
       commands: COMMAND_ORDER.map((id, index) =>
         this.#commandModel(id, index, member?.ap ?? 0, grist)
       ),
