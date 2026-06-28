@@ -12,7 +12,7 @@ import {
   type ElementId,
   type SpellTarget,
   type StatusId,
-} from "../logic/combat";
+} from "../logic/combat/types";
 
 /** Canonical ids for the castable (menu-selectable) spells in {@link SPELLS}. */
 export const SpellIds = {
