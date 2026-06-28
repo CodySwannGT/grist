@@ -11,6 +11,7 @@
  */
 import { ENEMIES, type EncounterDef, type PartyMemberDef } from "../../content";
 import { tickStatuses } from "./effects";
+import { isResolved, resolveOutcome } from "./outcome";
 import { resolveTurn } from "./resolve";
 import { regenAp } from "./resource";
 import {
@@ -118,14 +119,23 @@ function applyTick(state: BattleState): BattleState {
  * {@link BattleState}, mutating nothing and reading nothing ambient. A `tick`
  * advances every ATB gauge by `SPD × fillPerSpd` and ticks status DoTs; an
  * acting kind delegates to {@link resolveTurn}, which spends the actor's turn
- * (gauge → 0), threads the seeded RNG, and applies the action's effect. Same
- * `(state, action, seed)` → same next state, always.
+ * (gauge → 0), threads the seeded RNG, and applies the action's effect. After
+ * the action lands, {@link resolveOutcome} flips the battle to `won`/`lost` when
+ * the last enemy or the last party member falls — including a kill dealt by a
+ * Rendering DoT on a `tick`. A battle already resolved is terminal: every further
+ * action (including a `tick`) is rejected and the state returned unchanged, so
+ * the outcome is stable. Same `(state, action, seed)` → same next state, always.
  * @param state - The current battle state (never mutated).
  * @param action - The action to apply.
  * @returns The next battle state.
  */
 export function step(state: BattleState, action: BattleAction): BattleState {
-  return action.kind === ActionKinds.tick
-    ? applyTick(state)
-    : resolveTurn(state, action);
+  if (isResolved(state)) {
+    return state;
+  }
+  const next =
+    action.kind === ActionKinds.tick
+      ? applyTick(state)
+      : resolveTurn(state, action);
+  return resolveOutcome(next);
 }

@@ -292,8 +292,9 @@ describe("Pressure → Break → Severance (AC)", () => {
   });
 
   it("breaks a weak target across repeated Flux crafts via the reducer", () => {
-    // Ample AP so both Sparks are affordable (#36) without a regen tick between.
-    const wren = combatant("wren", { foc: 10, ap: 100 });
+    // Ample AP so both Sparks are affordable (#36) without a regen tick between;
+    // positive HP so the party is not wiped and the battle stays live across both.
+    const wren = combatant("wren", { hp: 100, foc: 10, ap: 100 });
     const boss = combatant(ASHLING, { hp: 100000, wrd: 100000 });
     const start = battle([wren], [boss]);
     const craft = {
