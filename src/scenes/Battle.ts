@@ -34,6 +34,10 @@ import {
   type Combatant,
 } from "../logic/combat";
 import { eventsCenter } from "../services/events";
+import { InputService } from "../services/input";
+import { BattleController } from "../ui/battle-controller";
+import { BattleHud } from "../ui/battle-hud";
+import { unitCenter } from "../ui/layout";
 import { verifyBridge, type BattleView } from "../uat/bridge";
 
 /** Fallback seed when none is supplied via the verification bridge / `?seed=`. */
@@ -62,6 +66,9 @@ interface UnitView {
 /** Renders a {@link BattleState} and emits {@link BattleAction}s; holds no rules. */
 export class Battle extends Phaser.Scene {
   #runner!: BattleRunner;
+  #input!: InputService;
+  #controller!: BattleController;
+  #hud!: BattleHud;
   #partyViews: readonly UnitView[] = [];
   #enemyViews: readonly UnitView[] = [];
 
@@ -71,13 +78,16 @@ export class Battle extends Phaser.Scene {
   }
 
   /**
-   * Build the runner, backdrop, and pooled combatant views, then expose the scene
+   * Build the runner, semantic input, HUD controller, backdrop, pooled combatant
+   * views, and the HUD, wire enemy taps to target selection, then expose the scene
    * to the verification bridge.
    * @returns void
    */
   create(): void {
     const seed = verifyBridge.takeSeed() ?? DEFAULT_SEED;
     this.#runner = new BattleRunner(PARTY_LINEUP, ENCOUNTER, seed);
+    this.#input = new InputService(this);
+    this.#controller = new BattleController(this.#runner);
 
     const state = this.#runner.state();
     this.#drawBackdrop();
@@ -92,15 +102,33 @@ export class Battle extends Phaser.Scene {
       state.enemies.length,
       BattleColors.enemyTint
     );
+    this.#wireEnemyTargets();
+    this.#hud = new BattleHud(this, this.#input, PARTY_LINEUP);
 
     verifyBridge.attach(SceneKeys.Battle, this.#bridgeView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
     this.#render();
+    this.#hud.render(state, this.#controller);
   }
 
   /**
-   * Per-frame: advance the ATB and mirror state onto the pooled sprites. No
-   * allocations, tweens, or timers are created here.
+   * Make each enemy view tappable so a touch/pointer selects it as the target
+   * (routed through the semantic InputService — no raw pointer handling leaks out).
+   * @returns void
+   */
+  #wireEnemyTargets(): void {
+    this.#enemyViews.forEach((view, index) => {
+      view.unit
+        .setInteractive({ useHandCursor: true })
+        .on(Phaser.Input.Events.POINTER_DOWN, () =>
+          this.#input.tapTarget(index)
+        );
+    });
+  }
+
+  /**
+   * Per-frame: advance the ATB and mirror state onto the pooled sprites and HUD.
+   * No allocations, tweens, or timers are created here.
    * @param _time - Absolute time (unused; the sim is delta-driven).
    * @param delta - Milliseconds since the last frame.
    * @returns void
@@ -108,6 +136,7 @@ export class Battle extends Phaser.Scene {
   override update(_time: number, delta: number): void {
     this.#runner.advance(delta);
     this.#render();
+    this.#hud.render(this.#runner.state(), this.#controller);
   }
 
   /**
@@ -161,7 +190,7 @@ export class Battle extends Phaser.Scene {
    * @returns The pooled view for the combatant.
    */
   #buildUnit(side: BattleSide, index: number, tint: number): UnitView {
-    const { x, y } = this.#unitCenter(side, index);
+    const { x, y } = unitCenter(side, index);
     const unit = this.add
       .image(x, y, TextureKeys.Unit)
       .setTint(tint)
@@ -210,28 +239,6 @@ export class Battle extends Phaser.Scene {
       )
       .setOrigin(0, 0.5);
     return { unit, hpFill, atbFill, baseTint: tint };
-  }
-
-  /**
-   * The on-screen center of a combatant: its side's anchor column, stepped up and
-   * staggered toward screen-center for the back rows (a depth cue).
-   * @param side - The combatant's side.
-   * @param index - The combatant's index within its side.
-   * @returns The unit's logical center.
-   */
-  #unitCenter(side: BattleSide, index: number): { x: number; y: number } {
-    const toEnemies = side === BattleSides.enemies;
-    const anchorX = toEnemies
-      ? BattleLayout.enemyAnchorX
-      : BattleLayout.partyAnchorX;
-    const dir = toEnemies ? 1 : -1;
-    return {
-      x: anchorX + dir * index * BattleLayout.rowStaggerX,
-      y:
-        BattleLayout.groundY -
-        BattleLayout.unitHeight / 2 -
-        index * BattleLayout.rowGap,
-    };
   }
 
   /**
@@ -303,16 +310,22 @@ export class Battle extends Phaser.Scene {
           zoom: displaySize.width / gameSize.width,
         };
       },
+      hud: () => this.#controller.model(),
       restart: (seed: number) => this.#runner.restart(seed),
       act: action => eventsCenter.emit(BattleEvents.ActionRequested, action),
     };
   }
 
   /**
-   * Free the runner's bus subscription on scene shutdown.
+   * Free every external subscription on scene shutdown: the HUD objects, the
+   * controller's input-bus listener, the InputService's keyboard listener, and the
+   * runner's action-bus listener (the `require-shutdown-cleanup` contract).
    * @returns void
    */
   #shutdown(): void {
+    this.#hud.destroy();
+    this.#controller.dispose();
+    this.#input.dispose();
     this.#runner.dispose();
   }
 }

@@ -17,6 +17,7 @@ import {
   type BattleState,
   type Combatant,
 } from "../logic/combat";
+import { type HudModel } from "../ui/battle-controller";
 
 /** A read-only snapshot of one combatant for assertions. */
 interface VerifyCombatant {
@@ -55,6 +56,7 @@ interface VerifyResolution {
 export interface BattleView {
   readonly state: () => BattleState | null;
   readonly resolution: () => VerifyResolution;
+  readonly hud: () => HudModel | null;
   readonly restart: (seed: number) => void;
   readonly act: (action: BattleAction) => void;
 }
@@ -64,6 +66,7 @@ interface VerifyApi {
   readonly scene: () => string;
   readonly state: () => VerifyBattleState | null;
   readonly resolution: () => VerifyResolution | null;
+  readonly hud: () => HudModel | null;
   readonly seed: (seed: number) => void;
   readonly act: (action: BattleAction) => void;
   readonly strike: () => void;
@@ -168,6 +171,17 @@ class VerifyController {
   }
 
   /**
+   * The live HUD view-model (speed, active actor, target, command menu with
+   * costs/affordability, per-enemy Break, and the last input/action), or null
+   * outside a battle scene. Lets the verification suite assert the HUD reflects
+   * the sim and that input was routed through the semantic InputService.
+   * @returns The HUD model or null.
+   */
+  hud(): HudModel | null {
+    return this.#view?.hud() ?? null;
+  }
+
+  /**
    * Push an action into the sim via the active battle view.
    * @param action - The battle action to apply.
    * @returns void
@@ -248,6 +262,7 @@ export function installVerifyBridge(): void {
     scene: () => verifyBridge.scene(),
     state: () => verifyBridge.state(),
     resolution: () => verifyBridge.resolution(),
+    hud: () => verifyBridge.hud(),
     seed: (seed: number) => verifyBridge.seed(seed),
     act: (action: BattleAction) => verifyBridge.act(action),
     strike: () => verifyBridge.strike(),
