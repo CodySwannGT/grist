@@ -178,25 +178,21 @@ describe("Flux element multiplier (AC: weakness and resistance)", () => {
 
   it("makes a Flux hit on a weak target hit harder than a neutral one", () => {
     const construct = ENEMIES["render-construct"];
-    const weak = computeDamage({
+    // defStat 0 keeps the pre-round base integral, so the ×1.5 weakness factor
+    // is exact (no brittle double-rounding of an already-rounded hit).
+    const base = {
       attackerStat: 10,
       skillPower: SPELLS.spark.power,
-      defStat: construct.stats.wrd,
-      elementMod: elementMultiplier(construct.elements, SPELLS.spark.element),
+      defStat: 0,
       critMod: 1,
       variance: 1,
       pressureMod: 1,
-    });
-    const neutral = computeDamage({
-      attackerStat: 10,
-      skillPower: SPELLS.spark.power,
-      defStat: construct.stats.wrd,
-      elementMod: 1,
-      critMod: 1,
-      variance: 1,
-      pressureMod: 1,
-    });
-    expect(weak).toBe(Math.round(neutral * 1.5));
+    };
+    const fluxMod = elementMultiplier(construct.elements, SPELLS.spark.element);
+    const weak = computeDamage({ ...base, elementMod: fluxMod });
+    const neutral = computeDamage({ ...base, elementMod: 1 });
+    expect(fluxMod).toBe(1.5);
+    expect(weak).toBe(neutral * 1.5);
   });
 });
 
@@ -339,9 +335,14 @@ describe("damage resolution through the reducer", () => {
       3
     );
     const strike = { kind: "strike" as const, actor: WREN, target: ENEMY };
+    // Same seed + RNG state in both battles → the strike shares one variance/crit
+    // roll, so only the pressure multiplier differs (±1 is integer rounding).
     const calmDmg = get(calm, ENEMY).hp - get(step(calm, strike), ENEMY).hp;
     const brokenDmg =
       get(broken, ENEMY).hp - get(step(broken, strike), ENEMY).hp;
-    expect(brokenDmg).toBe(calmDmg * CombatTuning.brokenPressureMod);
+    expect(brokenDmg).toBeGreaterThan(calmDmg);
+    expect(
+      Math.abs(brokenDmg - calmDmg * CombatTuning.brokenPressureMod)
+    ).toBeLessThanOrEqual(1);
   });
 });

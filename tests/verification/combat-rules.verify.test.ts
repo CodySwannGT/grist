@@ -174,6 +174,19 @@ describe("GRIST combat rules — codified played-battle (verification)", () => {
     );
   });
 
+  it("[EVIDENCE: overkill-log] a lethal hit logs the applied HP loss, not the raw hit", () => {
+    // A big Strike into a 1-HP foe: the logged damage is the HP actually lost (1),
+    // never the larger raw formula result (BattleEvent.damage contract).
+    const foe = combatant("marrow-scrapper", { hp: 40 }, { hp: 1 });
+    const after = step(arena(combatant("wren", { pow: 40 }), foe), {
+      kind: "strike",
+      actor: WREN,
+      target: FOE,
+    });
+    expect(at(after, FOE).hp).toBe(0);
+    expect(after.log.at(-1)?.damage).toBe(1);
+  });
+
   it("[EVIDENCE: break-severance] Pressure builds to Break, enabling the ×2 finisher", () => {
     // A Flux-weak boss tanky enough to survive while Pressure accumulates.
     const boss = combatant("the-ashling", { hp: 100000, wrd: 100000, def: 0 });

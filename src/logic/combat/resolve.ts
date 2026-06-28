@@ -297,6 +297,9 @@ function resolveHit(
   const variance = varianceFromRoll(rolls.varianceRoll);
   const crit = isCrit(actor.stats.lck, rolls.critRoll);
   const hit = computeHit(target, profile, variance, crit);
+  // Log the HP actually lost, not the raw formula result: applyHit clamps a
+  // lethal hit at the target's remaining HP, so an overkill must not over-report.
+  const appliedDamage = Math.min(target.hp, hit.damage);
   const hitSides = updateAt(
     { party: state.party, enemies: state.enemies },
     refs.targetRef,
@@ -309,7 +312,7 @@ function resolveHit(
     actor: refs.actorRef,
     target: refs.targetRef,
     roll: rolls.varianceRoll,
-    damage: hit.damage,
+    damage: appliedDamage,
   };
   return {
     ...state,
