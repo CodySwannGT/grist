@@ -2,8 +2,7 @@
  * Bound (shard) definitions as a typed TS-module table, authored to the
  * combat-spec Bound-kit template: element/domain, the grist-costed Bind summon,
  * the spells it teaches, its growth bias, and its wield corruption rate. `teaches`
- * and the inline Bind reference only defined {@link SpellId}s. Pure data — no
- * Phaser.
+ * and the inline Bind reference only defined spell ids. Pure data — no Phaser.
  * @module content/bounds
  */
 import {
@@ -12,7 +11,7 @@ import {
   type ElementId,
   type Stats,
 } from "../logic/combat";
-import { SpellIds, type CastableSpellId, type SpellDef } from "./spells";
+import { BindSpellIds, SpellIds, type SpellDef, type SpellId } from "./spells";
 
 /**
  * A Bound/shard definition. `bind` is the grist-costed AoE summon action;
@@ -21,11 +20,11 @@ import { SpellIds, type CastableSpellId, type SpellDef } from "./spells";
  * accrued in Wield mode (0 for a Free starter shard).
  */
 export interface BoundDef {
-  readonly id: string;
+  readonly id: BoundId;
   readonly name: string;
   readonly element: ElementId;
   readonly bind: SpellDef;
-  readonly teaches: readonly CastableSpellId[];
+  readonly teaches: readonly SpellId[];
   readonly growthBias: Partial<Stats>;
   readonly corruptionRate: number;
 }
@@ -40,16 +39,19 @@ export const BoundIds = {
 export type BoundId = (typeof BoundIds)[keyof typeof BoundIds];
 
 /**
- * The slice shard table. Keys are {@link BoundId}s. Emberwisp is Wren's Free
- * starter (no corruption); the Marrow Bound is the Ashling's reward shard.
+ * The slice shard table. The mapped type binds each entry's `id` to its table
+ * key, so the key and the `id` can never drift. Emberwisp is Wren's Free starter
+ * (no corruption); the Marrow Bound is the Ashling's reward shard.
  */
-export const BOUNDS = {
+export const BOUNDS: {
+  readonly [K in BoundId]: BoundDef & { readonly id: K };
+} = {
   emberwisp: {
     id: BoundIds.emberwisp,
     name: "Emberwisp",
     element: Elements.flux,
     bind: {
-      id: SpellIds.bindWisp,
+      id: BindSpellIds.bindWisp,
       name: "Bind: Wisp",
       element: Elements.flux,
       apCost: 0,
@@ -66,7 +68,7 @@ export const BOUNDS = {
     name: "The Marrow Bound",
     element: Elements.ash,
     bind: {
-      id: SpellIds.bindMarrow,
+      id: BindSpellIds.bindMarrow,
       name: "Bind: Marrow",
       element: Elements.ash,
       apCost: 0,
@@ -78,4 +80,4 @@ export const BOUNDS = {
     growthBias: { foc: 2 },
     corruptionRate: 0.1,
   },
-} as const satisfies Record<BoundId, BoundDef>;
+};

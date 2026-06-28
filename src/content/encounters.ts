@@ -20,7 +20,7 @@ export type BackdropId = (typeof Backdrops)[keyof typeof Backdrops];
  * scene loads. The party is supplied separately at battle start.
  */
 export interface EncounterDef {
-  readonly id: string;
+  readonly id: EncounterId;
   readonly enemies: readonly EnemyId[];
   readonly backdrop: BackdropId;
 }
@@ -38,9 +38,12 @@ export type EncounterId = (typeof EncounterIds)[keyof typeof EncounterIds];
 /**
  * The slice encounters: Warren Street (a lone scrapper), The Drip (scrapper +
  * render-construct — teaches Rendering/Break), and The Cage (the Ashling boss).
- * Keys are {@link EncounterId}s.
+ * The mapped type binds each entry's `id` to its table key, so the key and the
+ * `id` can never drift.
  */
-export const ENCOUNTERS = {
+export const ENCOUNTERS: {
+  readonly [K in EncounterId]: EncounterDef & { readonly id: K };
+} = {
   "warren-street": {
     id: EncounterIds.warrenStreet,
     enemies: [EnemyIds.marrowScrapper],
@@ -56,4 +59,4 @@ export const ENCOUNTERS = {
     enemies: [EnemyIds.theAshling],
     backdrop: Backdrops.marrow,
   },
-} as const satisfies Record<EncounterId, EncounterDef>;
+};

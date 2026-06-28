@@ -8,9 +8,11 @@
 export {
   SPELLS,
   SpellIds,
+  BindSpellIds,
   type SpellDef,
   type SpellId,
-  type CastableSpellId,
+  type BindSpellId,
+  type AnySpellId,
 } from "./spells";
 export { ENEMIES, EnemyIds, type EnemyDef, type EnemyId } from "./enemies";
 export { BOUNDS, BoundIds, type BoundDef, type BoundId } from "./bounds";

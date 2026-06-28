@@ -14,7 +14,7 @@ import { type ElementId, type Stats } from "../logic/combat";
  * grist awarded on defeat.
  */
 export interface EnemyDef {
-  readonly id: string;
+  readonly id: EnemyId;
   readonly name: string;
   readonly stats: Stats;
   readonly elements: Partial<Record<ElementId, number>>;
@@ -33,9 +33,12 @@ export const EnemyIds = {
 export type EnemyId = (typeof EnemyIds)[keyof typeof EnemyIds];
 
 /**
- * The slice enemy roster. Keys are {@link EnemyId}s. Non-HP stats are first-pass.
+ * The slice enemy roster. The mapped type binds each entry's `id` to its table
+ * key, so the key and the `id` can never drift. Non-HP stats are first-pass.
  */
-export const ENEMIES: Record<EnemyId, EnemyDef> = {
+export const ENEMIES: {
+  readonly [K in EnemyId]: EnemyDef & { readonly id: K };
+} = {
   "marrow-scrapper": {
     id: EnemyIds.marrowScrapper,
     name: "Marrow scrapper",

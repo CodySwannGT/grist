@@ -14,13 +14,40 @@ import {
   type StatusId,
 } from "../logic/combat";
 
+/** Canonical ids for the castable (menu-selectable) spells in {@link SPELLS}. */
+export const SpellIds = {
+  spark: "spark",
+  cinder: "cinder",
+  render: "render",
+} as const;
+
+/** A castable spell id (the literal-union of every {@link SPELLS} key). */
+export type SpellId = (typeof SpellIds)[keyof typeof SpellIds];
+
+/**
+ * Canonical ids for the grist-costed Bind summon actions. Binds live inline on
+ * their shard (`BoundDef.bind`) rather than in {@link SPELLS}, so their ids carry
+ * a dedicated typed source.
+ */
+export const BindSpellIds = {
+  bindWisp: "bind-wisp",
+  bindMarrow: "bind-marrow",
+} as const;
+
+/** A Bind action id. */
+export type BindSpellId = (typeof BindSpellIds)[keyof typeof BindSpellIds];
+
+/** Any defined spell id — a castable spell or a Bind action. */
+export type AnySpellId = SpellId | BindSpellId;
+
 /**
  * A spell/skill definition. `apCost` spends the Anima pool; `gristCost` (when
  * present) spends the shared grist wallet — only the strongest actions (Bind,
  * top-tier Render, revive) cost grist. `status`, when present, is applied on hit.
+ * `id` is a defined spell id (castable or Bind), never an arbitrary string.
  */
 export interface SpellDef {
-  readonly id: string;
+  readonly id: AnySpellId;
   readonly name: string;
   readonly element: ElementId;
   readonly apCost: number;
@@ -31,26 +58,13 @@ export interface SpellDef {
 }
 
 /**
- * Canonical spell ids. Includes the two Bind (grist-summon) actions even though
- * those live inline on their shard rather than in {@link SPELLS}, so every spell
- * id has a single typed source.
- */
-export const SpellIds = {
-  spark: "spark",
-  cinder: "cinder",
-  render: "render",
-  bindWisp: "bind-wisp",
-  bindMarrow: "bind-marrow",
-} as const;
-
-/** A spell id (the literal-union of every defined spell key). */
-export type SpellId = (typeof SpellIds)[keyof typeof SpellIds];
-
-/**
  * The castable (menu-selectable) spell table. Bind actions are authored on their
- * shard in `content/bounds`, not here. Keys are {@link SpellId}s.
+ * shard in `content/bounds`, not here. The mapped type binds each entry's `id`
+ * to its table key, so the key and the `id` can never drift.
  */
-export const SPELLS = {
+export const SPELLS: {
+  readonly [K in SpellId]: SpellDef & { readonly id: K };
+} = {
   spark: {
     id: SpellIds.spark,
     name: "Spark",
@@ -76,7 +90,4 @@ export const SPELLS = {
     target: SpellTargets.one,
     status: Statuses.rendering,
   },
-} as const satisfies Record<string, SpellDef>;
-
-/** A castable spell id (a key present in {@link SPELLS}). */
-export type CastableSpellId = keyof typeof SPELLS;
+};

@@ -5,6 +5,8 @@ import { describe, expect, it } from "vitest";
 
 import { Elements, SpellTargets, Statuses } from "../../src/logic/combat";
 import {
+  Backdrops,
+  BindSpellIds,
   BOUNDS,
   BoundIds,
   ENCOUNTERS,
@@ -54,7 +56,7 @@ describe("combat content: keys resolve (AC1)", () => {
         expect(SPELLS[spellId]).toBeDefined();
       }
       expect(bound.bind.id).toBeTruthy();
-      expect(Object.values(SpellIds)).toContain(bound.bind.id);
+      expect(Object.values(BindSpellIds)).toContain(bound.bind.id);
     }
   });
 
@@ -184,11 +186,13 @@ describe("combat content: encounter loadout shape (AC4 interim)", () => {
 describe("combat content: typed keys reject undefined references (AC1)", () => {
   it("an out-of-set enemy id is a compile error", () => {
     const invalid: EncounterDef = {
-      id: "ghost-fight",
+      // Every field but `enemies` is valid, so the single @ts-expect-error
+      // can only be satisfied by the undefined enemy key — proving the guard.
+      id: EncounterIds.theCage,
       // @ts-expect-error - "ghost-enemy" is not a defined EnemyId, so the
       // typed-union key rejects it at compile time (this is the guarantee).
       enemies: ["ghost-enemy"],
-      backdrop: "marrow",
+      backdrop: Backdrops.marrow,
     };
     expect(invalid.enemies).toHaveLength(1);
   });

@@ -13,7 +13,7 @@ import { BoundIds, type BoundId } from "./bounds";
  * the hand-authored, non-shard actions (e.g. Wren's Flurry, Tobi's Stun-Dart).
  */
 export interface PartyMemberDef {
-  readonly id: string;
+  readonly id: PartyMemberId;
   readonly name: string;
   readonly level: number;
   readonly baseStats: Stats;
@@ -32,11 +32,14 @@ export type PartyMemberId =
   (typeof PartyMemberIds)[keyof typeof PartyMemberIds];
 
 /**
- * The Phase-1 party. Keys are {@link PartyMemberId}s. Wren starts with the
- * Emberwisp shard (demonstrates AP + grist from room A); Tobi brings the
- * Iron/Stagger Stun-Dart augment active.
+ * The Phase-1 party. The mapped type binds each entry's `id` to its table key,
+ * so the key and the `id` can never drift. Wren starts with the Emberwisp shard
+ * (demonstrates AP + grist from room A); Tobi brings the Iron/Stagger Stun-Dart
+ * augment active.
  */
-export const PARTY = {
+export const PARTY: {
+  readonly [K in PartyMemberId]: PartyMemberDef & { readonly id: K };
+} = {
   wren: {
     id: PartyMemberIds.wren,
     name: "Wren",
@@ -70,4 +73,4 @@ export const PARTY = {
     },
     signatureKit: ["Stun-Dart"],
   },
-} as const satisfies Record<PartyMemberId, PartyMemberDef>;
+};
