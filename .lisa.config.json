@@ -1,5 +1,11 @@
 {
   "harness": "claude",
+  "tracker": "github",
+  "source": "github",
+  "github": {
+    "org": "CodySwannGT",
+    "repo": "grist"
+  },
   "wiki": {
     "source": {
       "path": "wiki"
