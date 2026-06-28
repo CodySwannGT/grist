@@ -232,7 +232,8 @@ describe("Rendering status (AC: applies and ticks each turn)", () => {
   });
 
   it("a craft with the render spell applies Rendering and adds pressure", () => {
-    const wren = combatant("wren", { foc: 10 });
+    // Ample AP so the Craft is affordable (#36) and we isolate status + pressure.
+    const wren = combatant("wren", { foc: 10, ap: 100 });
     // High WRD + HP so the boss survives and we isolate status + pressure.
     const boss = combatant(ASHLING, { hp: 100000, wrd: 100000 });
     const start = battle([wren], [boss]);
@@ -291,7 +292,8 @@ describe("Pressure → Break → Severance (AC)", () => {
   });
 
   it("breaks a weak target across repeated Flux crafts via the reducer", () => {
-    const wren = combatant("wren", { foc: 10 });
+    // Ample AP so both Sparks are affordable (#36) without a regen tick between.
+    const wren = combatant("wren", { foc: 10, ap: 100 });
     const boss = combatant(ASHLING, { hp: 100000, wrd: 100000 });
     const start = battle([wren], [boss]);
     const craft = {

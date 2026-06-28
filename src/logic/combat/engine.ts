@@ -12,6 +12,7 @@
 import { ENEMIES, type EncounterDef, type PartyMemberDef } from "../../content";
 import { tickStatuses } from "./effects";
 import { resolveTurn } from "./resolve";
+import { regenAp } from "./resource";
 import {
   ActionKinds,
   BattlePhases,
@@ -84,22 +85,25 @@ export function startBattle(
 
 /**
  * Advance every combatant's ATB gauge by `SPD × fillPerSpd`, clamped to `ready`,
- * tick each combatant's status DoTs (Rendering), bump the tick counter, and
- * append a tick event. Deterministic — both the fill and the DoT depend only on
- * stored state, never on the RNG.
+ * regenerate one turn's Anima (AP, clamped to max), tick each combatant's status
+ * DoTs (Rendering), bump the tick counter, and append a tick event.
+ * Deterministic — the fill, the AP regen, and the DoT depend only on stored
+ * state, never on the RNG.
  * @param state - The battle state.
  * @returns The state after one ATB tick.
  */
 function applyTick(state: BattleState): BattleState {
   const tick = state.tick + 1;
   const advance = (combatant: Combatant): Combatant =>
-    tickStatuses({
-      ...combatant,
-      atb: Math.min(
-        combatant.atb + combatant.stats.spd * AtbTuning.fillPerSpd,
-        AtbTuning.ready
-      ),
-    });
+    regenAp(
+      tickStatuses({
+        ...combatant,
+        atb: Math.min(
+          combatant.atb + combatant.stats.spd * AtbTuning.fillPerSpd,
+          AtbTuning.ready
+        ),
+      })
+    );
   return {
     ...state,
     tick,
