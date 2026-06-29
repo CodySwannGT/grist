@@ -46,6 +46,7 @@
     "dev": "vite",
     "preview": "vite preview",
     "test:e2e": "playwright install --with-deps chromium && playwright test",
+    "verify:dod": "DOD_LOGIC_PASSED=1 bun run test && DOD_TYPECHECK_PASSED=1 bun run typecheck && DOD_E2E_PASSED=1 bun run test:e2e && DOD_LOGIC_PASSED=1 DOD_TYPECHECK_PASSED=1 DOD_E2E_PASSED=1 node scripts/check-dod-gate.mjs",
     "size": "size-limit",
     "setup:deploy-key": "setup-deploy-key",
     "lint": "oxlint && eslint . --quiet",

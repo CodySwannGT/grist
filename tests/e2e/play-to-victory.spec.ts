@@ -1,5 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import {
+  DETERMINISM_HASHES_SEED_A,
+  DETERMINISM_HASHES_SEED_B,
+} from "../fixtures/determinism-hashes";
+
 const READY_TIMEOUT = 15_000;
 /** Two distinct seeds prove identical-on-same-seed and divergent-on-different. */
 const SEED_A = 0x1234abcd;
@@ -203,5 +208,13 @@ test.describe("GRIST — play-to-victory + determinism gate (UAT)", () => {
     expect(new Set(first.hashes).size).toBeGreaterThan(1);
     // A different seed threads a different RNG stream ⇒ a different progression.
     expect(other.hashes).not.toEqual(first.hashes);
+
+    // Per-increment DoD harness (#127): the browser `__VERIFY__.hash()`
+    // progression must equal the committed constant the headless `hashState`
+    // twin in tests/logic also pins to — proving both lanes agree on ONE fact,
+    // exactly as the AC requires ("compared against the headless hashState()
+    // twin in tests/logic"). [EVIDENCE: determinism-hash-identical]
+    expect(first.hashes).toEqual([...DETERMINISM_HASHES_SEED_A]);
+    expect(other.hashes).toEqual([...DETERMINISM_HASHES_SEED_B]);
   });
 });
