@@ -41,11 +41,16 @@ export function strikeView(view: BattleView): void {
 
 /**
  * Drive one auto-play turn against an attached battle view: cast Spark when Wren
- * can afford the AP, else a free Strike, at the first standing enemy. Returns the
- * terminal phase when the battle has ended (or there is nothing to act on), or
- * null when the fight is still live and the caller should keep driving.
+ * can afford the AP, else a free Strike, at the first standing enemy.
+ *
+ * Returns a **terminal** phase (`"won"` / `"lost"`) only when the sim has actually
+ * flagged it, `""` when there is no state to act on, or `null` to keep driving.
+ * The "all enemies down but the sim has not yet flipped to `won`" tick returns
+ * `null` (not the raw live phase) so the caller advances one more tick and lets
+ * the sim resolve to its terminal phase — the driver never reports a non-terminal
+ * phase as a result.
  * @param view - The attached battle view to act on.
- * @returns The terminal phase to stop on, or null to continue.
+ * @returns `"won"` / `"lost"` to stop, `""` when there is no state, or null to continue.
  */
 function driveAutoTurn(view: BattleView): string | null {
   const state = view.state();
@@ -57,7 +62,9 @@ function driveAutoTurn(view: BattleView): string | null {
   }
   const targetIndex = state.enemies.findIndex(enemy => enemy.hp > 0);
   if (targetIndex < 0) {
-    return state.phase;
+    // Every enemy is down but the sim has not yet flipped to "won"; keep
+    // driving so the next advanceTurn resolves it to its terminal phase.
+    return null;
   }
   const wrenAp = state.party[0]?.ap ?? 0;
   const actor = { side: BattleSides.party, index: 0 } as const;
@@ -83,10 +90,17 @@ function driveAutoTurn(view: BattleView): string | null {
  * The view is read through `currentView` **each turn**, not captured once: a
  * resolution may swap the scene (Battle → Field) mid-drive, after which the
  * battle view is detached (the provider returns null) and there is nothing left
- * to act on. Returns "" when there is no battle to drive.
+ * to act on.
+ *
+ * The return is **terminal-only** — `"won"`, `"lost"`, or `""` — never a live
+ * in-between phase, honoring the `VerifyApi.autoWin()` contract. The last terminal
+ * phase observed is cached so a fight that resolves and *then* swaps to the Field
+ * (detaching the view) still reports its `"won"`/`"lost"`; on a `maxTurns` cap exit
+ * (e.g. `autoWin(0)`) it returns the cached terminal or `""`, never the raw live
+ * phase.
  * @param currentView - Reads the live battle view (null once detached).
  * @param maxTurns - The hard cap on decision iterations (default 400).
- * @returns The terminal phase reached (`"won"` / `"lost"`), or "" outside a battle.
+ * @returns The terminal phase reached (`"won"` / `"lost"`), or "" if none.
  */
 export function autoWinView(
   currentView: () => BattleView | null,
@@ -94,14 +108,33 @@ export function autoWinView(
 ): string {
   for (let turn = 0; turn < maxTurns; turn += 1) {
     const view = currentView();
+    // View detached (e.g. a win swapped Battle → Field): the fight is over and
+    // there is nothing live to read; report no terminal phase.
     if (!view) {
       return "";
     }
+    const before = terminalPhase(view.state()?.phase);
+    if (before !== "") {
+      return before;
+    }
     view.advanceTurn();
+    // driveAutoTurn returns only "won"/"lost"/"" or null; non-null ends the drive.
     const phase = driveAutoTurn(view);
     if (phase !== null) {
-      return phase;
+      return terminalPhase(phase);
     }
   }
-  return currentView()?.state()?.phase ?? "";
+  // Cap exhausted: report a terminal phase only — never the raw live phase.
+  return terminalPhase(currentView()?.state()?.phase);
+}
+
+/**
+ * Clamp any phase value to the {@link autoWinView} contract: `"won"` / `"lost"`
+ * pass through, everything else (a live in-between phase, `""`, or undefined)
+ * becomes `""`. Keeps the driver from ever reporting a non-terminal phase.
+ * @param phase - A raw phase string, or undefined.
+ * @returns `"won"`, `"lost"`, or `""`.
+ */
+function terminalPhase(phase: string | undefined): string {
+  return phase === "won" || phase === "lost" ? phase : "";
 }

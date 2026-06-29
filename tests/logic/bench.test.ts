@@ -13,6 +13,10 @@ import { describe, expect, it } from "vitest";
 import { BoundIds } from "../../src/content/bounds";
 import { BenchSinkIds, BENCH_SINKS } from "../../src/content/bench";
 import { SpellIds } from "../../src/content/spells";
+import {
+  BattleOutcomes,
+  type BattleResult,
+} from "../../src/logic/battle-result";
 import { GristTuning } from "../../src/logic/grist";
 import {
   isLearning,
@@ -20,6 +24,7 @@ import {
   LearningTuning,
 } from "../../src/logic/spell-learning";
 import {
+  applyBattleResult,
   applyBenchSink,
   equipShardAtBench,
   newRunState,
@@ -67,15 +72,37 @@ describe("equipShardAtBench", () => {
     expect(learningProgress(run.learning, SpellIds.cinder)).toBe(0);
   });
 
-  it("records the equipped shard on the run", () => {
+  it("records the equipped shard on equippedShards, NOT the acquisition list", () => {
     const run = equipShardAtBench(newRunState(), BoundIds.marrowBound);
-    expect(run.shards).toContain(BoundIds.marrowBound);
+    expect(run.equippedShards).toContain(BoundIds.marrowBound);
+    // Acquisition state is untouched — equip is not acquisition.
+    expect(run.shards).toEqual([]);
   });
 
-  it("does not re-acquire a shard already held (idempotent)", () => {
+  it("does not re-equip a shard already equipped (idempotent)", () => {
     const once = equipShardAtBench(newRunState(), BoundIds.marrowBound);
     const twice = equipShardAtBench(once, BoundIds.marrowBound);
-    expect(twice.shards).toEqual([BoundIds.marrowBound]);
+    expect(twice.equippedShards).toEqual([BoundIds.marrowBound]);
+  });
+
+  it("does NOT suppress a later real drop's pending-choice (regression)", () => {
+    // Equip the Marrow shard at the bench first — this must not write the
+    // acquisition list, or applyBattleResult would treat the subsequent boss
+    // drop as already-owned and skip raising its free-vs-wield choice.
+    const equipped = equipShardAtBench(newRunState(), BoundIds.marrowBound);
+    expect(equipped.shards).toEqual([]);
+    const bossDrop: BattleResult = {
+      outcome: BattleOutcomes.win,
+      gristGained: 20,
+      shard: BoundIds.marrowBound,
+      choiceTriggered: true,
+    };
+    const afterDrop = applyBattleResult(equipped, bossDrop);
+    // The drop is correctly detected as new: acquired + choice surfaced.
+    expect(afterDrop.shards).toEqual([BoundIds.marrowBound]);
+    expect(afterDrop.pendingChoiceShard).toBe(BoundIds.marrowBound);
+    // The learning the equip began survives the battle-result fold.
+    expect(isLearning(afterDrop.learning, SpellIds.cinder)).toBe(true);
   });
 
   it("leaves the wallet untouched — equipping is free", () => {

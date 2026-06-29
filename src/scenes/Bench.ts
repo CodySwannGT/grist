@@ -39,7 +39,7 @@ import { eventsCenter } from "../services/events";
 import { BenchInputService } from "../services/bench-input";
 import { type BenchIntent } from "../services/bench-input-map";
 import { getRunState, setRunState } from "../services/run-store";
-import { verifyBridge } from "../uat/bridge";
+import { isVerificationEnabled, verifyBridge } from "../uat/bridge";
 import { type BenchView } from "../uat/bench-view";
 
 /** The shard the bench equips (the Ashling reward shard that teaches Cinder). */
@@ -101,14 +101,19 @@ export class Bench extends Phaser.Scene {
    * drive the "given a funded wallet" AC without first playing battles to earn
    * grist (the slice starts at 10, below the sink costs). It only ever *adds* the
    * shortfall via the pure {@link earnGrist} — never mints below the current
-   * balance — and is a no-op without the query (and in non-browser test contexts).
-   * Mirrors the existing `?seed=` / `?scene=` verification entry points; gameplay
-   * never reads it. The funded run is persisted so the action handlers see it.
+   * balance.
+   *
+   * **Gated behind {@link isVerificationEnabled}** — it honors `?grist=` only in
+   * dev or under `?uat=1`, exactly like the `__VERIFY__` bridge and the `?seed=`
+   * seam. In a normal production build (no `?uat=1`) it returns the original run
+   * untouched — never calling `earnGrist`/`setRunState` — so `?scene=bench&grist=9999`
+   * cannot become a public economy bypass. A no-op without the query, in a
+   * non-browser test context, and whenever verification is disabled.
    * @param run - The run read from the registry.
-   * @returns The run, with its wallet topped up to `?grist=N` when present.
+   * @returns The run, with its wallet topped up to `?grist=N` when the seam applies.
    */
   #seedWallet(run: RunState): RunState {
-    if (typeof window === "undefined") {
+    if (!isVerificationEnabled() || typeof window === "undefined") {
       return run;
     }
     const raw = new URLSearchParams(window.location.search).get("grist");
@@ -292,7 +297,7 @@ export class Bench extends Phaser.Scene {
    * @returns void
    */
   #renderEquip(): void {
-    const equipped = this.#run.shards.includes(ASHLING_SHARD);
+    const equipped = this.#run.equippedShards.includes(ASHLING_SHARD);
     this.#equipLabel.setText(
       equipped
         ? "The Marrow Bound — equipped (learning Cinder)"
@@ -305,23 +310,28 @@ export class Bench extends Phaser.Scene {
   }
 
   /**
-   * Style one sink button from its cost and current affordability: the label shows
-   * the name + grist cost, and an unaffordable sink is dimmed (fill + text) so the
-   * player can see — but the rule still lives in the reducer, which rejects the
-   * spend regardless of styling.
+   * Style one sink button from whether the reducer would *accept* its purchase:
+   * the wallet must cover the cost AND, for a `teaches` sink, its spell must be in
+   * progress (a `teaches` sink no-ops before the shard is equipped — see
+   * {@link applyBenchSink}). The label shows the name + grist cost, and a disabled
+   * sink is dimmed (fill + text) so it never looks actionable while it would
+   * silently no-op. The rule still lives in the reducer — this only mirrors it.
    * @param button - The pooled sink button to restyle.
    * @returns void
    */
   #renderSink(button: SinkButton): void {
     const sink = BENCH_SINKS[button.id];
-    const affordable = this.#run.wallet.grist >= sink.gristCost;
+    const enabled =
+      this.#run.wallet.grist >= sink.gristCost &&
+      (sink.teaches === undefined ||
+        isLearning(this.#run.learning, sink.teaches));
     button.label
       .setText(`${sink.name}  —  ${sink.gristCost} grist`)
       .setColor(
-        affordable ? BenchColors.buttonText : BenchColors.buttonTextDisabled
+        enabled ? BenchColors.buttonText : BenchColors.buttonTextDisabled
       );
     button.box.setFillStyle(
-      affordable ? BenchColors.buttonFill : BenchColors.buttonFillDisabled
+      enabled ? BenchColors.buttonFill : BenchColors.buttonFillDisabled
     );
   }
 
@@ -364,7 +374,7 @@ export class Bench extends Phaser.Scene {
         };
       },
       grist: () => this.#run.wallet.grist,
-      shardEquipped: () => this.#run.shards.includes(ASHLING_SHARD),
+      shardEquipped: () => this.#run.equippedShards.includes(ASHLING_SHARD),
       cinderLearning: () => isLearning(this.#run.learning, SpellIds.cinder),
       cinderProgress: () =>
         learningProgress(this.#run.learning, SpellIds.cinder),

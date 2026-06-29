@@ -504,12 +504,20 @@ function urlSeed(): number | null {
 }
 
 /**
- * Whether the verification bridge should be exposed on `window`.
- * @returns True in dev or when loaded with `?uat=1`.
+ * Whether the verification (UAT) surface is enabled: true in dev, or in a
+ * production build only when the page is loaded with `?uat=1`. This is the single
+ * gate every verification-only seam shares — the `__VERIFY__` bridge installs
+ * under it, and scene-level verification entry points (the Bench `?grist=` wallet
+ * seed) must guard on it too so a production user without `?uat=1` can never reach
+ * them. Guarded for non-browser (test) contexts where `window` is absent.
+ * @returns True when the verification surface is enabled.
  */
-function isEnabled(): boolean {
+export function isVerificationEnabled(): boolean {
   if (import.meta.env.DEV) {
     return true;
+  }
+  if (typeof window === "undefined") {
+    return false;
   }
   return new URLSearchParams(window.location.search).has("uat");
 }
@@ -519,7 +527,7 @@ function isEnabled(): boolean {
  * @returns void
  */
 export function installVerifyBridge(): void {
-  if (!isEnabled()) {
+  if (!isVerificationEnabled()) {
     return;
   }
   window.__VERIFY__ = {

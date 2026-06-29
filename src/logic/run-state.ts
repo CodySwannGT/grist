@@ -57,6 +57,15 @@ export interface RunState {
    */
   readonly pendingChoiceShard: BoundId | null;
   /**
+   * The shards the bench has equipped, in equip order. **Distinct from
+   * {@link RunState.shards}** (the acquisition list): `applyBattleResult` reads
+   * `shards` to detect a *new* drop and raise its pending-choice, so equipping
+   * must never write there or a later real drop would look already-owned and
+   * skip its choice flow. Equipping records here and begins the shard's learning;
+   * acquisition stays the sole job of the battle-result fold.
+   */
+  readonly equippedShards: readonly BoundId[];
+  /**
    * The spell-learning progression for the run's equipped shards — the spells
    * permanently learned and the spells in progress (composed from
    * `logic/spell-learning`). The bench equips shards into this and accelerates
@@ -94,6 +103,7 @@ export function newRunState(): RunState {
     wallet: newWallet(),
     shards: [],
     pendingChoiceShard: null,
+    equippedShards: [],
     learning: newLearningState(),
     statBonuses: {},
   };
@@ -134,25 +144,26 @@ export function applyBattleResult(
 }
 
 /**
- * Equip a shard at the bench: record it on the run (without re-acquiring one the
- * party already holds) and begin learning every spell it teaches via the pure
- * {@link equipShard} reducer (AC: "equip the Ashling shard → learning Cinder
- * begins"). Equipping is free — it never touches the wallet. Pure — returns fresh
- * state (or the same object when nothing changed: shard already held and its
- * spells already begun).
+ * Equip a shard at the bench: record it on {@link RunState.equippedShards} (the
+ * bench-equip list — **never** the acquisition list {@link RunState.shards},
+ * which `applyBattleResult` reads for new-drop detection) and begin learning every
+ * spell it teaches via the pure {@link equipShard} reducer (AC: "equip the Ashling
+ * shard → learning Cinder begins"). Equipping is free — it never touches the
+ * wallet. Pure — returns fresh state (or the same object when nothing changed:
+ * shard already equipped and its spells already begun).
  * @param run - The current run state (never mutated).
  * @param shard - The shard being equipped.
- * @returns The run with the shard recorded and its learning begun.
+ * @returns The run with the shard equipped and its learning begun.
  */
 export function equipShardAtBench(run: RunState, shard: BoundId): RunState {
   const learning = equipShard(run.learning, shard);
-  const shards = run.shards.includes(shard)
-    ? run.shards
-    : [...run.shards, shard];
-  if (learning === run.learning && shards === run.shards) {
+  const equippedShards = run.equippedShards.includes(shard)
+    ? run.equippedShards
+    : [...run.equippedShards, shard];
+  if (learning === run.learning && equippedShards === run.equippedShards) {
     return run;
   }
-  return { ...run, learning, shards };
+  return { ...run, learning, equippedShards };
 }
 
 /**

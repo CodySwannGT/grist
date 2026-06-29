@@ -189,7 +189,7 @@ test.describe("GRIST — growth/bench scene verification (UAT)", () => {
     expect(errors).toEqual([]);
   });
 
-  test("[bench-unaffordable-noop] a sink the wallet cannot cover does not draw down or crash", async ({
+  test("[bench-unaffordable-noop] an unaffordable sink does not draw down or crash", async ({
     page,
   }) => {
     const errors: string[] = [];
@@ -200,11 +200,39 @@ test.describe("GRIST — growth/bench scene verification (UAT)", () => {
     });
     page.on("pageerror", error => errors.push(error.message));
 
+    // Seed the wallet *below* the Runner's Reflex cost: the funds gate alone
+    // must reject the purchase (the real insufficient-funds path).
+    await bootBench(page, RUNNERS_REFLEX_COST - 1);
+
+    const before = await benchState(page);
+    expect(before?.grist).toBe(RUNNERS_REFLEX_COST - 1);
+
+    await page.evaluate(() => window.__VERIFY__?.buyRunnersReflex());
+
+    const after = await benchState(page);
+    // Wallet untouched, build unchanged — no debt, no partial apply, no crash.
+    expect(after?.grist).toBe(RUNNERS_REFLEX_COST - 1);
+    expect(after?.spdBonus).toBe(0);
+    expect(errors).toEqual([]);
+  });
+
+  test("[bench-accelerate-before-equip-noop] accelerating before equip is rejected (not-learning guard)", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("console", message => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
+    page.on("pageerror", error => errors.push(error.message));
+
+    // Funded, but the shard is not equipped → Cinder is not in progress, so the
+    // accelerate sink no-ops regardless of funds.
     await bootBench(page);
 
-    // Accelerate before equipping: Cinder is not in progress, so the spend must
-    // be rejected — the wallet is untouched and nothing crashes.
     const before = await benchState(page);
+    expect(before?.shardEquipped).toBe(false);
     await page.evaluate(() => window.__VERIFY__?.accelerateCinder());
     const after = await benchState(page);
     expect(after?.grist).toBe(before?.grist);
