@@ -1,7 +1,7 @@
 {
   "devDependencies": {
     "@ast-grep/cli": "^0.40.4",
-    "@codyswann/lisa": "2.185.1",
+    "@codyswann/lisa": "2.186.5",
     "@commitlint/cli": "^20.3.1",
     "@commitlint/config-conventional": "^20.3.1",
     "@eslint-community/eslint-plugin-eslint-comments": "^4.5.0",
@@ -80,7 +80,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "GRIST — a slow, grindy cyberpunk-fantasy JRPG. Built on the Lisa-governed Phaser 4 starter.",
+  "description": "GRIST \u2014 a slow, grindy cyberpunk-fantasy JRPG. Built on the Lisa-governed Phaser 4 starter.",
   "resolutions": {
     "@isaacs/brace-expansion": "^5.0.1",
     "axios": ">=1.15.2",
