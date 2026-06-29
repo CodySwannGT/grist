@@ -30,10 +30,10 @@ import type { ViteUserConfig } from "vitest/config";
  * unit-tested — they import Phaser (which cannot load in the headless vitest
  * environment) and are verified instead by the Playwright UAT/verification suite
  * (tests/e2e). Unit coverage is measured on the pure, engine-free core. The HUD's
- * *pure* helpers — `src/ui/commands.ts` and `src/ui/layout.ts` — are Phaser-free
- * and carry their own unit tests, so they stay IN coverage; only the three
- * Phaser-bound `src/ui` adapters are excluded, named individually rather than by
- * a blanket `src/ui/**` glob.
+ * *pure* helpers — `src/ui/commands.ts`, `src/ui/layout.ts`, and
+ * `src/ui/dialogue-layout.ts` — are Phaser-free and carry their own unit tests, so
+ * they stay IN coverage; only the Phaser-bound `src/ui` adapters are excluded,
+ * named individually rather than by a blanket `src/ui/**` glob.
  */
 const config: ViteUserConfig = {
   test: {
@@ -45,6 +45,7 @@ const config: ViteUserConfig = {
         "src/ui/battle-hud.ts",
         "src/ui/battle-controller.ts",
         "src/ui/hud-text.ts",
+        "src/ui/dialogue.ts",
         "src/uat/**",
         "src/main.ts",
         "src/scenes/**",

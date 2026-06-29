@@ -25,6 +25,17 @@ import { saveService } from "../services/save-service";
 import { type HudModel } from "../ui/battle-controller";
 import { autoWinView, strikeView } from "./battle-driver";
 import { BenchCell, type BenchView, type VerifyBenchState } from "./bench-view";
+import {
+  DialogueCell,
+  dialogueApi,
+  type DialogueApi,
+  type DialogueView,
+} from "./dialogue-view";
+import {
+  toVerifyFieldState,
+  type FieldView,
+  type VerifyFieldState,
+} from "./field-view";
 import { RegionCell, type VerifyRegionState } from "./region-cell";
 import { RunStateCell, type VerifyRunState } from "./run-state-cell";
 import { WorldStateCell } from "./world-state-cell";
@@ -73,58 +84,14 @@ export interface BattleView {
   readonly advanceTurn: () => void;
 }
 
-/** A read-only snapshot of Wren's logical (384×216) position in the field. */
-interface VerifyFieldPosition {
-  readonly x: number;
-  readonly y: number;
-}
-
-/** A read-only snapshot of the running field session for assertions. */
-interface VerifyFieldState {
-  readonly scene: string;
-  readonly room: string;
-  readonly phase: string;
-  readonly wren: VerifyFieldPosition;
-  /** The lore text currently surfaced by the last examine, or null. */
-  readonly lore: string | null;
-  /** The shared grist pool the run has accrued (consumed battle results). */
-  readonly grist: number;
-  /** The Bound shards acquired so far this run. */
-  readonly shards: readonly string[];
-  /** The shard whose free-vs-wield choice is pending, or null. */
-  readonly pendingChoiceShard: string | null;
-}
-
-/**
- * The live link the Field scene registers with the bridge. Lets the field e2e
- * read the resolved integer scale (scene-agnostic — the same shape battle uses),
- * Wren's live position (to assert it changed after a move), the current room /
- * phase, and the surfaced lore beat after an examine. Kept separate from
- * {@link BattleView} so neither path constrains the other; the controller stores
- * whichever is attached and the bridge dispatches by which one is present.
- */
-export interface FieldView {
-  readonly resolution: () => VerifyResolution;
-  readonly room: () => string;
-  readonly phase: () => string;
-  readonly wren: () => VerifyFieldPosition;
-  readonly lore: () => string | null;
-  /** The shared grist pool the run has accrued from consumed battle results. */
-  readonly grist: () => number;
-  /** The Bound shards acquired so far this run. */
-  readonly shards: () => readonly string[];
-  /** The shard whose free-vs-wield choice is pending, or null. */
-  readonly pendingChoiceShard: () => string | null;
-  /** Examine the nearest examinable prop now (the canonical "agent examined it"). */
-  readonly examineNearest: () => void;
-  /** Engage the current room's encounter, launching its battle. */
-  readonly engage: () => void;
-  /** Traverse to the next room, firing its trigger and launching the next battle. */
-  readonly traverse: () => void;
-}
+// The field view contract + snapshot mapper live in `./field-view` (extracted to
+// keep this bridge under its line budget, like the bench/dialogue cells). The
+// `FieldView` type is re-exported below so the Field scene's existing import from
+// `./bridge` is unchanged.
+export type { FieldView };
 
 /** The shape installed on `window.__VERIFY__`. */
-interface VerifyApi {
+interface VerifyApi extends DialogueApi {
   readonly scene: () => string;
   readonly state: () => VerifyBattleState | null;
   readonly resolution: () => VerifyResolution | null;
@@ -276,7 +243,7 @@ function toVerifyState(scene: string, state: BattleState): VerifyBattleState {
  * @returns True when the view is a field view.
  */
 function isFieldView(
-  view: BattleView | FieldView | BenchView
+  view: BattleView | FieldView | BenchView | DialogueView
 ): view is FieldView {
   return "room" in view;
 }
@@ -292,27 +259,30 @@ class VerifyController {
   #view: BattleView | null = null;
   #fieldView: FieldView | null = null;
   readonly #bench = new BenchCell();
+  readonly dialogue = new DialogueCell();
   #pendingSeed: number | null = null;
 
   /**
    * Link the active scene + the view it exposes so the bridge can observe and
    * drive it. A scene attaches whichever view it implements — a {@link BattleView}
-   * (Battle), a {@link FieldView} (Field), or a {@link BenchView} (Bench) — and the
-   * bridge dispatches each query to the present view. Non-gameplay scenes (Boot /
-   * Preloader) attach `null`. Attaching one view clears the others so a stale link
-   * can never be read across a scene transition.
+   * (Battle), a {@link FieldView} (Field), a {@link BenchView} (Bench), or a
+   * {@link DialogueView} (Dialogue) — and the bridge dispatches each query to the
+   * present view. Non-gameplay scenes (Boot / Preloader) attach `null`. Attaching
+   * one view clears the others so a stale link can never be read across a scene
+   * transition.
    * @param sceneKey - The active scene's key.
-   * @param view - The battle / field / bench view, or null for non-gameplay scenes.
+   * @param view - The battle / field / bench / dialogue view, or null for non-gameplay scenes.
    * @returns void
    */
   attach(
     sceneKey: string,
-    view: BattleView | FieldView | BenchView | null
+    view: BattleView | FieldView | BenchView | DialogueView | null
   ): void {
     this.#sceneKey = sceneKey;
     this.#view = null;
     this.#fieldView = null;
     this.#bench.attach(null);
+    this.dialogue.attach(null);
     if (view === null) {
       return;
     }
@@ -322,6 +292,10 @@ class VerifyController {
     }
     if (BenchCell.claims(view)) {
       this.#bench.attach(view);
+      return;
+    }
+    if (DialogueCell.claims(view)) {
+      this.dialogue.attach(view);
       return;
     }
     this.#view = view;
@@ -362,7 +336,11 @@ class VerifyController {
    * @returns The resolution snapshot or null.
    */
   resolution(): VerifyResolution | null {
-    const view = this.#view ?? this.#fieldView ?? this.#bench.view();
+    const view =
+      this.#view ??
+      this.#fieldView ??
+      this.#bench.view() ??
+      this.dialogue.view();
     return view?.resolution() ?? null;
   }
 
@@ -374,20 +352,9 @@ class VerifyController {
    * @returns The current field snapshot or null.
    */
   field(): VerifyFieldState | null {
-    const view = this.#fieldView;
-    if (!view) {
-      return null;
-    }
-    return {
-      scene: this.#sceneKey,
-      room: view.room(),
-      phase: view.phase(),
-      wren: view.wren(),
-      lore: view.lore(),
-      grist: view.grist(),
-      shards: view.shards(),
-      pendingChoiceShard: view.pendingChoiceShard(),
-    };
+    return this.#fieldView
+      ? toVerifyFieldState(this.#sceneKey, this.#fieldView)
+      : null;
   }
 
   /**
@@ -598,6 +565,7 @@ export function installVerifyBridge(): void {
     equipShard: () => verifyBridge.bench().view()?.equipShard(),
     buyRunnersReflex: () => verifyBridge.bench().view()?.buyRunnersReflex(),
     accelerateCinder: () => verifyBridge.bench().view()?.accelerateCinder(),
+    ...dialogueApi(verifyBridge.dialogue, () => verifyBridge.scene()),
     // Drive the real shared SaveService so the e2e writes, reloads, and reads the
     // same IndexedDB store the game uses — proving the round-trip survives a page
     // reload (PRD #41 AC7 / AC5).
