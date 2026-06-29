@@ -15,7 +15,6 @@
  * @module uat/bridge
  */
 import {
-  BattleSides,
   type BattleAction,
   type BattleState,
   type Combatant,
@@ -24,6 +23,8 @@ import { type CurrentSave } from "../logic/save";
 import { type WorldState } from "../logic/world";
 import { saveService } from "../services/save-service";
 import { type HudModel } from "../ui/battle-controller";
+import { autoWinView, strikeView } from "./battle-driver";
+import { BenchCell, type BenchView, type VerifyBenchState } from "./bench-view";
 import { WorldStateCell } from "./world-state-cell";
 
 /** A read-only snapshot of one combatant for assertions. */
@@ -49,7 +50,7 @@ interface VerifyBattleState {
 }
 
 /** The integer render scale the ScaleManager resolved for the viewport. */
-interface VerifyResolution {
+export interface VerifyResolution {
   readonly width: number;
   readonly height: number;
   readonly zoom: number;
@@ -143,6 +144,18 @@ interface VerifyApi {
   /** Traverse to the next room, firing its trigger and launching the next battle. */
   readonly traverse: () => void;
   /**
+   * A snapshot of the growth/bench screen (grist, shard, learning, build), or
+   * null outside the Bench scene. Lets the bench e2e (#86) assert the equip /
+   * spend outcomes on the live canvas.
+   */
+  readonly bench: () => VerifyBenchState | null;
+  /** Equip the Ashling shard at the bench (begins Cinder learning). */
+  readonly equipShard: () => void;
+  /** Buy Runner's Reflex at the bench (+2 SPD); a no-op if unaffordable. */
+  readonly buyRunnersReflex: () => void;
+  /** Buy Accelerate: Cinder at the bench; a no-op if unaffordable or not learning. */
+  readonly accelerateCinder: () => void;
+  /**
    * Persist a {@link CurrentSave} to IndexedDB via the real {@link SaveService}
    * and resolve once the write commits. The persistence-journey driver: the e2e
    * calls this with a representative run payload, then reloads the page and calls
@@ -225,47 +238,62 @@ function toVerifyState(scene: string, state: BattleState): VerifyBattleState {
 }
 
 /**
- * Whether an attached view is a {@link FieldView} (vs a {@link BattleView}). The
- * two views are structurally disjoint — only the field view exposes `room()` —
- * so a single discriminating property distinguishes them without a tag field.
+ * Whether an attached view is a {@link FieldView}. The gameplay views are
+ * structurally disjoint — only the field view exposes `room()` — so a single
+ * discriminating property distinguishes them without a tag field.
  * @param view - The attached gameplay view.
  * @returns True when the view is a field view.
  */
-function isFieldView(view: BattleView | FieldView): view is FieldView {
+function isFieldView(
+  view: BattleView | FieldView | BenchView
+): view is FieldView {
   return "room" in view;
 }
 
 /**
  * Holds the live link between the running scene and the test bridge. Gameplay
  * reads `takeSeed()`; the bridge reads `state()` / `resolution()` and pushes
- * actions through `act()`.
+ * actions through `act()`. The bench seam is delegated to a composed
+ * {@link BenchCell} so its plumbing lives next to its types.
  */
 class VerifyController {
   #sceneKey = "";
   #view: BattleView | null = null;
   #fieldView: FieldView | null = null;
+  readonly #bench = new BenchCell();
   #pendingSeed: number | null = null;
 
   /**
    * Link the active scene + the view it exposes so the bridge can observe and
    * drive it. A scene attaches whichever view it implements — a {@link BattleView}
-   * (Battle) or a {@link FieldView} (Field) — and the bridge dispatches each query
-   * to the present view. Non-gameplay scenes (Boot / Preloader) attach `null`.
-   * Attaching one view clears the other so a stale link can never be read across a
-   * scene transition.
+   * (Battle), a {@link FieldView} (Field), or a {@link BenchView} (Bench) — and the
+   * bridge dispatches each query to the present view. Non-gameplay scenes (Boot /
+   * Preloader) attach `null`. Attaching one view clears the others so a stale link
+   * can never be read across a scene transition.
    * @param sceneKey - The active scene's key.
-   * @param view - The battle or field view, or null for non-gameplay scenes.
+   * @param view - The battle / field / bench view, or null for non-gameplay scenes.
    * @returns void
    */
-  attach(sceneKey: string, view: BattleView | FieldView | null): void {
+  attach(
+    sceneKey: string,
+    view: BattleView | FieldView | BenchView | null
+  ): void {
     this.#sceneKey = sceneKey;
-    if (view !== null && isFieldView(view)) {
+    this.#view = null;
+    this.#fieldView = null;
+    this.#bench.attach(null);
+    if (view === null) {
+      return;
+    }
+    if (isFieldView(view)) {
       this.#fieldView = view;
-      this.#view = null;
+      return;
+    }
+    if (BenchCell.claims(view)) {
+      this.#bench.attach(view);
       return;
     }
     this.#view = view;
-    this.#fieldView = null;
   }
 
   /**
@@ -303,7 +331,10 @@ class VerifyController {
    * @returns The resolution snapshot or null.
    */
   resolution(): VerifyResolution | null {
-    return (this.#view ?? this.#fieldView)?.resolution() ?? null;
+    return (
+      (this.#view ?? this.#fieldView ?? this.#bench.view())?.resolution() ??
+      null
+    );
   }
 
   /**
@@ -361,6 +392,16 @@ class VerifyController {
   }
 
   /**
+   * The composed bench seam (#86): the bridge reads its snapshot for the active
+   * scene (`bench.snapshot(scene())`) and drives growth actions through its view
+   * (`bench.view()?.equipShard()` …), each a no-op outside the Bench scene.
+   * @returns The bench cell.
+   */
+  bench(): BenchCell {
+    return this.#bench;
+  }
+
+  /**
    * The live HUD view-model (speed, active actor, target, command menu with
    * costs/affordability, per-enemy Break, and the last input/action), or null
    * outside a battle scene. Lets the verification suite assert the HUD reflects
@@ -413,85 +454,26 @@ class VerifyController {
   }
 
   /**
-   * Drive a Strike from the front party member at the first standing enemy — the
-   * canonical "an agent landed a hit" verification action.
+   * Drive a Strike from the front party member at the first standing enemy via
+   * {@link strikeView} — the canonical "an agent landed a hit" verification
+   * action. No-op outside a battle scene.
    * @returns void
    */
   strike(): void {
-    const state = this.#view?.state();
-    if (!state) {
-      return;
+    if (this.#view) {
+      strikeView(this.#view);
     }
-    const targetIndex = state.enemies.findIndex(enemy => enemy.hp > 0);
-    if (targetIndex < 0) {
-      return;
-    }
-    this.act({
-      kind: "strike",
-      actor: { side: BattleSides.party, index: 0 },
-      target: { side: BattleSides.enemies, index: targetIndex },
-    });
   }
 
   /**
-   * Deterministically play the launched battle to a terminal outcome — the
-   * "an agent fought the encounter to the end on the live canvas" driver the
-   * Field↔Battle e2e (#82) uses to prove a launched fight resolves and control
-   * returns to the Field. Each turn it advances to the next player decision, then
-   * has Wren cast the flux **Spark** (the slice's strongest single-target action —
-   * ×1.5 on the flux-weak construct/Ashling, building Pressure → Break) when she
-   * can afford the AP, else a free **Strike**, at the first standing enemy. Bounded
-   * by `maxTurns` so a stalemate can never hang the suite. No-op outside a battle.
+   * Deterministically play the launched battle to a terminal outcome via
+   * {@link autoWinView} — the "an agent fought the encounter to the end on the
+   * live canvas" driver the Field↔Battle e2e (#82) uses. No-op outside a battle.
    * @param maxTurns - The hard cap on decision iterations (default 400).
    * @returns The terminal phase reached (`"won"` / `"lost"`), or "" if not in battle.
    */
-  autoWin(maxTurns = 400): string {
-    for (let turn = 0; turn < maxTurns; turn += 1) {
-      // Re-read the attached view each turn: a resolution may swap the scene
-      // (Battle → Field) mid-drive, after which there is nothing left to act on.
-      const view = this.#view;
-      if (!view) {
-        return "";
-      }
-      view.advanceTurn();
-      const phase = this.#driveAutoTurn(view);
-      if (phase !== null) {
-        return phase;
-      }
-    }
-    return this.#view?.state()?.phase ?? "";
-  }
-
-  /**
-   * Drive one {@link autoWin} turn against an attached battle view: cast Spark when
-   * Wren can afford it, else Strike, at the first standing enemy. Returns the
-   * terminal phase when the battle has ended (or there is nothing to act on), or
-   * null when the fight is still live and the caller should keep driving.
-   * @param view - The attached battle view to act on.
-   * @returns The terminal phase to stop on, or null to continue.
-   */
-  #driveAutoTurn(view: BattleView): string | null {
-    const sparkApCost = 4;
-    const state = view.state();
-    if (!state) {
-      return "";
-    }
-    if (state.phase === "won" || state.phase === "lost") {
-      return state.phase;
-    }
-    const targetIndex = state.enemies.findIndex(enemy => enemy.hp > 0);
-    if (targetIndex < 0) {
-      return state.phase;
-    }
-    const wrenAp = state.party[0]?.ap ?? 0;
-    const actor = { side: BattleSides.party, index: 0 } as const;
-    const target = { side: BattleSides.enemies, index: targetIndex } as const;
-    view.act(
-      wrenAp >= sparkApCost
-        ? { kind: "craft", id: "spark", actor, target }
-        : { kind: "strike", actor, target }
-    );
-    return null;
+  autoWin(maxTurns?: number): string {
+    return autoWinView(() => this.#view, maxTurns);
   }
 }
 
@@ -555,6 +537,10 @@ export function installVerifyBridge(): void {
     examine: () => verifyBridge.examine(),
     engage: () => verifyBridge.engage(),
     traverse: () => verifyBridge.traverse(),
+    bench: () => verifyBridge.bench().snapshot(verifyBridge.scene()),
+    equipShard: () => verifyBridge.bench().view()?.equipShard(),
+    buyRunnersReflex: () => verifyBridge.bench().view()?.buyRunnersReflex(),
+    accelerateCinder: () => verifyBridge.bench().view()?.accelerateCinder(),
     // Drive the real shared SaveService so the e2e writes, reloads, and reads the
     // same IndexedDB store the game uses — proving the round-trip survives a page
     // reload (PRD #41 AC7 / AC5).

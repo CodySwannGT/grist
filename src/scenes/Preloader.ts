@@ -63,10 +63,13 @@ export class Preloader extends Phaser.Scene {
 
 /**
  * Resolve which gameplay scene to start from the URL: the Field scene when the
- * page carries `?scene=field` (case-insensitive) or its `?start=Field` alias,
- * else the default Battle. Reading the query here (not in `gameConfig`) keeps the
- * scene registry static and the default boot — every existing battle test —
- * unchanged. Guarded for non-browser (test) contexts where `window` is absent.
+ * page carries `?scene=field`, the Bench (growth) scene when it carries
+ * `?scene=bench` (case-insensitive, with the `?start=<Scene>` alias), else the
+ * default Battle. Reading the query here (not in `gameConfig`) keeps the scene
+ * registry static and the default boot — every existing battle test — unchanged.
+ * The bench start is a verification entry point for the growth slice (#86), the
+ * field counterpart of the existing `?scene=field` start. Guarded for non-browser
+ * (test) contexts where `window` is absent.
  * @returns The scene key to start.
  */
 function startScene(): string {
@@ -79,5 +82,11 @@ function startScene(): string {
     params.get("start") ??
     ""
   ).toLowerCase();
-  return requested === "field" ? SceneKeys.Field : SceneKeys.Battle;
+  if (requested === "field") {
+    return SceneKeys.Field;
+  }
+  if (requested === "bench") {
+    return SceneKeys.Bench;
+  }
+  return SceneKeys.Battle;
 }
