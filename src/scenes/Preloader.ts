@@ -25,13 +25,17 @@ export class Preloader extends Phaser.Scene {
   }
 
   /**
-   * Build the unit texture and start the battle.
+   * Build the unit texture and start the next scene. Defaults to Battle (the
+   * shipped boot target) so every existing battle test is unchanged; starts the
+   * Field scene instead only when the page is loaded with `?scene=field` (or the
+   * `?start=Field` alias). Field↔Battle wiring is a follow-up (#72) — this
+   * query-gated start is purely a verification entry point for the field slice.
    * @returns void
    */
   create(): void {
     this.#makeUnitTexture();
     verifyBridge.attach(SceneKeys.Preloader, null);
-    this.scene.start(SceneKeys.Battle);
+    this.scene.start(startScene());
   }
 
   /**
@@ -55,4 +59,25 @@ export class Preloader extends Phaser.Scene {
     graphics.generateTexture(TextureKeys.Unit, width, height);
     graphics.destroy();
   }
+}
+
+/**
+ * Resolve which gameplay scene to start from the URL: the Field scene when the
+ * page carries `?scene=field` (case-insensitive) or its `?start=Field` alias,
+ * else the default Battle. Reading the query here (not in `gameConfig`) keeps the
+ * scene registry static and the default boot — every existing battle test —
+ * unchanged. Guarded for non-browser (test) contexts where `window` is absent.
+ * @returns The scene key to start.
+ */
+function startScene(): string {
+  if (typeof window === "undefined") {
+    return SceneKeys.Battle;
+  }
+  const params = new URLSearchParams(window.location.search);
+  const requested = (
+    params.get("scene") ??
+    params.get("start") ??
+    ""
+  ).toLowerCase();
+  return requested === "field" ? SceneKeys.Field : SceneKeys.Battle;
 }

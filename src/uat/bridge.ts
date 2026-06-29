@@ -66,6 +66,40 @@ export interface BattleView {
   readonly advanceTurn: () => void;
 }
 
+/** A read-only snapshot of Wren's logical (384×216) position in the field. */
+interface VerifyFieldPosition {
+  readonly x: number;
+  readonly y: number;
+}
+
+/** A read-only snapshot of the running field session for assertions. */
+interface VerifyFieldState {
+  readonly scene: string;
+  readonly room: string;
+  readonly phase: string;
+  readonly wren: VerifyFieldPosition;
+  /** The lore text currently surfaced by the last examine, or null. */
+  readonly lore: string | null;
+}
+
+/**
+ * The live link the Field scene registers with the bridge. Lets the field e2e
+ * read the resolved integer scale (scene-agnostic — the same shape battle uses),
+ * Wren's live position (to assert it changed after a move), the current room /
+ * phase, and the surfaced lore beat after an examine. Kept separate from
+ * {@link BattleView} so neither path constrains the other; the controller stores
+ * whichever is attached and the bridge dispatches by which one is present.
+ */
+export interface FieldView {
+  readonly resolution: () => VerifyResolution;
+  readonly room: () => string;
+  readonly phase: () => string;
+  readonly wren: () => VerifyFieldPosition;
+  readonly lore: () => string | null;
+  /** Examine the nearest examinable prop now (the canonical "agent examined it"). */
+  readonly examineNearest: () => void;
+}
+
 /** The shape installed on `window.__VERIFY__`. */
 interface VerifyApi {
   readonly scene: () => string;
@@ -77,6 +111,8 @@ interface VerifyApi {
   readonly act: (action: BattleAction) => void;
   readonly advanceTurn: () => void;
   readonly strike: () => void;
+  readonly field: () => VerifyFieldState | null;
+  readonly examine: () => void;
 }
 
 declare global {
@@ -122,6 +158,17 @@ function toVerifyState(scene: string, state: BattleState): VerifyBattleState {
 }
 
 /**
+ * Whether an attached view is a {@link FieldView} (vs a {@link BattleView}). The
+ * two views are structurally disjoint — only the field view exposes `room()` —
+ * so a single discriminating property distinguishes them without a tag field.
+ * @param view - The attached gameplay view.
+ * @returns True when the view is a field view.
+ */
+function isFieldView(view: BattleView | FieldView): view is FieldView {
+  return "room" in view;
+}
+
+/**
  * Holds the live link between the running scene and the test bridge. Gameplay
  * reads `takeSeed()`; the bridge reads `state()` / `resolution()` and pushes
  * actions through `act()`.
@@ -129,17 +176,29 @@ function toVerifyState(scene: string, state: BattleState): VerifyBattleState {
 class VerifyController {
   #sceneKey = "";
   #view: BattleView | null = null;
+  #fieldView: FieldView | null = null;
   #pendingSeed: number | null = null;
 
   /**
-   * Link the active scene + its battle view so the bridge can observe and drive it.
+   * Link the active scene + the view it exposes so the bridge can observe and
+   * drive it. A scene attaches whichever view it implements — a {@link BattleView}
+   * (Battle) or a {@link FieldView} (Field) — and the bridge dispatches each query
+   * to the present view. Non-gameplay scenes (Boot / Preloader) attach `null`.
+   * Attaching one view clears the other so a stale link can never be read across a
+   * scene transition.
    * @param sceneKey - The active scene's key.
-   * @param view - The battle view, or null for non-battle scenes.
+   * @param view - The battle or field view, or null for non-gameplay scenes.
    * @returns void
    */
-  attach(sceneKey: string, view: BattleView | null): void {
+  attach(sceneKey: string, view: BattleView | FieldView | null): void {
     this.#sceneKey = sceneKey;
+    if (view !== null && isFieldView(view)) {
+      this.#fieldView = view;
+      this.#view = null;
+      return;
+    }
     this.#view = view;
+    this.#fieldView = null;
   }
 
   /**
@@ -170,11 +229,45 @@ class VerifyController {
   }
 
   /**
-   * The integer render scale the ScaleManager resolved, or null pre-battle.
+   * The integer render scale the ScaleManager resolved, read from whichever
+   * gameplay view is attached (Battle or Field), or null on a non-gameplay scene.
+   * Scene-agnostic so the field e2e can assert 384×216 + integer zoom without a
+   * BattleView.
    * @returns The resolution snapshot or null.
    */
   resolution(): VerifyResolution | null {
-    return this.#view?.resolution() ?? null;
+    return (this.#view ?? this.#fieldView)?.resolution() ?? null;
+  }
+
+  /**
+   * A snapshot of the running field session (room, phase, Wren's logical
+   * position, surfaced lore), or null outside the Field scene. Lets the field
+   * e2e assert Wren's position changed after a move and that an examine surfaced
+   * the authored lore beat.
+   * @returns The current field snapshot or null.
+   */
+  field(): VerifyFieldState | null {
+    const view = this.#fieldView;
+    if (!view) {
+      return null;
+    }
+    return {
+      scene: this.#sceneKey,
+      room: view.room(),
+      phase: view.phase(),
+      wren: view.wren(),
+      lore: view.lore(),
+    };
+  }
+
+  /**
+   * Examine the nearest examinable prop via the active field view — the
+   * canonical "an agent examined the rendering notice" verification action.
+   * No-op outside the Field scene.
+   * @returns void
+   */
+  examine(): void {
+    this.#fieldView?.examineNearest();
   }
 
   /**
@@ -297,5 +390,7 @@ export function installVerifyBridge(): void {
     act: (action: BattleAction) => verifyBridge.act(action),
     advanceTurn: () => verifyBridge.advanceTurn(),
     strike: () => verifyBridge.strike(),
+    field: () => verifyBridge.field(),
+    examine: () => verifyBridge.examine(),
   };
 }

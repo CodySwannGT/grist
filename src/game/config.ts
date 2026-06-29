@@ -11,6 +11,7 @@ import { GameView } from "../consts";
 import { Boot } from "../scenes/Boot";
 import { Preloader } from "../scenes/Preloader";
 import { Battle } from "../scenes/Battle";
+import { Field } from "../scenes/Field";
 
 /** The configuration passed to `new Phaser.Game()`. */
 export const gameConfig: Phaser.Types.Core.GameConfig = {
@@ -26,5 +27,8 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     autoCenter: Phaser.Scale.NO_CENTER,
     zoom: Phaser.Scale.MAX_ZOOM,
   },
-  scene: [Boot, Preloader, Battle],
+  // Field is registered alongside Battle but only *started* by the Preloader on
+  // demand (`?scene=field`); the default boot lands on Battle, so every existing
+  // battle test is unchanged. Field↔Battle wiring is a follow-up (#72).
+  scene: [Boot, Preloader, Battle, Field],
 };
