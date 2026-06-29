@@ -127,26 +127,18 @@ export function startField(seed: number): FieldState {
 // ---------------------------------------------------------------------------
 
 /**
- * Handle an `enter` action: move the player to the specified room and fire
- * the encounter trigger if the room's trigger has not already fired.
- * Returns state unchanged when:
- * - the room is not a valid Marrow room id.
- * - a trigger is already pending acknowledgment.
+ * Settle into `roomId`: advance the seeded RNG one step, fire the room's
+ * encounter trigger if it has not already fired, and update the phase. This is
+ * the shared core both `applyEnter` (entering the current room) and
+ * `applyTraverse` (stepping to the adjacent room) delegate to — neither path
+ * can address an arbitrary room, so the A→B→C progression is structurally
+ * enforced. Assumes the caller has already validated `roomId` and that no
+ * trigger is pending.
  * @param state - The current field state.
- * @param action - The enter action (must carry `roomId`).
+ * @param roomId - The room to settle into (current room, or the adjacent target).
  * @returns The next field state.
  */
-function applyEnter(state: FieldState, action: FieldAction): FieldState {
-  const { roomId } = action;
-  if (!roomId || !(roomId in state.rooms)) {
-    return state;
-  }
-  // Cannot enter a new room while a trigger is pending acknowledgment.
-  if (state.pendingEncounter !== null) {
-    return state;
-  }
-
-  const roomDef = MARROW_MAP[roomId];
+function settleIntoRoom(state: FieldState, roomId: MarrowRoomId): FieldState {
   const roomState = state.rooms[roomId];
 
   // Advance the RNG one step per room entry (preserves the seeded sequence
@@ -156,7 +148,7 @@ function applyEnter(state: FieldState, action: FieldAction): FieldState {
 
   if (!roomState.trigger.fired) {
     // Fire the encounter trigger for this room.
-    const encounterId = roomDef.encounter;
+    const encounterId = MARROW_MAP[roomId].encounter;
     const updatedTrigger: RoomTriggerState = {
       fired: false, // stays false until the adapter acknowledges
       encounterId,
@@ -175,13 +167,40 @@ function applyEnter(state: FieldState, action: FieldAction): FieldState {
     };
   }
 
-  // Trigger already fired — just move.
+  // Trigger already fired — just settle in.
   return {
     ...state,
     currentRoom: roomId,
     rngState: nextRngState,
     phase: FieldPhases.exploring,
   };
+}
+
+/**
+ * Handle an `enter` action: fire the trigger for the room the player is
+ * currently in. `enter` can only address the current room — it never jumps the
+ * player across the map (that would skip earlier rooms and fire their
+ * encounters out of order); inter-room movement is the `traverse` action's job.
+ * Returns state unchanged when:
+ * - `roomId` is absent or is not the current room.
+ * - a trigger is already pending acknowledgment.
+ * @param state - The current field state.
+ * @param action - The enter action (must carry `roomId === currentRoom`).
+ * @returns The next field state.
+ */
+function applyEnter(state: FieldState, action: FieldAction): FieldState {
+  const { roomId } = action;
+  // `enter` is only valid for the room the player already occupies — it fires
+  // that room's trigger. Entering any other room would bypass the A→B→C
+  // progression; use `traverse` to move.
+  if (!roomId || roomId !== state.currentRoom) {
+    return state;
+  }
+  // Cannot re-enter while a trigger is pending acknowledgment.
+  if (state.pendingEncounter !== null) {
+    return state;
+  }
+  return settleIntoRoom(state, roomId);
 }
 
 /**
@@ -214,8 +233,9 @@ function applyTraverse(state: FieldState): FieldState {
     return state;
   }
 
-  // Enter the next room (which will fire its trigger via applyEnter).
-  return applyEnter(state, { kind: FieldActionKinds.enter, roomId: target });
+  // Step to the adjacent room, firing its trigger. Only the next room in the
+  // ordered progression is reachable, so traversal can never skip a room.
+  return settleIntoRoom(state, target);
 }
 
 /**
@@ -341,13 +361,20 @@ export function stepField(state: FieldState, action: FieldAction): FieldState {
 // ---------------------------------------------------------------------------
 
 /**
- * Return the encounter definition that should fire when the player enters
- * `roomId`, or `null` if the room's trigger has already fired. This is the
+ * Return the encounter definition that is still available to fire when the
+ * player enters `roomId`, or `null` when there is nothing to fire. This is the
  * per-room encounter-trigger rule: Room A → scrapper, Room B → scrapper +
- * Vesper, Room C → the Ashling. Pure selector — reads nothing ambient.
+ * Vesper, Room C → the Ashling.
+ *
+ * Returns `null` when the room's trigger has already fired (acknowledged) AND
+ * also when an encounter for that room is currently pending acknowledgment —
+ * during the `triggered` phase the encounter is in flight, not "available", so
+ * an adapter using this selector as an availability check sees no false
+ * positive between `enter` and `acknowledge`. Pure selector — reads nothing
+ * ambient.
  * @param state - The current field state.
  * @param roomId - The room to check.
- * @returns The encounter def, or null when already fired.
+ * @returns The encounter def, or null when already fired or in flight.
  */
 export function encounterForRoom(
   state: FieldState,
@@ -355,6 +382,11 @@ export function encounterForRoom(
 ): (typeof ENCOUNTERS)[keyof typeof ENCOUNTERS] | null {
   const roomState = state.rooms[roomId];
   if (roomState.trigger.fired) {
+    return null;
+  }
+  // An encounter already in flight for this room (entered, not yet
+  // acknowledged) is not "available" to fire again.
+  if (state.pendingEncounter !== null && state.currentRoom === roomId) {
     return null;
   }
   const encounterId = MARROW_MAP[roomId].encounter;

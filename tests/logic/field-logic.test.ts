@@ -93,11 +93,15 @@ describe("field-logic: encounter triggers fire deterministically (#80 AC 1)", ()
     expect(encounter!.enemies).toEqual([EnemyIds.marrowScrapper]);
   });
 
-  it("the-drip encounter contains the marrow-scrapper and render-construct (Vesper)", () => {
+  it("the-drip encounter is exactly the marrow-scrapper + render-construct (Vesper)", () => {
     const encounter = encounterForRoom(startField(FIXED_SEED), MarrowRoomIds.b);
     expect(encounter).not.toBeNull();
-    expect(encounter!.enemies).toContain(EnemyIds.marrowScrapper);
-    expect(encounter!.enemies).toContain(EnemyIds.renderConstruct);
+    // Lock the full composition, not just membership: the AC calls for
+    // scrapper + Vesper specifically — an extra enemy must fail this.
+    expect(encounter!.enemies).toEqual([
+      EnemyIds.marrowScrapper,
+      EnemyIds.renderConstruct,
+    ]);
   });
 
   it("the-cage encounter contains only the Ashling", () => {
@@ -277,5 +281,73 @@ describe("field-logic: architecture constraints (#80 AC 3)", () => {
       roomId: MarrowRoomIds.a,
     });
     expect(after).toBe(completedState);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Progression integrity — `enter` cannot skip rooms (A→B→C is enforced)
+// ---------------------------------------------------------------------------
+
+describe("field-logic: progression integrity", () => {
+  it("enter cannot jump from fresh Room A straight to Room B (no skip)", () => {
+    const state = startField(FIXED_SEED);
+    const after = stepField(state, {
+      kind: FieldActionKinds.enter,
+      roomId: MarrowRoomIds.b,
+    });
+    // Cross-room enter is rejected — state is unchanged and Room B never fires.
+    expect(after).toBe(state);
+    expect(after.currentRoom).toBe(MarrowRoomIds.a);
+    expect(after.pendingEncounter).toBeNull();
+    expect(after.rooms[MarrowRoomIds.b].trigger.encounterId).toBeNull();
+  });
+
+  it("enter cannot jump from fresh Room A straight to Room C (the Ashling cannot be reached early)", () => {
+    const state = startField(FIXED_SEED);
+    const after = stepField(state, {
+      kind: FieldActionKinds.enter,
+      roomId: MarrowRoomIds.c,
+    });
+    expect(after).toBe(state);
+    expect(after.rooms[MarrowRoomIds.c].trigger.encounterId).toBeNull();
+  });
+
+  it("enter fires only the current room's trigger", () => {
+    let state = startField(FIXED_SEED);
+    state = stepField(state, {
+      kind: FieldActionKinds.enter,
+      roomId: MarrowRoomIds.a,
+    });
+    expect(state.pendingEncounter).toBe(EncounterIds.warrenStreet);
+    expect(state.currentRoom).toBe(MarrowRoomIds.a);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// encounterForRoom availability semantics (pending encounter is "in flight")
+// ---------------------------------------------------------------------------
+
+describe("field-logic: encounterForRoom availability", () => {
+  it("returns null for the current room while its encounter is pending acknowledgment", () => {
+    let state = startField(FIXED_SEED);
+    state = stepField(state, {
+      kind: FieldActionKinds.enter,
+      roomId: MarrowRoomIds.a,
+    });
+    // Entered but not yet acknowledged: the encounter is in flight, not available.
+    expect(state.phase).toBe(FieldPhases.triggered);
+    expect(encounterForRoom(state, MarrowRoomIds.a)).toBeNull();
+  });
+
+  it("still reports a downstream room's encounter as available while another is in flight", () => {
+    let state = startField(FIXED_SEED);
+    state = stepField(state, {
+      kind: FieldActionKinds.enter,
+      roomId: MarrowRoomIds.a,
+    });
+    // Room A is pending, but Room C's encounter is still unfired/available.
+    const cage = encounterForRoom(state, MarrowRoomIds.c);
+    expect(cage).not.toBeNull();
+    expect(cage!.enemies).toEqual([EnemyIds.theAshling]);
   });
 });
