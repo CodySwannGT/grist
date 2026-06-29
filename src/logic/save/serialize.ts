@@ -10,8 +10,9 @@
  * use it without importing each other.
  * @module logic/save/serialize
  */
+import { INITIAL_WORLD_STATE } from "../world";
 import { migrate } from "./migrate";
-import { SAVE_VERSION, type CurrentSave, type SaveDataV1 } from "./types";
+import { SAVE_VERSION, type CurrentSave } from "./types";
 
 export { asCurrentSave } from "./validate";
 
@@ -25,7 +26,11 @@ export { asCurrentSave } from "./validate";
  * producing slices) seed the run from a real source before any roll — a saved
  * run always overwrites this — so the degenerate `0` state is never rolled
  * against. It exists only so the shape is complete and round-trippable.
- * @returns A new {@link SaveDataV1} with empty cross-slice state.
+ *
+ * `worldState` starts in {@link INITIAL_WORLD_STATE} (Act I `reach`): a new game
+ * begins before the Reckoning, so a fresh save and a fresh run agree on the start
+ * state.
+ * @returns A new {@link CurrentSave} with empty cross-slice state.
  */
 export function freshSave(): CurrentSave {
   return {
@@ -38,6 +43,7 @@ export function freshSave(): CurrentSave {
     choice: { resolved: false },
     moralLedger: { karma: 0, freeChoices: 0, wieldChoices: 0 },
     rng: { seed: 0, state: 0 },
+    worldState: INITIAL_WORLD_STATE,
   };
 }
 
@@ -48,7 +54,7 @@ export function freshSave(): CurrentSave {
  * @param save - The save to serialize.
  * @returns The JSON string.
  */
-export function serialize(save: SaveDataV1): string {
+export function serialize(save: CurrentSave): string {
   return JSON.stringify({ ...save, version: SAVE_VERSION });
 }
 

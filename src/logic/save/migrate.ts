@@ -104,6 +104,22 @@ const migrateV0ToV1: MigrationStep = payload => {
 };
 
 /**
+ * Lift a v1 save to v2. v2 introduces the persisted world-state flag (#134); v1
+ * predates it. Every existing field is carried verbatim (spread, not re-derived,
+ * so the rng lineage and every other axis survive unchanged) and the new axis
+ * forward-fills to `worldState: "reach"` — the Act I start state — so a v1 player's
+ * world reads as pre-Reckoning until the world-turn flips it. Re-stamps `version`
+ * to 2.
+ * @param payload - The loose v1 record.
+ * @returns A v2-shaped payload (validated by the caller before it is handed back).
+ */
+const migrateV1ToV2: MigrationStep = payload => ({
+  ...payload,
+  version: 2,
+  worldState: "reach",
+});
+
+/**
  * The migration registry, keyed by the *source* version each step upgrades from.
  * `MIGRATIONS[n]` lifts a v`n` payload to v`n+1`. Add the next step here (and
  * bump {@link SAVE_VERSION}) when the shape changes; {@link runChain} picks it up
@@ -111,6 +127,7 @@ const migrateV0ToV1: MigrationStep = payload => {
  */
 const MIGRATIONS: Readonly<Record<number, MigrationStep>> = {
   0: migrateV0ToV1,
+  1: migrateV1ToV2,
 };
 
 /**
