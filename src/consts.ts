@@ -8,13 +8,17 @@
 
 /**
  * Scene registry keys. The boot flow is Boot → Preloader → Battle: the game boots
- * straight into the side-view battle (decision 0006, V1/V2). Title/menu and the
- * terminal win/lose screens arrive in later sub-tasks.
+ * straight into the side-view battle (decision 0006, V1/V2). The Field scene is
+ * registered alongside Battle but only started on demand (`?scene=field`) so the
+ * default boot — and every existing battle test — is unchanged; Field↔Battle
+ * wiring is a follow-up (#72). Title/menu and the terminal win/lose screens
+ * arrive in later sub-tasks.
  */
 export const SceneKeys = {
   Boot: "Boot",
   Preloader: "Preloader",
   Battle: "Battle",
+  Field: "Field",
 } as const;
 
 /**
@@ -102,4 +106,66 @@ export const BattleColors = {
 export const BattleTiming = {
   atbTickMs: 100,
   fastTickMs: 50,
+} as const;
+
+/**
+ * Cross-cutting field event names emitted on the EventsCenter bus (never on
+ * `game.events`). The semantic {@link import("./services/field-input")
+ * .FieldInputService} publishes device-tagged field intents (directional MOVE,
+ * EXAMINE) as `Input`; the Field scene subscribes and drives Wren's position +
+ * prop examination. Raw keys/pointers never leave the FieldInputService — only
+ * these named intents do (the field counterpart of {@link BattleEvents.Input}).
+ */
+export const FieldEvents = {
+  Input: "field-input",
+} as const;
+
+/**
+ * Field-scene layout in logical (384×216) pixels. Wren spawns near the left of
+ * Room A and walks the floor band between the wall line and the bottom inset; the
+ * rendering-notice sign sits to her right so a rightward walk reaches its examine
+ * radius. First-pass — the *shape* (a walkable floor band with placed props) is
+ * the contract, not the exact constants.
+ */
+export const FieldLayout = {
+  /** Y of the back-wall / floor divider line. */
+  wallY: 70,
+  /** Wren's spawn position (logical px). */
+  wrenSpawnX: 60,
+  wrenSpawnY: 150,
+  /** Wren placeholder body size. */
+  wrenWidth: 14,
+  wrenHeight: 22,
+  /** Movement speed in logical px per second (delta-driven; no Math.random). */
+  moveSpeed: 90,
+  /** Inset from each edge Wren's center is clamped to (keeps her on-screen). */
+  edgeInset: 10,
+  /** Center of the Room-A rendering-notice sign prop. */
+  signX: 300,
+  signY: 150,
+  /** Sign placeholder size. */
+  signWidth: 24,
+  signHeight: 30,
+  /** Examine radius: Wren must be within this of a prop's center to examine it. */
+  examineRadius: 48,
+  /** Lore banner box (bottom of the screen) when a prop is examined. */
+  loreBoxX: 8,
+  loreBoxY: 178,
+  loreBoxWidth: 368,
+  loreBoxHeight: 32,
+} as const;
+
+/** Field placeholder-art and chrome colors (programmatic art only — no assets). */
+export const FieldColors = {
+  floor: 0x1b2230,
+  wall: 0x10141d,
+  wallLine: 0x39455c,
+  wren: 0x6fd08c,
+  sign: 0xffd166,
+  signGlyph: 0x141821,
+  loreBoxFill: 0x0d111a,
+  loreBoxStroke: 0x39455c,
+  loreText: "#e8e8ea",
+  roomName: "#ffd166",
+  prompt: "#9be7c4",
 } as const;
