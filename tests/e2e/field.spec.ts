@@ -124,14 +124,15 @@ test.describe("GRIST — field scene verification (UAT)", () => {
     const before = await wrenPos(page);
 
     // Hold a real arrow key: keydown joins the held-move set (semantic MOVE
-    // intent), and the scene walks Wren by the frame delta while it is down.
+    // intent), and the scene walks Wren by the frame delta while it is down. Poll
+    // for the movement rather than a fixed sleep so the assertion is not timing-
+    // sensitive on a slow runner.
     await page.keyboard.down("ArrowRight");
-    await page.waitForTimeout(250);
+    await expect
+      .poll(async () => (await wrenPos(page)).x, { timeout: SEEN_TIMEOUT })
+      .toBeGreaterThan(before.x);
     await page.keyboard.up("ArrowRight");
 
-    const after = await wrenPos(page);
-    // Position strictly changed along the moved axis.
-    expect(after.x).toBeGreaterThan(before.x);
     expect(errors).toEqual([]);
   });
 
@@ -159,10 +160,11 @@ test.describe("GRIST — field scene verification (UAT)", () => {
       box.x + targetLogical.x * zoom,
       box.y + targetLogical.y * zoom
     );
-    await page.waitForTimeout(400);
-
-    const after = await wrenPos(page);
-    expect(after.x).toBeGreaterThan(before.x);
+    // Poll for the walk to progress rather than a fixed sleep, so the assertion is
+    // not timing-sensitive on a slow runner.
+    await expect
+      .poll(async () => (await wrenPos(page)).x, { timeout: SEEN_TIMEOUT })
+      .toBeGreaterThan(before.x);
     expect(errors).toEqual([]);
   });
 

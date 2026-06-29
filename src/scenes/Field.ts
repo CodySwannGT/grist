@@ -19,7 +19,7 @@ import {
   GameView,
   SceneKeys,
 } from "../consts";
-import { MARROW_MAP, MarrowRoomIds } from "../content";
+import { MARROW_MAP } from "../content";
 import {
   loreForProp,
   startField,
@@ -65,6 +65,12 @@ export class Field extends Phaser.Scene {
   #wrenY: number = FieldLayout.wrenSpawnY;
   /** A pending tap-to-move destination, or null when walking from held keys. */
   #moveTo: { x: number; y: number } | null = null;
+  /**
+   * Set when an examine was requested while Wren was still out of range (e.g. a
+   * single tap on the sign that first walks her there). Retried the moment she
+   * arrives at the tap destination, so a distant sign-tap still surfaces lore.
+   */
+  #pendingExamine = false;
   #wren!: Phaser.GameObjects.Rectangle;
   #sign!: Phaser.GameObjects.Rectangle;
   #loreBox!: Phaser.GameObjects.Rectangle;
@@ -112,10 +118,15 @@ export class Field extends Phaser.Scene {
    */
   override update(_time: number, delta: number): void {
     const dir = this.#activeDirection();
-    if (dir.dx !== 0 || dir.dy !== 0) {
+    const len = Math.hypot(dir.dx, dir.dy);
+    if (len > 0) {
+      // Normalize the direction before scaling so every heading — single-axis,
+      // a held keyboard diagonal (dx=±1,dy=±1), or a fractional tap-to-move
+      // vector — walks at the same `moveSpeed`. Without this a held diagonal
+      // would move ~41% faster than a straight walk.
       const stepPx = (FieldLayout.moveSpeed * delta) / 1000;
-      this.#wrenX += dir.dx * stepPx;
-      this.#wrenY += dir.dy * stepPx;
+      this.#wrenX += (dir.dx / len) * stepPx;
+      this.#wrenY += (dir.dy / len) * stepPx;
       this.#clampWren();
       this.#syncWren();
     }
@@ -139,10 +150,16 @@ export class Field extends Phaser.Scene {
       const dy = this.#moveTo.y - this.#wrenY;
       const len = Math.hypot(dx, dy);
       if (len <= 1) {
+        // Arrived: clear the destination and retry a deferred examine (a single
+        // tap on a distant prop walks Wren there, then examines on arrival).
         this.#moveTo = null;
+        if (this.#pendingExamine) {
+          this.#pendingExamine = false;
+          this.#examineNearest();
+        }
         return { dx: 0, dy: 0 };
       }
-      // A fractional direction toward the target; the caller scales by delta.
+      // A fractional direction toward the target; the caller normalizes + scales.
       return {
         dx: clampUnit(dx / len),
         dy: clampUnit(dy / len),
@@ -153,8 +170,10 @@ export class Field extends Phaser.Scene {
 
   /**
    * Field-intent handler: a held `move` is polled in {@link update}, so here we
-   * only act on `move-to` (tap destination) and `examine`. A stable arrow field
-   * so it can be unsubscribed by reference on shutdown.
+   * only act on `move-to` (tap destination) and `examine`. An immediate examine
+   * that fails the range gate is deferred (`#pendingExamine`) and retried when
+   * Wren reaches her tap destination, so tapping a prop from a distance still
+   * surfaces lore. A stable arrow field so it can be unsubscribed on shutdown.
    * @param intent - The semantic field intent from the bus.
    * @param _device - The originating device (kept for telemetry symmetry).
    * @returns void
@@ -165,22 +184,24 @@ export class Field extends Phaser.Scene {
       return;
     }
     if (intent.kind === "examine") {
-      this.#examineNearest();
+      // If out of range now, defer until Wren arrives at the pending destination.
+      this.#pendingExamine = !this.#examineNearest();
     }
   };
 
   /**
-   * Examine the prop nearest Wren, if she is within its examine radius: thread an
-   * `examine` action through the pure sim, then surface the resulting lore beat.
-   * The sim owns whether the prop is examinable and the authored text.
-   * @returns void
+   * Examine the examinable prop in the current room when Wren is within its
+   * examine radius: thread an `examine` action through the pure sim, then surface
+   * the resulting lore beat. The examinable prop is derived from the *current
+   * room's* content (not hard-coded to Room A); the sim owns whether the prop is
+   * examinable and the authored text. Returns whether the examine landed, so the
+   * caller can defer a still-out-of-range request until Wren arrives.
+   * @returns True when the examine fired (in range, examinable prop present).
    */
-  #examineNearest(): void {
-    const sign = MARROW_MAP[MarrowRoomIds.a].props.find(
-      prop => prop.id === SIGN_PROP_ID
-    );
-    if (!sign) {
-      return;
+  #examineNearest(): boolean {
+    const propId = this.#examinablePropId();
+    if (!propId) {
+      return false;
     }
     const within =
       Math.hypot(
@@ -188,13 +209,26 @@ export class Field extends Phaser.Scene {
         this.#wrenY - FieldLayout.signY
       ) <= FieldLayout.examineRadius;
     if (!within) {
-      return;
+      return false;
     }
-    this.#state = stepField(this.#state, {
-      kind: "examine",
-      propId: SIGN_PROP_ID,
-    });
-    this.#renderLore();
+    this.#state = stepField(this.#state, { kind: "examine", propId });
+    this.#renderLore(propId);
+    return true;
+  }
+
+  /**
+   * The examinable prop placed at the sign marker in the current room — the prop
+   * the scene renders as the examinable marker and `examineNearest` inspects. The
+   * Room-A rendering notice is the slice's lore prop; other rooms may have none
+   * (the sim ignores examine for props without an authored beat). Derived from the
+   * current room so the scene is not pinned to Room A.
+   * @returns The examinable prop id for the current room, or null when none.
+   */
+  #examinablePropId(): string | null {
+    const room = MARROW_MAP[this.#state.currentRoom];
+    return room.props.some(prop => prop.id === SIGN_PROP_ID)
+      ? SIGN_PROP_ID
+      : null;
   }
 
   /**
@@ -346,10 +380,11 @@ export class Field extends Phaser.Scene {
    * Surface (or hide) the lore banner from the sim's examine state. Reads the
    * authored text via the pure {@link loreForProp} selector — the scene holds no
    * copy of its own.
+   * @param propId - The examined prop whose lore to surface.
    * @returns void
    */
-  #renderLore(): void {
-    const lore = loreForProp(this.#state, SIGN_PROP_ID);
+  #renderLore(propId: string): void {
+    const lore = loreForProp(this.#state, propId);
     const visible = lore !== null;
     this.#loreBox.setVisible(visible);
     this.#loreText.setVisible(visible).setText(lore ?? "");
@@ -375,13 +410,17 @@ export class Field extends Phaser.Scene {
       room: () => this.#state.currentRoom,
       phase: () => this.#state.phase,
       wren: () => ({ x: this.#wrenX, y: this.#wrenY }),
-      lore: () => loreForProp(this.#state, SIGN_PROP_ID),
+      lore: () => {
+        const propId = this.#examinablePropId();
+        return propId ? loreForProp(this.#state, propId) : null;
+      },
       examineNearest: () => {
         // Walk Wren onto the sign so the examine-radius gate passes, then examine —
         // the deterministic "agent examined the rendering notice" verification path.
         this.#wrenX = FieldLayout.signX;
         this.#wrenY = FieldLayout.signY;
         this.#moveTo = null;
+        this.#pendingExamine = false;
         this.#syncWren();
         this.#examineNearest();
       },
