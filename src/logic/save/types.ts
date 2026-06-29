@@ -18,11 +18,17 @@
  * `n → n+1` step to the migration chain (`src/logic/save/migrate.ts`) whenever
  * the shape changes, so an older player's save is migrated forward rather than
  * silently dropped or crash-loaded.
+ *
+ * **World-state (v2).** v2 adds the persisted Act I *reach* / Act II *ashfall*
+ * {@link WorldState} flag (#134), imported from `logic/world`. The edge is one-way
+ * (`save → world`): the save layer reads the flag's *type*; `logic/world` never
+ * imports from `logic/save`, so the import graph stays acyclic.
  * @module logic/save/types
  */
+import type { WorldState } from "../world";
 
 /** The current persisted-save schema version. Bump on any shape change. */
-export const SAVE_VERSION = 1 as const;
+export const SAVE_VERSION = 2 as const;
 
 /** The current schema version's literal type (the `version` discriminant). */
 export type SaveVersion = typeof SAVE_VERSION;
@@ -111,10 +117,15 @@ export interface RngLineage {
 /**
  * Version 1 of the persisted save. A complete, deep-equal-comparable snapshot of
  * the run; serialize/deserialize must restore it exactly (AC7).
+ *
+ * **Retained as the migration source shape.** v1 is no longer the current version
+ * ({@link SaveDataV2} is), so its `version` is pinned to the literal `1` rather
+ * than {@link SAVE_VERSION}: the migration chain (`./migrate`) lifts a stored v1
+ * payload forward to v2, and this interface is the input shape that lift carries.
  */
 export interface SaveDataV1 {
-  /** The schema version discriminant (always {@link SAVE_VERSION}). */
-  readonly version: SaveVersion;
+  /** The schema version discriminant (the literal `1`). */
+  readonly version: 1;
   /** The persisted party roster. */
   readonly party: readonly SavedPartyMember[];
   /** The shared grist wallet balance. */
@@ -134,9 +145,22 @@ export interface SaveDataV1 {
 }
 
 /**
+ * Version 2 of the persisted save: {@link SaveDataV1} plus the persisted Act I
+ * *reach* / Act II *ashfall* {@link WorldState} flag (#134), the deterministic
+ * flag every region/encounter/economy value resolves through. A v1 save migrates
+ * forward by forward-filling `worldState: "reach"` (the Act I start state).
+ */
+export interface SaveDataV2 extends Omit<SaveDataV1, "version"> {
+  /** The schema version discriminant (always {@link SAVE_VERSION}). */
+  readonly version: SaveVersion;
+  /** The persisted Act I/II world-state flag (the Reckoning flips it to `ashfall`). */
+  readonly worldState: WorldState;
+}
+
+/**
  * The newest save shape the runtime understands. Aliased so call sites and the
  * `SaveService` depend on "the current save" rather than a version-pinned name;
- * when a `SaveDataV2` is introduced, this alias and {@link SAVE_VERSION} move
+ * when a `SaveDataV3` is introduced, this alias and {@link SAVE_VERSION} move
  * together.
  */
-export type CurrentSave = SaveDataV1;
+export type CurrentSave = SaveDataV2;

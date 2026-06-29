@@ -13,6 +13,7 @@ export {
   type MoralLedger,
   type RngLineage,
   type SaveDataV1,
+  type SaveDataV2,
   type SaveVersion,
   type SavedChoice,
   type SavedInventoryItem,

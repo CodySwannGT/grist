@@ -59,6 +59,7 @@ function sampleSave(): CurrentSave {
     choice: { resolved: true, shard: "marrow-bound", variant: "wield" },
     moralLedger: { karma: -2, freeChoices: 1, wieldChoices: 2 },
     rng: { seed: 1337, state: 987654321 },
+    worldState: "ashfall",
   };
 }
 
@@ -147,6 +148,8 @@ describe("SaveService — migration on load", () => {
     expect(restored.grist).toBe(10);
     expect(restored.rng).toEqual({ seed: 7, state: 99 });
     expect(restored.choice.resolved).toBe(false);
+    // The full v0 → v1 → v2 chain forward-fills the world-state flag to reach.
+    expect(restored.worldState).toBe("reach");
   });
 });
 

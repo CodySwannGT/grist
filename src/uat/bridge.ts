@@ -21,8 +21,10 @@ import {
   type Combatant,
 } from "../logic/combat";
 import { type CurrentSave } from "../logic/save";
+import { type WorldState } from "../logic/world";
 import { saveService } from "../services/save-service";
 import { type HudModel } from "../ui/battle-controller";
+import { WorldStateCell } from "./world-state-cell";
 
 /** A read-only snapshot of one combatant for assertions. */
 interface VerifyCombatant {
@@ -158,6 +160,26 @@ interface VerifyApi {
   readonly hasSave: () => Promise<boolean>;
   /** Delete the persisted save (reset between e2e runs). */
   readonly clearSave: () => Promise<void>;
+  /**
+   * The bridge-held current world-state, or null if none has been adopted yet.
+   * Seeded by {@link VerifyApi.save} (which adopts the payload's `worldState`) and
+   * flipped in place by {@link VerifyApi.reckon}. Lets the world-state e2e (#134)
+   * assert the Act I `reach` → Act II `ashfall` flip without a battle scene.
+   */
+  readonly worldState: () => WorldState | null;
+  /**
+   * Apply the Reckoning {@link reckon} flip to the bridge-held world-state — the
+   * in-memory flip the world-state e2e drives (`reach` → `ashfall`, idempotent).
+   * The flip consumes no RNG. No-op until a world-state has been adopted.
+   */
+  readonly reckon: () => void;
+  /**
+   * A demonstrative resolver read *through* the live world-state flag: the region
+   * tone (`"verdant"` in `reach`, `"ashen"` in `ashfall`), or null before a
+   * world-state is adopted. Lets the e2e observe a resolver returning its Ashfall
+   * value once {@link VerifyApi.reckon} has fired.
+   */
+  readonly regionTone: () => string | null;
 }
 
 declare global {
@@ -477,6 +499,15 @@ class VerifyController {
 export const verifyBridge = new VerifyController();
 
 /**
+ * The bridge-held world-state cell (#134). A module singleton, like
+ * {@link verifyBridge}: the world-state flag the e2e flips and reads lives here in
+ * memory (flip + resolve semantics delegated to `logic/world`), while the
+ * canonical flag still rides the persisted save. Kept off the controller so the
+ * bridge stays under its line budget — it is a pure test seam, not gameplay state.
+ */
+const worldStateCell = new WorldStateCell();
+
+/**
  * The seed encoded in the `?seed=` query, or null when absent/invalid. Lets a
  * battle boot deterministically without a post-load restart.
  * @returns The parsed seed, or null.
@@ -528,6 +559,10 @@ export function installVerifyBridge(): void {
     // same IndexedDB store the game uses — proving the round-trip survives a page
     // reload (PRD #41 AC7 / AC5).
     save: async (save: CurrentSave) => {
+      // Adopt the payload's world-state into the held cell so the in-memory
+      // flip/read path (worldState/reckon/regionTone) and the persisted path stay
+      // consistent: the flag the e2e saves is the flag the bridge then exposes.
+      worldStateCell.adopt(save.worldState);
       try {
         await saveService.save(save);
         return true;
@@ -538,5 +573,8 @@ export function installVerifyBridge(): void {
     loadSave: () => saveService.load(),
     hasSave: () => saveService.has(),
     clearSave: () => saveService.clear(),
+    worldState: () => worldStateCell.read(),
+    reckon: () => worldStateCell.reckon(),
+    regionTone: () => worldStateCell.regionTone(),
   };
 }

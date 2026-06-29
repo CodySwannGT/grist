@@ -11,6 +11,7 @@
  * (`types ← validate ← {serialize, migrate}`).
  * @module logic/save/validate
  */
+import { type WorldState } from "../world";
 import {
   SAVE_VERSION,
   type CurrentSave,
@@ -86,6 +87,18 @@ function isUnitFraction(value: unknown): value is number {
  */
 function isShardMode(value: unknown): value is ShardMode {
   return value === "free" || value === "wield";
+}
+
+/**
+ * Whether a value is a valid {@link WorldState}. Guards the v2 `worldState` field
+ * so a save with an absent or out-of-domain flag (a tampered or pre-v2 raw blob
+ * that skipped the migration chain) is rejected rather than loaded with an invalid
+ * Act flag.
+ * @param value - The candidate value.
+ * @returns True when `value` is `"reach"` or `"ashfall"`.
+ */
+function isWorldState(value: unknown): value is WorldState {
+  return value === "reach" || value === "ashfall";
 }
 
 /**
@@ -248,6 +261,7 @@ export function asCurrentSave(value: unknown): CurrentSave | null {
   const moralLedger = asMoralLedger(value["moralLedger"]);
   const rng = asRngLineage(value["rng"]);
   const grist = value["grist"];
+  const worldState = value["worldState"];
   if (
     party === null ||
     inventory === null ||
@@ -256,7 +270,8 @@ export function asCurrentSave(value: unknown): CurrentSave | null {
     choice === null ||
     moralLedger === null ||
     rng === null ||
-    !isFiniteNumber(grist)
+    !isFiniteNumber(grist) ||
+    !isWorldState(worldState)
   ) {
     return null;
   }
@@ -270,5 +285,6 @@ export function asCurrentSave(value: unknown): CurrentSave | null {
     choice,
     moralLedger,
     rng,
+    worldState,
   };
 }

@@ -25,12 +25,13 @@ const SEEN_TIMEOUT = 15_000;
 
 /**
  * The serialized save shape the bridge round-trips. Kept structurally aligned
- * with `CurrentSave` but declared locally so the spec needs no app import.
+ * with the current `CurrentSave` (now v2, carrying the world-state flag #134) but
+ * declared locally so the spec needs no app import.
  */
-interface SaveDataV1 {
-  // The literal `1` (not `number`) so this structural shape is assignable to the
+interface SaveDataV2 {
+  // The literal `2` (not `number`) so this structural shape is assignable to the
   // app's versioned `CurrentSave` the `__VERIFY__.save` bridge expects.
-  readonly version: 1;
+  readonly version: 2;
   readonly party: readonly {
     readonly id: string;
     readonly level: number;
@@ -55,6 +56,7 @@ interface SaveDataV1 {
     readonly wieldChoices: number;
   };
   readonly rng: { readonly seed: number; readonly state: number };
+  readonly worldState: "reach" | "ashfall";
 }
 
 /**
@@ -63,8 +65,8 @@ interface SaveDataV1 {
  * learned + in-progress-learning spells, a resolved free-or-wield choice with its
  * moral ledger, and a non-trivial rng lineage.
  */
-const SLICE_IN_PROGRESS: SaveDataV1 = {
-  version: 1,
+const SLICE_IN_PROGRESS: SaveDataV2 = {
+  version: 2,
   party: [{ id: "wren", level: 4, shard: "emberwisp", shardMode: "wield" }],
   grist: 7,
   inventory: [{ id: "salve", qty: 3 }],
@@ -73,6 +75,7 @@ const SLICE_IN_PROGRESS: SaveDataV1 = {
   choice: { resolved: true, shard: "marrow-bound", variant: "wield" },
   moralLedger: { karma: -1, freeChoices: 0, wieldChoices: 1 },
   rng: { seed: 12345, state: 987654321 },
+  worldState: "reach",
 };
 
 /**
