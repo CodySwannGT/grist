@@ -18,6 +18,7 @@
 // service uses depends on — a bare `globalThis.indexedDB` is not enough.
 import "fake-indexeddb/auto";
 import { IDBFactory } from "fake-indexeddb";
+import { openDB } from "idb";
 import { beforeEach, describe, expect, it } from "vitest";
 
 import {
@@ -26,6 +27,15 @@ import {
   type CurrentSave,
 } from "../../src/logic/save";
 import { SaveService } from "../../src/services/save-service";
+
+/** The default autosave slot id (must match `SaveService`'s DEFAULT_SLOT). */
+const AUTOSAVE_SLOT = "current";
+/** The object-store name `SaveService` writes to (must match its STORE_NAME). */
+const STORE = "save";
+/** The database name `SaveService` opens (must match its DB_NAME). */
+const DB_NAME = "grist-save";
+/** The store-layout version `SaveService` opens at (must match its DB_VERSION). */
+const DB_VERSION = 1;
 
 /** Reset to a pristine in-memory IndexedDB so each test starts from empty stores. */
 function installFreshIndexedDB(): void {
@@ -130,7 +140,7 @@ describe("SaveService — migration on load", () => {
       seed: 7,
       rngState: 99,
     });
-    await seedRawSave("current", v0);
+    await seedRawSave(AUTOSAVE_SLOT, v0);
 
     const restored = await new SaveService().load();
     expect(restored.version).toBe(SAVE_VERSION);
@@ -142,16 +152,52 @@ describe("SaveService — migration on load", () => {
 
 describe("SaveService — fail-safe loading (never crash)", () => {
   it("falls back to a fresh save on a corrupt stored payload", async () => {
-    await seedRawSave("current", "not json {{{");
+    await seedRawSave(AUTOSAVE_SLOT, "not json {{{");
     const restored = await new SaveService().load();
     expect(restored.version).toBe(SAVE_VERSION);
     expect(restored.party).toEqual([]);
   });
 
   it("the fresh fallback itself serializes cleanly (stable re-save)", async () => {
-    await seedRawSave("current", "42");
+    await seedRawSave(AUTOSAVE_SLOT, "42");
     const restored = await new SaveService().load();
     expect(serialize(restored)).toContain(`"version":${SAVE_VERSION}`);
+  });
+});
+
+describe("SaveService — open-failure retry (stability)", () => {
+  it("does not poison the cached connection after a transient open failure", async () => {
+    const service = new SaveService();
+
+    // Stage a genuine transient open failure through the real `idb` path: a
+    // higher-version DB already exists, so the service's lower-version `openDB`
+    // rejects asynchronously with a VersionError (a real `onerror`, not a
+    // synthetic synchronous throw) — exactly the kind of rejection `#open()`
+    // must not memoize.
+    const blocker = await openDB(DB_NAME, DB_VERSION + 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
+      },
+    });
+    blocker.close();
+
+    // First save hits the version conflict and must surface it (fail loud once),
+    // and — critically — must NOT cache the rejected open promise.
+    await expect(service.save(sampleSave())).rejects.toBeTruthy();
+
+    // Clear the blocker so a clean open is now possible, then retry on the SAME
+    // instance. Without the `.catch` reset in `#open()`, the rejected open
+    // promise stays memoized and every later call fails for the page lifetime —
+    // this round-trip would never succeed.
+    await new Promise<void>((resolve, reject) => {
+      const del = indexedDB.deleteDatabase(DB_NAME);
+      del.onsuccess = () => resolve();
+      del.onerror = () => reject(del.error);
+    });
+
+    await service.save(sampleSave());
+    const restored = await service.load();
+    expect(restored).toEqual(sampleSave());
   });
 });
 
@@ -168,12 +214,12 @@ function seedRawSave(slot: string, raw: string): Promise<void> {
     const open = indexedDB.open("grist-save", 1);
     open.onupgradeneeded = () => {
       const db = open.result;
-      if (!db.objectStoreNames.contains("save")) db.createObjectStore("save");
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE);
     };
     open.onsuccess = () => {
       const db = open.result;
-      const tx = db.transaction("save", "readwrite");
-      tx.objectStore("save").put(raw, slot);
+      const tx = db.transaction(STORE, "readwrite");
+      tx.objectStore(STORE).put(raw, slot);
       tx.oncomplete = () => {
         db.close();
         resolve();

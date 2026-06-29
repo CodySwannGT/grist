@@ -18,6 +18,12 @@ import {
   type SaveDataV1,
 } from "../../src/logic/save";
 
+// Shared fixture ids, hoisted so the repeated literals across the corruption
+// cases below don't trip the no-duplicate-string lint.
+const WREN = "wren";
+const MARROW_BOUND = "marrow-bound";
+const FREE = "free";
+
 /**
  * A fully-populated payload covering every persisted axis the Technical
  * Approach enumerates: party, grist, inventory, learned/learning, shard choice,
@@ -29,8 +35,10 @@ function sampleSave(): SaveDataV1 {
   return {
     version: 1,
     party: [
-      { id: "wren", level: 3, shard: "emberwisp", shardMode: "free" },
-      { id: "tobi", level: 3, shardMode: "free" },
+      { id: WREN, level: 3, shard: "emberwisp", shardMode: FREE },
+      // An unequipped member: no shard and (per the shard/shardMode unit rule)
+      // no orphan shardMode either — covers the absent-optional axis.
+      { id: "tobi", level: 3 },
     ],
     grist: 42,
     inventory: [
@@ -39,7 +47,7 @@ function sampleSave(): SaveDataV1 {
     ],
     learned: ["bind-wisp", "flurry"],
     learning: [{ spell: "cinder", progress: 0.5 }],
-    choice: { resolved: true, shard: "marrow-bound", variant: "wield" },
+    choice: { resolved: true, shard: MARROW_BOUND, variant: "wield" },
     moralLedger: { karma: -2, freeChoices: 1, wieldChoices: 2 },
     rng: { seed: 1337, state: 987654321 },
   };
@@ -92,7 +100,7 @@ describe("SaveDataV1 — the moral choice persists (AC5)", () => {
     const restored = deserialize(serialize(save));
     expect(restored?.choice).toEqual({
       resolved: true,
-      shard: "marrow-bound",
+      shard: MARROW_BOUND,
       variant: "wield",
     });
     expect(restored?.moralLedger).toEqual({
@@ -105,11 +113,11 @@ describe("SaveDataV1 — the moral choice persists (AC5)", () => {
   it("a free-mode resolution round-trips its karma flag intact", () => {
     const save: SaveDataV1 = {
       ...sampleSave(),
-      choice: { resolved: true, shard: "emberwisp", variant: "free" },
+      choice: { resolved: true, shard: "emberwisp", variant: FREE },
       moralLedger: { karma: 1, freeChoices: 3, wieldChoices: 0 },
     };
     const restored = deserialize(serialize(save));
-    expect(restored?.choice.variant).toBe("free");
+    expect(restored?.choice.variant).toBe(FREE);
     expect(restored?.moralLedger.karma).toBe(1);
   });
 });
@@ -144,7 +152,7 @@ describe("deserialize — corruption & guarding (never crash-load)", () => {
     const save = {
       ...sampleSave(),
       party: [
-        { id: "wren", level: 3, shardMode: "free" },
+        { id: WREN, level: 3, shardMode: FREE },
         { level: 2 }, // missing id → the collection is corrupt, not trimmed
       ],
     };
@@ -162,7 +170,7 @@ describe("deserialize — corruption & guarding (never crash-load)", () => {
       deserialize(
         JSON.stringify({
           ...sampleSave(),
-          party: [{ id: "wren", level: 1.5 }],
+          party: [{ id: WREN, level: 1.5 }],
         })
       )
     ).toBeNull();
@@ -185,6 +193,90 @@ describe("deserialize — corruption & guarding (never crash-load)", () => {
     expect(restored?.party).toEqual([{ id: "tobi", level: 3 }]);
     expect(restored?.party[0] && "shard" in restored.party[0]).toBe(false);
   });
+
+  it("rejects a half-equipped party member: a shard without its shardMode", () => {
+    // A shard and its carry mode are a unit; a shard with no mode is an
+    // impossible equipment state, so the whole save is rejected, not loaded.
+    expect(
+      deserialize(
+        JSON.stringify({
+          ...sampleSave(),
+          party: [{ id: WREN, level: 3, shard: "emberwisp" }],
+        })
+      )
+    ).toBeNull();
+  });
+
+  it("rejects a half-equipped party member: a shardMode without its shard", () => {
+    expect(
+      deserialize(
+        JSON.stringify({
+          ...sampleSave(),
+          party: [{ id: WREN, level: 3, shardMode: FREE }],
+        })
+      )
+    ).toBeNull();
+  });
+
+  it("rejects a resolved choice missing its shard/variant", () => {
+    // resolved iff shard+variant present: a resolved choice with no resolution
+    // violates the schema contract (PRD #41 AC5) and must not load.
+    expect(
+      deserialize(
+        JSON.stringify({ ...sampleSave(), choice: { resolved: true } })
+      )
+    ).toBeNull();
+    expect(
+      deserialize(
+        JSON.stringify({
+          ...sampleSave(),
+          choice: { resolved: true, shard: MARROW_BOUND },
+        })
+      )
+    ).toBeNull();
+  });
+
+  it("rejects an unresolved choice that still carries a shard/variant", () => {
+    expect(
+      deserialize(
+        JSON.stringify({
+          ...sampleSave(),
+          choice: { resolved: false, shard: MARROW_BOUND, variant: "wield" },
+        })
+      )
+    ).toBeNull();
+  });
+
+  it("accepts a correctly unresolved choice (no shard, no variant)", () => {
+    const restored = deserialize(
+      JSON.stringify({ ...sampleSave(), choice: { resolved: false } })
+    );
+    expect(restored?.choice).toEqual({ resolved: false });
+  });
+
+  it("rejects a moral ledger with a negative choice counter", () => {
+    // freeChoices / wieldChoices are counts: negative, fractional, or NaN values
+    // are corruption, not state.
+    expect(
+      deserialize(
+        JSON.stringify({
+          ...sampleSave(),
+          moralLedger: { karma: 0, freeChoices: -1, wieldChoices: 2 },
+        })
+      )
+    ).toBeNull();
+  });
+
+  it("rejects a moral ledger with a fractional choice counter", () => {
+    expect(
+      deserialize(
+        JSON.stringify({
+          ...sampleSave(),
+          moralLedger: { karma: 0, freeChoices: 1, wieldChoices: 1.5 },
+        })
+      )
+    ).toBeNull();
+  });
 });
 
 describe("migrate — versioned with a migration path", () => {
@@ -197,7 +289,7 @@ describe("migrate — versioned with a migration path", () => {
     // v0 is the hypothetical legacy shape: a flat blob with no choice/ledger.
     const v0 = {
       version: 0,
-      party: [{ id: "wren", level: 3 }],
+      party: [{ id: WREN, level: 3 }],
       grist: 10,
       seed: 7,
       rngState: 7,

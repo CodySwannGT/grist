@@ -115,6 +115,12 @@ export class SaveService {
           db.createObjectStore(STORE_NAME);
         }
       },
+    }).catch((error: unknown) => {
+      // Don't memoize a rejected open: a transient IndexedDB failure must not
+      // wedge the cache for the rest of the page lifetime (every later save/load
+      // would fail immediately). Clear it so the next call retries a fresh open.
+      this.#db = null;
+      throw error;
     });
     return this.#db;
   }

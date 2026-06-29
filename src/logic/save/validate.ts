@@ -102,6 +102,10 @@ function asPartyMember(value: unknown): SavedPartyMember | null {
   if (typeof id !== "string" || !isPositiveInteger(level)) return null;
   if (shard !== undefined && typeof shard !== "string") return null;
   if (shardMode !== undefined && !isShardMode(shardMode)) return null;
+  // An equipped shard and its carry mode are a unit: a shard without a mode (or a
+  // mode without a shard) is an impossible equipment state, so reject the whole
+  // member rather than load a half-equipped party slot.
+  if ((shard === undefined) !== (shardMode === undefined)) return null;
   return {
     id,
     level,
@@ -178,6 +182,11 @@ function asChoice(value: unknown): SavedChoice | null {
   if (typeof resolved !== "boolean") return null;
   if (shard !== undefined && typeof shard !== "string") return null;
   if (variant !== undefined && !isShardMode(variant)) return null;
+  // The shard variant is present iff the choice is resolved: a resolved choice
+  // with no shard/variant — or an unresolved one carrying them — violates the
+  // schema contract (PRD #41 AC5) and is rejected rather than loaded.
+  const hasResolution = shard !== undefined && variant !== undefined;
+  if (resolved !== hasResolution) return null;
   return {
     resolved,
     ...(typeof shard === "string" ? { shard } : {}),
@@ -195,10 +204,12 @@ function asMoralLedger(value: unknown): MoralLedger | null {
   const karma = value["karma"];
   const freeChoices = value["freeChoices"];
   const wieldChoices = value["wieldChoices"];
+  // karma is a signed net flag; the choice counters are counts (whole, non-
+  // negative), so a negative or fractional counter is corruption, not state.
   if (
     !isFiniteNumber(karma) ||
-    !isFiniteNumber(freeChoices) ||
-    !isFiniteNumber(wieldChoices)
+    !isWholeNonNegative(freeChoices) ||
+    !isWholeNonNegative(wieldChoices)
   ) {
     return null;
   }

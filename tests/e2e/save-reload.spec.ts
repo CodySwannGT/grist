@@ -76,17 +76,31 @@ const SLICE_IN_PROGRESS: SaveDataV1 = {
 };
 
 /**
- * Wait until the verification bridge is installed on `window`. The bridge is
- * attached at bootstrap when `?uat=1` is present, so this also confirms the page
- * loaded.
+ * Wait until the verification bridge is installed on `window` with its **full**
+ * persistence contract present (`save` / `loadSave` / `hasSave` / `clearSave`).
+ * The bridge is attached at bootstrap when `?uat=1` is present, so this also
+ * confirms the page loaded. Asserting the whole shape up front means the calls
+ * below can invoke the methods directly — a broken bridge fails here, loudly,
+ * instead of silently no-op'ing through an optional chain and leaking prior
+ * IndexedDB state into a later assertion.
  * @param page - The Playwright page.
  */
 async function waitForBridge(page: Page): Promise<void> {
   await expect
-    .poll(() => page.evaluate(() => typeof window.__VERIFY__?.save), {
-      timeout: SEEN_TIMEOUT,
-    })
-    .toBe("function");
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const api = window.__VERIFY__;
+          return (
+            typeof api?.save === "function" &&
+            typeof api?.loadSave === "function" &&
+            typeof api?.hasSave === "function" &&
+            typeof api?.clearSave === "function"
+          );
+        }),
+      { timeout: SEEN_TIMEOUT }
+    )
+    .toBe(true);
 }
 
 /**
@@ -102,9 +116,10 @@ async function bootWithBridge(page: Page): Promise<void> {
 test.describe("GRIST — save persistence verification (UAT)", () => {
   test.beforeEach(async ({ page }) => {
     // Start each test from a clean store so a prior run never leaks into the
-    // reload assertion.
+    // reload assertion. The bridge contract is asserted in waitForBridge, so the
+    // method is invoked directly (a missing bridge would have already failed).
     await bootWithBridge(page);
-    await page.evaluate(() => window.__VERIFY__?.clearSave());
+    await page.evaluate(() => window.__VERIFY__!.clearSave());
   });
 
   test("[save-roundtrip-reload] AC7: a slice in progress is restored exactly after a page reload", async ({
@@ -115,17 +130,17 @@ test.describe("GRIST — save persistence verification (UAT)", () => {
 
     // Persist the in-progress slice, then assert the write committed.
     const saved = await page.evaluate(
-      save => window.__VERIFY__?.save(save),
+      save => window.__VERIFY__!.save(save),
       SLICE_IN_PROGRESS
     );
     expect(saved).toBe(true);
-    expect(await page.evaluate(() => window.__VERIFY__?.hasSave())).toBe(true);
+    expect(await page.evaluate(() => window.__VERIFY__!.hasSave())).toBe(true);
 
     // A genuine full reload: a new document and a new SaveService reading the
     // same on-disk IndexedDB — the real "reopen the game" boundary.
     await bootWithBridge(page);
 
-    const restored = await page.evaluate(() => window.__VERIFY__?.loadSave());
+    const restored = await page.evaluate(() => window.__VERIFY__!.loadSave());
     expect(restored).toEqual(SLICE_IN_PROGRESS);
 
     // The rng lineage in particular must come back verbatim (determinism): the
@@ -141,13 +156,13 @@ test.describe("GRIST — save persistence verification (UAT)", () => {
     page.on("pageerror", error => errors.push(error.message));
 
     await page.evaluate(
-      save => window.__VERIFY__?.save(save),
+      save => window.__VERIFY__!.save(save),
       SLICE_IN_PROGRESS
     );
 
     await bootWithBridge(page);
 
-    const restored = await page.evaluate(() => window.__VERIFY__?.loadSave());
+    const restored = await page.evaluate(() => window.__VERIFY__!.loadSave());
     // The shard variant the player committed to survives.
     expect(restored?.choice).toEqual({
       resolved: true,
