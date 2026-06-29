@@ -47,5 +47,18 @@
       }
     }
   },
-  "plansDirectory": "./plans"
+  "plansDirectory": "./plans",
+  "hooks": {
+    "WorktreeCreate": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/worktree-create.sh",
+            "timeout": 60000
+          }
+        ]
+      }
+    ]
+  }
 }
