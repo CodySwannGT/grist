@@ -7,7 +7,7 @@
  * `(state, action)` always produces the same next state.
  * @module logic/field/engine
  */
-import { ENCOUNTERS } from "../../content/encounters";
+import { ENCOUNTERS, type EncounterId } from "../../content/encounters";
 import {
   MARROW_MAP,
   MarrowRoomIds,
@@ -354,6 +354,76 @@ export function stepField(state: FieldState, action: FieldAction): FieldState {
     default:
       return state;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Scene-machine sequences (the Field↔Battle launch/return plumbing, #82)
+// ---------------------------------------------------------------------------
+
+/**
+ * Start a fresh descent and immediately enter Room A — firing its encounter
+ * trigger. The returned state is in the `triggered` phase with `pendingEncounter`
+ * set to Room A's encounter, which the Field adapter hands to the Battle scene.
+ * Pure composition of {@link startField} + an `enter` step; reads nothing ambient.
+ * @param seed - The 32-bit field seed.
+ * @returns The field state sitting on Room A's fired encounter trigger.
+ */
+export function beginDescent(seed: number): FieldState {
+  const fresh = startField(seed);
+  return stepField(fresh, {
+    kind: FieldActionKinds.enter,
+    roomId: fresh.currentRoom,
+  });
+}
+
+/**
+ * Resume a descent after the launched battle resolves: acknowledge the trigger
+ * that fired — clearing `pendingEncounter`, marking the room cleared, and
+ * returning the session to the `exploring` phase (or `complete` if this was the
+ * final room). Control is now back on the Field with no fight pending; the player
+ * (or the verification bridge) advances to the next room with {@link traverseToNext}.
+ * Pure single reducer step; reads nothing ambient.
+ * @param state - The pre-launch field state (restored from the registry).
+ * @returns The acknowledged field state, back in the `exploring` phase.
+ */
+export function advanceAfterBattle(state: FieldState): FieldState {
+  return stepField(state, { kind: FieldActionKinds.acknowledge });
+}
+
+/**
+ * Traverse from the current (cleared) room to the next in the A→B→C progression,
+ * firing the next room's encounter trigger so the Field can launch its battle. A
+ * no-op past the final room (the slice is already `complete`). Only valid once the
+ * current room's encounter has been acknowledged (no fight pending) — the field
+ * reducer enforces that, so a stray call mid-fight is a safe no-op. Pure.
+ * @param state - The current (exploring) field state.
+ * @returns The next field state — sitting on the next room's fired trigger.
+ */
+export function traverseToNext(state: FieldState): FieldState {
+  return stepField(state, { kind: FieldActionKinds.traverse });
+}
+
+/**
+ * The encounter launch a session is currently asking for, or `null` when none is
+ * pending. A launch is pending exactly when the sim is in the `triggered` phase
+ * with a non-null `pendingEncounter`; the battle seed is derived from the live
+ * field RNG state so each fight is deterministic and distinct without reading
+ * anything ambient. The Field adapter polls this and, when non-null, hands the
+ * payload to the Battle scene — keeping the launch *decision* in pure logic and
+ * the scene a thin starter. Pure selector.
+ * @param state - The current field state.
+ * @returns The pending launch (encounter id + battle seed), or null.
+ */
+export function pendingLaunch(
+  state: FieldState
+): { readonly encounterId: EncounterId; readonly seed: number } | null {
+  if (
+    state.phase !== FieldPhases.triggered ||
+    state.pendingEncounter === null
+  ) {
+    return null;
+  }
+  return { encounterId: state.pendingEncounter, seed: state.rngState >>> 0 };
 }
 
 // ---------------------------------------------------------------------------

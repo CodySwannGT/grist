@@ -16,22 +16,34 @@ import {
   FieldColors,
   FieldEvents,
   FieldLayout,
+  FieldTextStyles,
   GameView,
   SceneKeys,
+  type FieldResumeData,
 } from "../consts";
 import { MARROW_MAP } from "../content";
 import {
+  FieldActionKinds,
   loreForProp,
-  startField,
   stepField,
   type FieldState,
 } from "../logic/field";
+import { newRunState, type RunState } from "../logic/run-state";
 import { eventsCenter } from "../services/events";
 import { FieldInputService } from "../services/field-input";
 import {
   type FieldIntent,
   type FieldMoveDir,
 } from "../services/field-input-map";
+import { getRunState } from "../services/run-store";
+import { drawFieldBackdrop } from "./field-chrome";
+import {
+  advanceToNextRoom,
+  beginFieldSession,
+  engageEncounter,
+  launchPendingBattle,
+  resumeFieldSession,
+} from "./field-launch";
 import { verifyBridge, type FieldView } from "../uat/bridge";
 
 /** Fallback seed when none is supplied via the verification bridge / `?seed=`. */
@@ -39,27 +51,18 @@ const DEFAULT_SEED = 0x9e3779b1;
 /** The examinable rendering-notice prop placed in Room A. */
 const SIGN_PROP_ID = "warren-sign";
 
-const ROOM_NAME_STYLE = {
-  fontFamily: "monospace",
-  fontSize: "10px",
-  color: FieldColors.roomName,
-} as const;
-const PROMPT_STYLE = {
-  fontFamily: "monospace",
-  fontSize: "8px",
-  color: FieldColors.prompt,
-} as const;
-const LORE_STYLE = {
-  fontFamily: "monospace",
-  fontSize: "8px",
-  color: FieldColors.loreText,
-  wordWrap: { width: FieldLayout.loreBoxWidth - 8 },
-} as const;
+const {
+  roomName: ROOM_NAME_STYLE,
+  prompt: PROMPT_STYLE,
+  lore: LORE_STYLE,
+} = FieldTextStyles;
 
 /** Renders a {@link FieldState} and emits field actions; holds no field rules. */
 export class Field extends Phaser.Scene {
   #state!: FieldState;
   #input!: FieldInputService;
+  /** The cross-scene run progression (grist, shards, pending choice). */
+  #run: RunState = newRunState();
   /** Wren's live logical (384×216) center — adapter render state, not sim state. */
   #wrenX: number = FieldLayout.wrenSpawnX;
   #wrenY: number = FieldLayout.wrenSpawnY;
@@ -82,21 +85,30 @@ export class Field extends Phaser.Scene {
   }
 
   /**
-   * Build the field session under the seed, the semantic input service, the
-   * room backdrop, Wren, the rendering-notice sign, and the (hidden) lore banner;
-   * subscribe to field intents; wire tap-to-move / tap-to-examine; then expose the
-   * scene to the verification bridge.
+   * Build (or restore) the field session, input, render scaffolding, and bridge.
+   * A fresh boot starts the session and enters Room A (its first encounter
+   * trigger); a post-battle resume ({@link FieldResumeData}) restores the exact
+   * pre-launch session and consumes the just-resolved result (folded into the run,
+   * trigger acknowledged) before play continues. Either way, any pending trigger
+   * is handed straight to the Battle scene via {@link launchPendingBattle}.
+   * @param data - The resume payload, or undefined on a fresh boot.
    * @returns void
    */
-  create(): void {
+  create(data?: Partial<FieldResumeData>): void {
+    const run = getRunState(this.registry);
     const seed = verifyBridge.takeSeed() ?? DEFAULT_SEED;
-    this.#state = startField(seed);
     this.#wrenX = FieldLayout.wrenSpawnX;
     this.#wrenY = FieldLayout.wrenSpawnY;
     this.#moveTo = null;
     this.#input = new FieldInputService(this);
 
-    this.#drawBackdrop();
+    const session = data?.resumed
+      ? resumeFieldSession(this.registry, run, seed)
+      : beginFieldSession(run, seed);
+    this.#state = session.state;
+    this.#run = session.run;
+
+    drawFieldBackdrop(this);
     this.#buildProps();
     this.#buildHud();
     this.#wirePointer();
@@ -106,6 +118,12 @@ export class Field extends Phaser.Scene {
 
     verifyBridge.attach(SceneKeys.Field, this.#bridgeView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
+
+    // A fresh boot lands in Room A in `exploring` (the player moves/examines, then
+    // engages the encounter); a resume lands back in `exploring` after the cleared
+    // room. Neither has a fight pending, so this is a no-op safety net — the only
+    // case it fires is a session restored mid-trigger, which it hands to Battle.
+    launchPendingBattle(this, this.registry, this.#state);
   }
 
   /**
@@ -211,7 +229,10 @@ export class Field extends Phaser.Scene {
     if (!within) {
       return false;
     }
-    this.#state = stepField(this.#state, { kind: "examine", propId });
+    this.#state = stepField(this.#state, {
+      kind: FieldActionKinds.examine,
+      propId,
+    });
     this.#renderLore(propId);
     return true;
   }
@@ -229,30 +250,6 @@ export class Field extends Phaser.Scene {
     return room.props.some(prop => prop.id === SIGN_PROP_ID)
       ? SIGN_PROP_ID
       : null;
-  }
-
-  /**
-   * Paint the top-down room: a dark back wall, the lit floor band below the wall
-   * line, and the dividing wall line.
-   * @returns void
-   */
-  #drawBackdrop(): void {
-    const { width, height } = GameView;
-    this.add
-      .rectangle(0, 0, width, FieldLayout.wallY, FieldColors.wall)
-      .setOrigin(0, 0);
-    this.add
-      .rectangle(
-        0,
-        FieldLayout.wallY,
-        width,
-        height - FieldLayout.wallY,
-        FieldColors.floor
-      )
-      .setOrigin(0, 0);
-    this.add
-      .rectangle(0, FieldLayout.wallY, width, 1, FieldColors.wallLine)
-      .setOrigin(0, 0);
   }
 
   /**
@@ -391,10 +388,9 @@ export class Field extends Phaser.Scene {
   }
 
   /**
-   * The live link handed to the verification bridge: the applied integer scale
-   * (scene-agnostic, read from the ScaleManager), the current room / phase,
-   * Wren's live position (so an e2e can assert it changed after a move), the
-   * surfaced lore text, and a deterministic examine entry point.
+   * The live link handed to the verification bridge: render scale, room / phase,
+   * Wren's position, surfaced lore, the run-state (grist / shards / pending
+   * choice — so an e2e can assert AC2/AC4 outcomes), and a deterministic examine.
    * @returns The field view.
    */
   #bridgeView(): FieldView {
@@ -414,15 +410,27 @@ export class Field extends Phaser.Scene {
         const propId = this.#examinablePropId();
         return propId ? loreForProp(this.#state, propId) : null;
       },
+      grist: () => this.#run.wallet.grist,
+      shards: () => this.#run.shards,
+      pendingChoiceShard: () => this.#run.pendingChoiceShard,
       examineNearest: () => {
-        // Walk Wren onto the sign so the examine-radius gate passes, then examine —
-        // the deterministic "agent examined the rendering notice" verification path.
+        // Teleport Wren onto the sign so the range gate passes, then examine.
         this.#wrenX = FieldLayout.signX;
         this.#wrenY = FieldLayout.signY;
         this.#moveTo = null;
         this.#pendingExamine = false;
         this.#syncWren();
         this.#examineNearest();
+      },
+      engage: () => {
+        // Fire the current room's encounter, launching its battle (the
+        // deterministic "agent engaged the encounter in this room" path).
+        this.#state = engageEncounter(this, this.registry, this.#state);
+      },
+      traverse: () => {
+        // Advance to the next room, firing its trigger — which launches the next
+        // battle (the deterministic "agent walked to the next encounter" path).
+        this.#state = advanceToNextRoom(this, this.registry, this.#state);
       },
     };
   }

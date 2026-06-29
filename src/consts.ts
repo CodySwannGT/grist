@@ -121,6 +121,34 @@ export const FieldEvents = {
 } as const;
 
 /**
+ * The typed scene-data the Field hands to the Battle scene when an encounter
+ * trigger fires (`this.scene.start(SceneKeys.Battle, data)`): the encounter id to
+ * run and the deterministic seed. The Battle scene reads this in `init()` and
+ * launches the *existing* Phase-1 sim with it — no combat math is added, only the
+ * launch payload. Keeping the shape here (not inline) means a field-launch and a
+ * battle-init can never drift on the key names.
+ */
+export interface BattleLaunchData {
+  /** The encounter id the Field's trigger fired (one of {@link import("./content").EncounterId}). */
+  readonly encounterId: string;
+  /** The 32-bit battle seed threaded from the field session for determinism. */
+  readonly seed: number;
+}
+
+/**
+ * The typed scene-data the Battle scene hands back to the Field on return
+ * (`this.scene.start(SceneKeys.Field, data)`). The live field session and the
+ * consumed battle result both ride the registry (see `services/run-store`) so the
+ * Field restores the exact pre-launch session and reads the result once via the
+ * one-shot `takeLastBattleResult`; this flag just tells the Field its `create()`
+ * is a post-battle resume (restore the stored session) rather than a fresh boot.
+ */
+export interface FieldResumeData {
+  /** True when the Field is being re-entered after a battle (restore the session). */
+  readonly resumed: boolean;
+}
+
+/**
  * Field-scene layout in logical (384×216) pixels. Wren spawns near the left of
  * Room A and walks the floor band between the wall line and the bottom inset; the
  * rendering-notice sign sits to her right so a rightward walk reaches its examine
@@ -168,4 +196,31 @@ export const FieldColors = {
   loreText: "#e8e8ea",
   roomName: "#ffd166",
   prompt: "#9be7c4",
+} as const;
+
+/**
+ * Field-scene text styles (monospace chrome). Kept here with the other typed
+ * Field constants so the scene stays a thin renderer and a color/size change is a
+ * single edit. The shapes match Phaser's text-style object.
+ */
+export const FieldTextStyles = {
+  /** The centered room-name banner at the top of the screen. */
+  roomName: {
+    fontFamily: "monospace",
+    fontSize: "10px",
+    color: FieldColors.roomName,
+  },
+  /** The "[E] examine" affordance under the examinable prop. */
+  prompt: {
+    fontFamily: "monospace",
+    fontSize: "8px",
+    color: FieldColors.prompt,
+  },
+  /** The wrapped lore body inside the bottom banner. */
+  lore: {
+    fontFamily: "monospace",
+    fontSize: "8px",
+    color: FieldColors.loreText,
+    wordWrap: { width: FieldLayout.loreBoxWidth - 8 },
+  },
 } as const;

@@ -18,12 +18,15 @@ import {
   BattleLayout,
   GameView,
   SceneKeys,
+  type BattleLaunchData,
+  type FieldResumeData,
 } from "../consts";
 import {
   ENCOUNTERS,
   EncounterIds,
   PARTY,
   type EncounterDef,
+  type EncounterId,
   type PartyMemberDef,
 } from "../content";
 import { BattleRunner } from "../game/battle-runner";
@@ -31,11 +34,14 @@ import {
   AtbTuning,
   BattleSides,
   hashState,
+  isResolved,
   type BattleSide,
   type Combatant,
 } from "../logic/combat";
+import { extractBattleResult } from "../logic/battle-result";
 import { eventsCenter } from "../services/events";
 import { InputService } from "../services/input";
+import { setLastBattleResult } from "../services/run-store";
 import { BattleController } from "../ui/battle-controller";
 import { BattleHud } from "../ui/battle-hud";
 import { unitCenter } from "../ui/layout";
@@ -53,8 +59,14 @@ const TITLE_STYLE = {
 
 /** The fielded party, in turn-order-stable lineup order (Wren front). */
 const PARTY_LINEUP: readonly PartyMemberDef[] = [PARTY.wren, PARTY.tobi];
-/** The encounter this slice scene renders (two enemies — teaches Rendering/Break). */
-const ENCOUNTER: EncounterDef = ENCOUNTERS[EncounterIds.theDrip];
+/**
+ * The default encounter for a *standalone* battle boot (the shipped `?uat=1`
+ * default and every existing battle test) — two enemies that teach
+ * Rendering/Break. When the Field launches this scene it overrides the encounter
+ * via {@link BattleLaunchData} in `init()`; this constant only governs the direct
+ * boot so those tests stay unchanged.
+ */
+const DEFAULT_ENCOUNTER: EncounterDef = ENCOUNTERS[EncounterIds.theDrip];
 
 /** The pooled render objects mirroring one combatant. */
 interface UnitView {
@@ -72,10 +84,43 @@ export class Battle extends Phaser.Scene {
   #hud!: BattleHud;
   #partyViews: readonly UnitView[] = [];
   #enemyViews: readonly UnitView[] = [];
+  /** The encounter this run resolved (default for a standalone boot, or launched). */
+  #encounter: EncounterDef = DEFAULT_ENCOUNTER;
+  /**
+   * Whether this scene was launched by the Field (vs a standalone boot). Only a
+   * field-launched battle consumes its result and returns to the Field — the
+   * standalone boot stays on the resolved battle so the existing battle tests are
+   * unchanged.
+   */
+  #fromField = false;
+  /** The battle seed a field launch threaded in, or null for a standalone boot. */
+  #launchSeed: number | null = null;
+  /** Set once the terminal outcome has been consumed, so it fires exactly once. */
+  #resolutionHandled = false;
 
   /** Register the scene key. */
   constructor() {
     super(SceneKeys.Battle);
+  }
+
+  /**
+   * Read the optional {@link BattleLaunchData} the Field passes when it launches
+   * an encounter: the encounter id to run and the deterministic battle seed. Absent
+   * on a standalone boot, where the scene falls back to the default encounter and
+   * the bridge/URL seed — keeping every existing battle test unchanged. Resets the
+   * per-scene resolution latch so a re-launched scene consumes its result afresh.
+   * @param data - The launch payload, or undefined on a standalone boot.
+   * @returns void
+   */
+  init(data?: Partial<BattleLaunchData>): void {
+    this.#resolutionHandled = false;
+    const launchedEncounter =
+      data?.encounterId !== undefined
+        ? (ENCOUNTERS[data.encounterId as EncounterId] ?? null)
+        : null;
+    this.#fromField = launchedEncounter !== null;
+    this.#encounter = launchedEncounter ?? DEFAULT_ENCOUNTER;
+    this.#launchSeed = this.#fromField ? (data?.seed ?? DEFAULT_SEED) : null;
   }
 
   /**
@@ -85,8 +130,10 @@ export class Battle extends Phaser.Scene {
    * @returns void
    */
   create(): void {
-    const seed = verifyBridge.takeSeed() ?? DEFAULT_SEED;
-    this.#runner = new BattleRunner(PARTY_LINEUP, ENCOUNTER, seed);
+    // A field-launched battle runs under the launch seed (the field threaded it);
+    // a standalone boot honors the bridge/URL seed exactly as before.
+    const seed = this.#launchSeed ?? verifyBridge.takeSeed() ?? DEFAULT_SEED;
+    this.#runner = new BattleRunner(PARTY_LINEUP, this.#encounter, seed);
     this.#input = new InputService(this);
     this.#controller = new BattleController(this.#runner);
 
@@ -138,6 +185,38 @@ export class Battle extends Phaser.Scene {
     this.#runner.advance(delta);
     this.#render();
     this.#hud.render(this.#runner.state(), this.#controller);
+    this.#maybeReturnToField();
+  }
+
+  /**
+   * Once a field-launched battle resolves, hand control back to the Field exactly
+   * once: extract the win/lose + grist + shard + choice from the terminal state and
+   * stash the **raw** {@link import("../logic/battle-result").BattleResult} on the
+   * registry, then start the Field. The Field's resume path is the *single owner*
+   * of folding that result into the run-state (`resumeFieldSession` →
+   * {@link applyBattleResult}); this scene deliberately does NOT fold it too, so a
+   * win's grist/shard is credited exactly once across the Battle→Field transition.
+   * A no-op for a standalone boot (the existing battle tests stay on the resolved
+   * battle) and after the first resolution (the `#resolutionHandled` latch).
+   * @returns void
+   */
+  #maybeReturnToField(): void {
+    if (!this.#fromField || this.#resolutionHandled) {
+      return;
+    }
+    const state = this.#runner.state();
+    if (!isResolved(state)) {
+      return;
+    }
+    this.#resolutionHandled = true;
+    const result = extractBattleResult(state, this.#encounter);
+    if (result === null) {
+      return;
+    }
+    // Record the raw result only — the Field folds it into the run exactly once.
+    setLastBattleResult(this.registry, result);
+    const resume: FieldResumeData = { resumed: true };
+    this.scene.start(SceneKeys.Field, resume);
   }
 
   /**
