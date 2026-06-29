@@ -15,6 +15,7 @@ import {
   SLICE_ECONOMY,
   SLICE_EARN,
   SliceEarnSourceIds,
+  SPELLS,
   SpellIds,
 } from "../../src/content";
 import { GristTuning } from "../../src/logic/grist";
@@ -68,6 +69,17 @@ describe("slice shards: Ashling shard free/wield variants (#79 AC: shards)", () 
   it("Cinder is Ash / AP5 / power16 and Render is Ash / AP6 / Rendering", () => {
     const marrow = BOUNDS[BoundIds.marrowBound];
     expect(marrow.element).toBe(Elements.ash);
+
+    // The shard's taught spell payloads — what the case title locks.
+    const cinder = SPELLS[SpellIds.cinder];
+    expect(cinder.element).toBe(Elements.ash);
+    expect(cinder.apCost).toBe(5);
+    expect(cinder.power).toBe(16);
+    const render = SPELLS[SpellIds.render];
+    expect(render.element).toBe(Elements.ash);
+    expect(render.apCost).toBe(6);
+    expect(render.status).toBe(Statuses.rendering);
+
     // free variant: no corruption; wield variant: corruption accrues.
     expect(marrow.variants.free.corruptionRate).toBe(0);
     expect(marrow.variants.wield.corruptionRate).toBeGreaterThan(0);
