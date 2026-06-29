@@ -6,6 +6,7 @@
     "src/content/index.ts",
     "src/logic/combat/index.ts",
     "src/logic/field/index.ts",
+    "src/logic/narrative/index.ts",
     "src/logic/save/index.ts",
     "src/logic/world/index.ts"
   ],
