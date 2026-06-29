@@ -19,6 +19,7 @@ export const SceneKeys = {
   Preloader: "Preloader",
   Battle: "Battle",
   Field: "Field",
+  Bench: "Bench",
 } as const;
 
 /**
@@ -222,5 +223,97 @@ export const FieldTextStyles = {
     fontSize: "8px",
     color: FieldColors.loreText,
     wordWrap: { width: FieldLayout.loreBoxWidth - 8 },
+  },
+} as const;
+
+/**
+ * Cross-cutting bench (growth screen) event names emitted on the EventsCenter bus
+ * (never on `game.events`). The Bench HUD publishes a device-tagged semantic
+ * {@link BenchIntent} as `Input` when the player taps the equip button or a sink
+ * button; the Bench scene subscribes and threads the intent through the pure
+ * run-state reducers (`equipShardAtBench` / `applyBenchSink`). Raw pointers never
+ * leave the HUD — only these named intents do (the bench counterpart of
+ * {@link FieldEvents.Input}).
+ */
+export const BenchEvents = {
+  Input: "bench-input",
+} as const;
+
+/**
+ * Bench-scene layout in logical (384×216) pixels. The growth screen is a static
+ * menu: an equip row at the top, a stacked list of grist sinks below, and the
+ * shared-grist readout in the corner. First-pass — the *shape* (a labelled equip
+ * affordance over a vertical list of costed sink buttons) is the contract, not
+ * the exact constants.
+ */
+export const BenchLayout = {
+  /** Centered title banner Y. */
+  titleY: 8,
+  /** Shared-grist readout (top-left). */
+  gristX: 8,
+  gristY: 24,
+  /** The equip-shard button. */
+  equipX: 192,
+  equipY: 60,
+  equipWidth: 220,
+  equipHeight: 22,
+  /** The first sink button's center; subsequent buttons stack below by `rowGap`. */
+  sinkX: 192,
+  firstSinkY: 110,
+  sinkWidth: 280,
+  sinkHeight: 26,
+  rowGap: 34,
+  /** Cinder learning-progress bar (under the sink list). */
+  progressX: 52,
+  progressY: 190,
+  progressWidth: 280,
+  progressHeight: 8,
+} as const;
+
+/** Bench placeholder-art and chrome colors (programmatic art only — no assets). */
+export const BenchColors = {
+  backdrop: 0x141821,
+  title: "#ffd166",
+  grist: "#9be7c4",
+  buttonFill: 0x222a39,
+  buttonFillDisabled: 0x1a1f2a,
+  buttonStroke: 0x39455c,
+  buttonStrokeEquipped: 0x57c969,
+  buttonText: "#e8e8ea",
+  buttonTextDisabled: "#5a606c",
+  progressBg: 0x1d2738,
+  progressFill: 0xd0706f,
+  progressLabel: "#9be7c4",
+} as const;
+
+/**
+ * Bench-scene text styles (monospace chrome). Kept here with the other typed
+ * Bench constants so the scene stays a thin renderer and a color/size change is a
+ * single edit. The shapes match Phaser's text-style object.
+ */
+export const BenchTextStyles = {
+  /** The centered "Growth — The Bench" title banner. */
+  title: {
+    fontFamily: "monospace",
+    fontSize: "12px",
+    color: BenchColors.title,
+  },
+  /** The shared-grist readout. */
+  grist: {
+    fontFamily: "monospace",
+    fontSize: "10px",
+    color: BenchColors.grist,
+  },
+  /** A sink/equip button label. */
+  button: {
+    fontFamily: "monospace",
+    fontSize: "9px",
+    color: BenchColors.buttonText,
+  },
+  /** The Cinder progress-bar caption. */
+  progress: {
+    fontFamily: "monospace",
+    fontSize: "8px",
+    color: BenchColors.progressLabel,
   },
 } as const;
