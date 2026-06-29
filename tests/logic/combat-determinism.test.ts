@@ -9,6 +9,12 @@ import {
   type BattleState,
 } from "../../src/logic/combat";
 import { ENCOUNTERS, PARTY } from "../../src/content";
+import {
+  DETERMINISM_HASHES_SEED_A,
+  DETERMINISM_HASHES_SEED_B,
+  DETERMINISM_SEED_A,
+  DETERMINISM_SEED_B,
+} from "../fixtures/determinism-hashes";
 
 /**
  * The determinism state-hash gate (combat-spec / decision 0001 "deterministic
@@ -17,6 +23,13 @@ import { ENCOUNTERS, PARTY } from "../../src/content";
  * different seed must diverge. This is the headless, CI-runnable twin of the
  * `tests/e2e` play-to-victory spec — same encounter, same script, proven without
  * a browser so the gate runs in the unit lane.
+ *
+ * The per-increment DoD harness (#127) pins this progression as a committed fact
+ * shared with the browser play-through (`tests/fixtures/determinism-hashes.ts`),
+ * so the headless twin and the `__VERIFY__.hash()` lane assert against the SAME
+ * constant — not merely against each other. To regenerate the pinned values
+ * after a deliberate engine change, log `play(DETERMINISM_SEED_A).hashes` /
+ * `play(DETERMINISM_SEED_B).hashes` and update the fixture under review.
  */
 
 const WREN = { side: "party", index: 0 } as const;
@@ -82,6 +95,16 @@ describe("determinism state-hash gate", () => {
 
   it("diverges for a different seed (the RNG threads through every resolved hit)", () => {
     expect(play(0x1234abcd).hashes).not.toEqual(play(0x0badf00d).hashes);
+  });
+
+  it("reproduces the committed hash progression the e2e play-through pins to (DoD #127)", () => {
+    // The headless twin must match the SAME committed constant the browser
+    // `__VERIFY__.hash()` lane asserts against — proving the two lanes agree on
+    // one fact, not merely with each other. [EVIDENCE: determinism-hash-identical]
+    expect(play(DETERMINISM_SEED_A).hashes).toEqual(DETERMINISM_HASHES_SEED_A);
+    expect(play(DETERMINISM_SEED_B).hashes).toEqual(DETERMINISM_HASHES_SEED_B);
+    // And the two seeds' pinned progressions genuinely diverge.
+    expect(DETERMINISM_HASHES_SEED_A).not.toEqual(DETERMINISM_HASHES_SEED_B);
   });
 
   it("spends Anima on Craft and grist on Bind along the way (the two-resource economy)", () => {
