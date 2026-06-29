@@ -25,6 +25,7 @@ import { saveService } from "../services/save-service";
 import { type HudModel } from "../ui/battle-controller";
 import { autoWinView, strikeView } from "./battle-driver";
 import { BenchCell, type BenchView, type VerifyBenchState } from "./bench-view";
+import { RegionCell, type VerifyRegionState } from "./region-cell";
 import { RunStateCell, type VerifyRunState } from "./run-state-cell";
 import { WorldStateCell } from "./world-state-cell";
 
@@ -194,6 +195,24 @@ interface VerifyApi {
    * value once {@link VerifyApi.reckon} has fired.
    */
   readonly regionTone: () => string | null;
+  /**
+   * Load the canonical example region (`marrow`) authored against the
+   * {@link RegionDef} template into the bridge-held region cell (#133) — the
+   * scene-agnostic "an agent loaded a template-authored region through the content
+   * barrel" verification action. No-op-safe: loading is pure data (no engine
+   * edit, no Phaser).
+   */
+  readonly loadRegion: () => void;
+  /**
+   * A snapshot of the loaded region resolved *through* the live world-state — its
+   * id, the resolved variant name + tone, whether it passed both-states
+   * validation, which variants are present, and a stable determinism hash — or
+   * null before {@link VerifyApi.loadRegion} has run. Lets the region e2e (#133)
+   * assert the region loads, exposes BOTH Reach and Ashfall variants, and that an
+   * incomplete region is rejected. Resolves against the bridge-held world-state
+   * (defaults to Act I `reach` until a save adopts/`reckon` flips one).
+   */
+  readonly region: () => VerifyRegionState | null;
   /**
    * The bundled {@link VerifyRunState} snapshot — the resolved free-vs-wield
    * choice, the moralLedger/karma, the learning progression (learned + in-progress),
@@ -510,6 +529,16 @@ const worldStateCell = new WorldStateCell();
 const runStateCell = new RunStateCell();
 
 /**
+ * The bridge-held region cell (#133). A module singleton, like {@link verifyBridge},
+ * {@link worldStateCell}, and {@link runStateCell}: holds a region authored against
+ * the {@link RegionDef} template and reads it through the live world-state flag, so
+ * the region e2e can load a region and observe its both-states variants
+ * scene-agnostically. Kept off the controller (in its own cell) so the bridge stays
+ * under its line budget — it is a pure test seam, not gameplay state.
+ */
+const regionCell = new RegionCell();
+
+/**
  * The seed encoded in the `?seed=` query, or null when absent/invalid. Lets a
  * battle boot deterministically without a post-load restart.
  * @returns The parsed seed, or null.
@@ -594,6 +623,11 @@ export function installVerifyBridge(): void {
     worldState: () => worldStateCell.read(),
     reckon: () => worldStateCell.reckon(),
     regionTone: () => worldStateCell.regionTone(),
+    loadRegion: () => regionCell.load(),
+    // Resolve the loaded region through the live world-state flag — the same flag
+    // regionTone() reads. Defaults to Act I `reach` until a save adopts or
+    // `reckon()` flips one, so the region snapshot tracks the Reckoning.
+    region: () => regionCell.snapshot(worldStateCell.read() ?? "reach"),
     runState: () => runStateCell.snapshot(),
   };
 }
