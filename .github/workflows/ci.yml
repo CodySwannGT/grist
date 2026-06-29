@@ -10,7 +10,12 @@ on:
 jobs:
   quality:
     name: 🔍 Quality Checks
-    uses: CodySwannGT/lisa/.github/workflows/quality.yml@main
+    # Pinned to the last-known-good Lisa release: the floating `@main` reusable
+    # workflow regressed in the 2.186.2 release (2026-06-29) and now `startup_failure`s
+    # for callers at startup (no jobs initialize), blocking every new PR. This pin
+    # runs the identical required quality jobs from a stable ref — no gate is weakened
+    # or skipped. Revert to `@main` once the upstream regression is fixed.
+    uses: CodySwannGT/lisa/.github/workflows/quality.yml@vv2.186.1
     with:
       node_version: '22.21.1'
       package_manager: 'bun'
