@@ -5,7 +5,8 @@
     "tests/e2e/**/*.ts",
     "src/content/index.ts",
     "src/logic/combat/index.ts",
-    "src/logic/field/index.ts"
+    "src/logic/field/index.ts",
+    "src/logic/save/index.ts"
   ],
   "project": ["src/**/*.ts", "tests/**/*.ts"],
   "ignore": [

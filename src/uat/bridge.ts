@@ -20,6 +20,8 @@ import {
   type BattleState,
   type Combatant,
 } from "../logic/combat";
+import { type CurrentSave } from "../logic/save";
+import { saveService } from "../services/save-service";
 import { type HudModel } from "../ui/battle-controller";
 
 /** A read-only snapshot of one combatant for assertions. */
@@ -113,6 +115,24 @@ interface VerifyApi {
   readonly strike: () => void;
   readonly field: () => VerifyFieldState | null;
   readonly examine: () => void;
+  /**
+   * Persist a {@link CurrentSave} to IndexedDB via the real {@link SaveService}
+   * and resolve once the write commits. The persistence-journey driver: the e2e
+   * calls this with a representative run payload, then reloads the page and calls
+   * {@link VerifyApi.loadSave} to assert it was restored exactly from IndexedDB
+   * (PRD #41 AC7 + AC5). Resolves false if persistence is unavailable.
+   */
+  readonly save: (save: CurrentSave) => Promise<boolean>;
+  /**
+   * Restore the persisted save from IndexedDB via the real {@link SaveService}
+   * (the post-reload read). Returns a fresh empty save when nothing is stored or
+   * the payload is unrecoverable — never throws.
+   */
+  readonly loadSave: () => Promise<CurrentSave>;
+  /** Whether a save record is present in IndexedDB. */
+  readonly hasSave: () => Promise<boolean>;
+  /** Delete the persisted save (reset between e2e runs). */
+  readonly clearSave: () => Promise<void>;
 }
 
 declare global {
@@ -392,5 +412,19 @@ export function installVerifyBridge(): void {
     strike: () => verifyBridge.strike(),
     field: () => verifyBridge.field(),
     examine: () => verifyBridge.examine(),
+    // Drive the real shared SaveService so the e2e writes, reloads, and reads the
+    // same IndexedDB store the game uses — proving the round-trip survives a page
+    // reload (PRD #41 AC7 / AC5).
+    save: async (save: CurrentSave) => {
+      try {
+        await saveService.save(save);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    loadSave: () => saveService.load(),
+    hasSave: () => saveService.has(),
+    clearSave: () => saveService.clear(),
   };
 }
