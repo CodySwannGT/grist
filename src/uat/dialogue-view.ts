@@ -13,6 +13,17 @@ import type { SceneDef } from "../logic/narrative";
 import type { DialogueModel } from "../ui/dialogue";
 import { type VerifyResolution } from "./bridge";
 
+/**
+ * One branch choice in the verification snapshot: its stable `id` (what
+ * `branchDialogue` selects on) alongside the player-facing `label`. Keeping the id
+ * — not just the label — lets the UAT contract drive arbitrary authored forks and
+ * disambiguate duplicate / localized labels without hard-coding fixture internals.
+ */
+interface VerifyDialogueChoice {
+  readonly id: string;
+  readonly label: string;
+}
+
 /** A read-only snapshot of the dialogue presenter for assertions (#104). */
 export interface VerifyDialogueState {
   readonly scene: string;
@@ -26,8 +37,8 @@ export interface VerifyDialogueState {
   readonly branching: boolean;
   /** Whether the narrative has ended (skipped or off its final node). */
   readonly done: boolean;
-  /** The active branch-choice labels (empty on a linear / ended node). */
-  readonly choices: readonly string[];
+  /** The active branch choices — id + label (empty on a linear / ended node). */
+  readonly choices: readonly VerifyDialogueChoice[];
 }
 
 /**
@@ -71,7 +82,10 @@ function toVerifyDialogueState(
     portraitSlot: model.portraitSlot,
     branching: model.branching,
     done: model.done,
-    choices: model.choices.map(choice => choice.label),
+    choices: model.choices.map(choice => ({
+      id: choice.id,
+      label: choice.label,
+    })),
   };
 }
 

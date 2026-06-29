@@ -47,15 +47,15 @@ import type { Rect } from "./layout";
 /** The scene-definition table the presenter plays through, keyed by scene id. */
 type SceneTable = Readonly<Record<string, SceneDef>>;
 
-/** The max branch choices the presenter pre-builds button slots for. */
-const MAX_CHOICES = 4;
-
-/** One pre-built choice-button slot: its background rect, label, and hit-rect. */
+/** One choice-button slot: its background rect, label, and hit-rect. */
 interface ChoiceSlot {
   readonly fill: Phaser.GameObjects.Rectangle;
   readonly label: GuardedText;
   readonly rect: Rect;
 }
+
+/** A pointer handler the owning scene registers for a tapped choice (by index). */
+type ChoicePointerHandler = (index: number) => void;
 
 /** A branch choice as the UAT bridge sees it: id + label + its on-screen hit-rect. */
 export interface DialogueChoiceModel {
@@ -89,7 +89,11 @@ export class DialoguePresenter {
   #portrait!: Phaser.GameObjects.Rectangle;
   #speaker!: GuardedText;
   #caption!: GuardedText;
-  #choiceSlots: readonly ChoiceSlot[] = [];
+  // The choice-button slot pool. Grown on demand to the largest fork seen so far
+  // (no fixed cap → no choice is ever silently dropped) and reused thereafter, so
+  // steady-state renders allocate nothing. Index i always draws choice i.
+  #choiceSlots: ChoiceSlot[] = [];
+  #onChoicePointer: ChoicePointerHandler | null = null;
 
   /**
    * Open `sceneId` from `table` and subscribe to the dialogue intent bus.
@@ -153,10 +157,34 @@ export class DialoguePresenter {
       DialogueLayout.captionY,
       DialogueTextStyles.caption
     );
-    this.#choiceSlots = Array.from({ length: MAX_CHOICES }, (_unused, index) =>
-      this.#makeChoiceSlot(index)
-    );
+    // Choice slots are NOT pre-allocated to a fixed count; the pool grows to the
+    // node with the most choices the first time it is shown (see #ensureSlots), so
+    // a script with any number of choices renders every one of them.
     this.refresh();
+  }
+
+  /**
+   * Register the scene's pointer handler for a tapped choice button (the touch
+   * path). Called once after construction; the handler receives the tapped choice
+   * index, which the scene routes through its semantic input layer.
+   * @param handler - The per-index tap handler.
+   * @returns void
+   */
+  onChoicePointer(handler: ChoicePointerHandler): void {
+    this.#onChoicePointer = handler;
+  }
+
+  /**
+   * Grow the choice-slot pool until it has at least `count` slots. Idempotent and
+   * monotonic — it only ever appends (never reallocates existing slots), so once a
+   * fork of N choices has been shown, re-rendering it allocates nothing.
+   * @param count - The number of slots required for the current node.
+   * @returns void
+   */
+  #ensureSlots(count: number): void {
+    while (this.#choiceSlots.length < count) {
+      this.#choiceSlots.push(this.#makeChoiceSlot(this.#choiceSlots.length));
+    }
   }
 
   /**
@@ -199,6 +227,14 @@ export class DialoguePresenter {
       .setStrokeStyle(1, DialogueColors.choiceStroke)
       .setDepth(DIALOGUE_DEPTH)
       .setVisible(false);
+    // The touch path: a tapped choice button reports its index to the scene's
+    // pointer handler (set via onChoicePointer), which routes it through the
+    // semantic input layer — the same intent a number-key press produces.
+    fill
+      .setInteractive({ useHandCursor: true })
+      .on(Phaser.Input.Events.POINTER_DOWN, () =>
+        this.#onChoicePointer?.(index)
+      );
     const label = this.#makeText(
       rect.x + DialogueLayout.choicePadX,
       rect.y + 4,
@@ -241,12 +277,16 @@ export class DialoguePresenter {
   }
 
   /**
-   * Reveal the choice buttons for the active choices and hide the rest. Reads from
-   * the pre-built slots; never allocates a game object.
+   * Grow the slot pool to the choice count, then reveal a button for each active
+   * choice and hide any surplus slots. Because the pool is grown to `choices.length`
+   * first, **every** choice is rendered and selectable — none is silently dropped,
+   * however many a fork offers. Growth only happens the first time a larger fork is
+   * shown; thereafter this allocates nothing.
    * @param choices - The active branch choices (possibly empty).
    * @returns void
    */
   #renderChoices(choices: readonly DialogueChoiceView[]): void {
+    this.#ensureSlots(choices.length);
     this.#choiceSlots.forEach((slot, index) => {
       const choice = choices[index];
       const show = choice !== undefined;
@@ -297,11 +337,19 @@ export class DialoguePresenter {
   }
 
   /**
-   * Unsubscribe from the dialogue intent bus. Call from the owning scene's
-   * shutdown so the listener never doubles after a scene restart (the leak rule).
+   * Unsubscribe from the dialogue input bus and tear down the choice buttons'
+   * pointer listeners. Call from the owning scene's shutdown so neither the bus
+   * listener nor the per-button pointer handlers double after a scene restart (the
+   * leak rule). The scene's own display objects die with the scene; the bus
+   * listener and the registered choice-pointer handler do not, so they are freed
+   * explicitly here.
    * @returns void
    */
   dispose(): void {
     eventsCenter.off(DialogueEvents.Input, this.#onInput);
+    for (const slot of this.#choiceSlots) {
+      slot.fill.off(Phaser.Input.Events.POINTER_DOWN);
+    }
+    this.#onChoicePointer = null;
   }
 }

@@ -321,15 +321,22 @@ export const BenchTextStyles = {
 
 /**
  * Cross-cutting dialogue/cutscene event names emitted on the EventsCenter bus
- * (never on `game.events`). The dialogue presenter ({@link import("./ui/dialogue")
- * .DialoguePresenter}) subscribes to `Input` — a device-tagged semantic dialogue
- * intent (advance / branch-choice / skip) the scene or a future input service
- * publishes — and folds it through the pure presenter reducers
- * (`logic/narrative/presenter`). Raw keys/pointers never leave the publisher; only
- * these named intents do (the dialogue counterpart of {@link FieldEvents.Input}).
+ * (never on `game.events`). Two stages: the live
+ * {@link import("./services/dialogue-input").DialogueInputService} publishes a
+ * device-tagged semantic {@link DialogueEvents.Intent} from raw keyboard/pointer
+ * (advance / skip / choose-Nth); the Dialogue scene subscribes, resolves a
+ * `choose` index to the current node's choice id, and re-publishes the resolved
+ * {@link DialogueEvents.Input} ({@link import("./logic/narrative")
+ * .DialoguePresenterInput}); the presenter adapter ({@link import("./ui/dialogue")
+ * .DialoguePresenter}) subscribes to `Input` and folds it through the pure
+ * presenter reducers. Raw keys/pointers never leave the input service; only these
+ * named intents do (the dialogue counterpart of {@link FieldEvents.Input}).
  */
 export const DialogueEvents = {
+  /** The resolved presenter input the adapter consumes (advance / branch / skip). */
   Input: "dialogue-input",
+  /** The device-tagged semantic intent the input service publishes (advance / skip / choose-Nth). */
+  Intent: "dialogue-intent",
 } as const;
 
 /**
@@ -362,12 +369,17 @@ export const DialogueLayout = {
   captionX: 60,
   captionY: 176,
   captionWrapWidth: 308,
-  /** Branch-choice buttons: a right-aligned vertical list above the box. */
+  /**
+   * Branch-choice buttons: a right-aligned vertical list stacked downward above the
+   * caption box. The stack is sized so up to four choices sit fully above `boxY`
+   * (158): the 4th slot's bottom is `choiceTopY + 3*(choiceHeight+choiceGap) +
+   * choiceHeight = 88 + 3*17 + 14 = 153`, clear of the box — no overlap.
+   */
   choiceRightX: 372,
-  choiceTopY: 96,
+  choiceTopY: 88,
   choiceWidth: 150,
-  choiceHeight: 16,
-  choiceGap: 4,
+  choiceHeight: 14,
+  choiceGap: 3,
   choicePadX: 6,
 } as const;
 

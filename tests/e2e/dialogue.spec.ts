@@ -27,6 +27,12 @@ interface Resolution {
   readonly zoom: number;
 }
 
+/** One branch choice in the verification snapshot (id + label). */
+interface DialogueChoice {
+  readonly id: string;
+  readonly label: string;
+}
+
 /** The dialogue snapshot exposed by the verification bridge. */
 interface DialogueState {
   readonly scene: string;
@@ -35,7 +41,7 @@ interface DialogueState {
   readonly portraitSlot: string;
   readonly branching: boolean;
   readonly done: boolean;
-  readonly choices: readonly string[];
+  readonly choices: readonly DialogueChoice[];
 }
 
 /**
@@ -113,6 +119,11 @@ test.describe("Dialogue — presenter scene verification (UAT)", () => {
     page,
   }) => {
     const errors: string[] = [];
+    page.on("console", message => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
     page.on("pageerror", error => errors.push(error.message));
 
     await bootDialogue(page);
@@ -129,7 +140,10 @@ test.describe("Dialogue — presenter scene verification (UAT)", () => {
     const fork = await dialogueState(page);
     expect(fork?.caption).toBe("Free the shard, or wield it?");
     expect(fork?.branching).toBe(true);
-    expect(fork?.choices).toEqual(["Free it", "Wield it"]);
+    expect(fork?.choices).toEqual([
+      { id: "freed", label: "Free it" },
+      { id: "wielded", label: "Wield it" },
+    ]);
     expect(errors).toEqual([]);
   });
 
@@ -137,6 +151,11 @@ test.describe("Dialogue — presenter scene verification (UAT)", () => {
     page,
   }) => {
     const errors: string[] = [];
+    page.on("console", message => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
     page.on("pageerror", error => errors.push(error.message));
 
     await bootDialogue(page);
@@ -145,8 +164,14 @@ test.describe("Dialogue — presenter scene verification (UAT)", () => {
     await page.evaluate(() => window.__VERIFY__?.advanceDialogue());
     const fork = await dialogueState(page);
     expect(fork?.branching).toBe(true);
+    // The snapshot carries stable choice ids (not just labels) so the e2e can
+    // branch on the id rather than fixture-internal label text.
+    expect(fork?.choices.map(choice => choice.id)).toEqual([
+      "freed",
+      "wielded",
+    ]);
 
-    // Take the "wielded" branch by id (the choice ids are stable script ids).
+    // Take the "wielded" branch by its stable id.
     await page.evaluate(() => window.__VERIFY__?.branchDialogue("wielded"));
     const wielded = await dialogueState(page);
     expect(wielded?.branching).toBe(false);
@@ -180,6 +205,47 @@ test.describe("Dialogue — presenter scene verification (UAT)", () => {
     await page.evaluate(() => window.__VERIFY__?.advanceDialogue());
     const stillDone = await dialogueState(page);
     expect(stillDone?.done).toBe(true);
+    expect(errors).toEqual([]);
+  });
+
+  test("[dialogue-live-keyboard] real keyboard input (not UAT) drives advance + branch", async ({
+    page,
+  }) => {
+    // Proves the live, non-UAT input path: the Dialogue scene's DialogueInputService
+    // reads real key presses and routes them to the presenter — no __VERIFY__ call
+    // touches the presenter here, only page.keyboard does.
+    const errors: string[] = [];
+    page.on("console", message => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
+    page.on("pageerror", error => errors.push(error.message));
+
+    await bootDialogue(page);
+    // Focus the canvas so Phaser's keyboard plugin receives the events.
+    await page.locator("canvas").click();
+
+    // Enter advances the opening line (open → reply) via the real keyboard path.
+    await page.keyboard.press("Enter");
+    const reply = await dialogueState(page);
+    expect(reply?.speaker).toBe("tobi");
+    expect(reply?.caption).toBe("Then we move.");
+
+    // Enter again crosses to the fork (reply → fork).
+    await page.keyboard.press("Enter");
+    const fork = await dialogueState(page);
+    expect(fork?.branching).toBe(true);
+    expect(fork?.choices.map(choice => choice.id)).toEqual([
+      "freed",
+      "wielded",
+    ]);
+
+    // The "1" key selects the first branch (index 0 → "freed") via the keyboard.
+    await page.keyboard.press("Digit1");
+    const freed = await dialogueState(page);
+    expect(freed?.branching).toBe(false);
+    expect(freed?.caption).toBe("The shard drifts free.");
     expect(errors).toEqual([]);
   });
 });

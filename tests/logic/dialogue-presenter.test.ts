@@ -38,6 +38,10 @@ const REPLY = "reply";
 const CLOSE = "close";
 const WREN = "wren";
 const TOBI = "tobi";
+// A portrait-slot id deliberately DISTINCT from the speaker id, so the explicit-
+// portrait override path is observable: if dialogueView ignored node.portrait and
+// fell back to node.speaker, the portrait-slot assertion would fail.
+const WREN_ANGRY = "wren-angry";
 const FREE_PATH = "free-path";
 const WIELD_PATH = "wield-path";
 
@@ -61,7 +65,7 @@ function script(): Readonly<Record<string, SceneDef>> {
       id: OPEN,
       speaker: WREN,
       text: "Free the shard, or wield it?",
-      portrait: WREN,
+      portrait: WREN_ANGRY,
       choices: [
         { id: FREE_PATH, label: "Free it", to: ASHFALL },
         { id: WIELD_PATH, label: "Wield it", to: ASHFALL },
@@ -242,14 +246,17 @@ describe("dialogueView — the serializable speaker/caption/portrait view-model"
     expect(view.portraitSlot).toBe(WREN);
   });
 
-  it("surfaces the explicit portrait slot when the node sets one", () => {
+  it("surfaces the explicit portrait slot when the node sets one (distinct from speaker)", () => {
     const table = script();
     const atFork: DialoguePresenterState = {
       narrative: { sceneId: FORK, nodeId: OPEN, flags: {} },
       done: false,
     };
     const view = dialogueView(atFork, table);
-    expect(view.portraitSlot).toBe(WREN);
+    // The fork node's speaker is WREN but its portrait is the DISTINCT WREN_ANGRY,
+    // so this only passes if dialogueView honors node.portrait over node.speaker.
+    expect(view.speaker).toBe(WREN);
+    expect(view.portraitSlot).toBe(WREN_ANGRY);
   });
 
   it("exposes the branch choices and the branching flag at a fork node", () => {
