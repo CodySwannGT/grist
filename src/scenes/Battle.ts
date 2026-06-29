@@ -39,14 +39,9 @@ import {
   type Combatant,
 } from "../logic/combat";
 import { extractBattleResult } from "../logic/battle-result";
-import { applyBattleResult } from "../logic/run-state";
 import { eventsCenter } from "../services/events";
 import { InputService } from "../services/input";
-import {
-  getRunState,
-  setLastBattleResult,
-  setRunState,
-} from "../services/run-store";
+import { setLastBattleResult } from "../services/run-store";
 import { BattleController } from "../ui/battle-controller";
 import { BattleHud } from "../ui/battle-hud";
 import { unitCenter } from "../ui/layout";
@@ -194,14 +189,15 @@ export class Battle extends Phaser.Scene {
   }
 
   /**
-   * Once a field-launched battle resolves, consume its result exactly once and
-   * return to the Field: extract the win/lose + grist + shard + choice from the
-   * terminal state, fold it into the run-state and stash the result on the
-   * registry (so the Field reads it on resume), then hand control back to the
-   * Field scene. A no-op for a standalone boot (the existing battle tests stay on
-   * the resolved battle) and after the first resolution (the `#resolutionHandled`
-   * latch). Not called from `update()`'s allocation-sensitive body directly — this
-   * method may allocate; `update` only invokes it.
+   * Once a field-launched battle resolves, hand control back to the Field exactly
+   * once: extract the win/lose + grist + shard + choice from the terminal state and
+   * stash the **raw** {@link import("../logic/battle-result").BattleResult} on the
+   * registry, then start the Field. The Field's resume path is the *single owner*
+   * of folding that result into the run-state (`resumeFieldSession` →
+   * {@link applyBattleResult}); this scene deliberately does NOT fold it too, so a
+   * win's grist/shard is credited exactly once across the Battle→Field transition.
+   * A no-op for a standalone boot (the existing battle tests stay on the resolved
+   * battle) and after the first resolution (the `#resolutionHandled` latch).
    * @returns void
    */
   #maybeReturnToField(): void {
@@ -217,9 +213,8 @@ export class Battle extends Phaser.Scene {
     if (result === null) {
       return;
     }
-    const { registry } = this;
-    setLastBattleResult(registry, result);
-    setRunState(registry, applyBattleResult(getRunState(registry), result));
+    // Record the raw result only — the Field folds it into the run exactly once.
+    setLastBattleResult(this.registry, result);
     const resume: FieldResumeData = { resumed: true };
     this.scene.start(SceneKeys.Field, resume);
   }

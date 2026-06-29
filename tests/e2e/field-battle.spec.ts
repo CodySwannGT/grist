@@ -111,16 +111,19 @@ test.describe("GRIST — Field↔Battle wiring verification (UAT)", () => {
         actor: { side: "party", index: 0 },
         target: { side: "enemies", index: 0 },
       });
-      verify.advanceTurn();
+      // Read AP immediately after the cast — before any further turn advance — so
+      // per-turn AP regen can't mask the Spark's spend.
       const after = verify.state()?.party[0]?.ap ?? -1;
       return { before, after };
     });
-    expect(apDrop.after).toBeLessThan(apDrop.before);
+    // Spark costs 4 AP — the drop is exactly the Craft cost (no regen masking it).
+    expect(apDrop.after).toBe(apDrop.before - 4);
 
     const field = await winAndReturnToField(page);
     expect(field?.scene).toBe("Field");
-    // The scrapper loot credited the shared pool on return (AC2).
-    expect(field?.grist ?? 0).toBeGreaterThan(0);
+    // Exact single-consumption credit: starting grist 10 + Room A scrapper loot 6
+    // = 16. The exact value catches a double-fold of the consumed battle result.
+    expect(field?.grist).toBe(16);
     expect(errors).toEqual([]);
   });
 
@@ -131,8 +134,10 @@ test.describe("GRIST — Field↔Battle wiring verification (UAT)", () => {
     page.on("pageerror", error => errors.push(error.message));
 
     await bootFieldIntoBattle(page);
-    // Clear Room A, then walk to the Room B scrapper + Vesper (render-construct) fight.
+    // Clear Room A (exact: 10 + 6 = 16), then walk to the Room B scrapper + Vesper
+    // (render-construct) fight.
     const afterA = await winAndReturnToField(page);
+    expect(afterA?.grist).toBe(16);
     await traverseToNextBattle(page);
 
     // AC3's content: Room B launches the *two-enemy* encounter (the scrapper +
@@ -148,9 +153,10 @@ test.describe("GRIST — Field↔Battle wiring verification (UAT)", () => {
       "render-construct",
     ]);
 
-    // Play it to victory; control returns to the Field with the loot consumed.
+    // Play it to victory; control returns to the Field with the loot consumed
+    // exactly once: 16 + scrapper 6 + construct 10 = 32.
     const afterB = await winAndReturnToField(page);
-    expect(afterB?.grist ?? 0).toBeGreaterThan(afterA?.grist ?? 0);
+    expect(afterB?.grist).toBe(32);
     expect(errors).toEqual([]);
   });
 
@@ -163,22 +169,24 @@ test.describe("GRIST — Field↔Battle wiring verification (UAT)", () => {
     await bootFieldIntoBattle(page);
 
     // Room A → (walk) → Room B → (walk) → Room C: each fight is won, control
-    // returns to the Field, and the player traverses to the next encounter.
+    // returns to the Field, and the player traverses to the next encounter. The
+    // grist totals are exact (10 + 6 = 16, +16 = 32, +20 = 52) so a double-fold of
+    // any consumed result would fail the chain.
     const afterA = await winAndReturnToField(page);
-    expect(afterA?.grist ?? 0).toBeGreaterThan(0);
+    expect(afterA?.grist).toBe(16);
 
     await traverseToNextBattle(page);
     const afterB = await winAndReturnToField(page);
-    expect(afterB?.grist ?? 0).toBeGreaterThan(afterA?.grist ?? 0);
+    expect(afterB?.grist).toBe(32);
 
     await traverseToNextBattle(page);
     const afterC = await winAndReturnToField(page);
 
     // The Ashling dropped the Marrow shard and raised the free-vs-wield choice.
-    expect(afterC?.shards).toContain("marrow-bound");
+    expect(afterC?.shards).toEqual(["marrow-bound"]);
     expect(afterC?.pendingChoiceShard).toBe("marrow-bound");
-    // Its 20-grist loot landed on top of the prior rooms' gains.
-    expect(afterC?.grist ?? 0).toBeGreaterThanOrEqual(20);
+    // Its 20-grist loot landed exactly once on top of the prior rooms (32 + 20).
+    expect(afterC?.grist).toBe(52);
     expect(errors).toEqual([]);
   });
 });
