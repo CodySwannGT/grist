@@ -82,6 +82,12 @@ interface VerifyFieldState {
   readonly wren: VerifyFieldPosition;
   /** The lore text currently surfaced by the last examine, or null. */
   readonly lore: string | null;
+  /** The shared grist pool the run has accrued (consumed battle results). */
+  readonly grist: number;
+  /** The Bound shards acquired so far this run. */
+  readonly shards: readonly string[];
+  /** The shard whose free-vs-wield choice is pending, or null. */
+  readonly pendingChoiceShard: string | null;
 }
 
 /**
@@ -98,8 +104,18 @@ export interface FieldView {
   readonly phase: () => string;
   readonly wren: () => VerifyFieldPosition;
   readonly lore: () => string | null;
+  /** The shared grist pool the run has accrued from consumed battle results. */
+  readonly grist: () => number;
+  /** The Bound shards acquired so far this run. */
+  readonly shards: () => readonly string[];
+  /** The shard whose free-vs-wield choice is pending, or null. */
+  readonly pendingChoiceShard: () => string | null;
   /** Examine the nearest examinable prop now (the canonical "agent examined it"). */
   readonly examineNearest: () => void;
+  /** Engage the current room's encounter, launching its battle. */
+  readonly engage: () => void;
+  /** Traverse to the next room, firing its trigger and launching the next battle. */
+  readonly traverse: () => void;
 }
 
 /** The shape installed on `window.__VERIFY__`. */
@@ -113,8 +129,17 @@ interface VerifyApi {
   readonly act: (action: BattleAction) => void;
   readonly advanceTurn: () => void;
   readonly strike: () => void;
+  /**
+   * Deterministically play the launched battle to a terminal outcome and return
+   * the phase reached (`"won"` / `"lost"`). The Field↔Battle e2e driver.
+   */
+  readonly autoWin: (maxTurns?: number) => string;
   readonly field: () => VerifyFieldState | null;
   readonly examine: () => void;
+  /** Engage the current room's encounter, launching its battle. */
+  readonly engage: () => void;
+  /** Traverse to the next room, firing its trigger and launching the next battle. */
+  readonly traverse: () => void;
   /**
    * Persist a {@link CurrentSave} to IndexedDB via the real {@link SaveService}
    * and resolve once the write commits. The persistence-journey driver: the e2e
@@ -277,6 +302,9 @@ class VerifyController {
       phase: view.phase(),
       wren: view.wren(),
       lore: view.lore(),
+      grist: view.grist(),
+      shards: view.shards(),
+      pendingChoiceShard: view.pendingChoiceShard(),
     };
   }
 
@@ -288,6 +316,26 @@ class VerifyController {
    */
   examine(): void {
     this.#fieldView?.examineNearest();
+  }
+
+  /**
+   * Engage the current room's encounter via the active field view — fires its
+   * trigger and launches the battle (the "agent engaged the encounter"
+   * verification action). No-op outside the Field scene.
+   * @returns void
+   */
+  engage(): void {
+    this.#fieldView?.engage();
+  }
+
+  /**
+   * Traverse to the next room via the active field view — fires the next room's
+   * encounter trigger and launches its battle (the "agent walked to the next
+   * encounter" verification action). No-op outside the Field scene.
+   * @returns void
+   */
+  traverse(): void {
+    this.#fieldView?.traverse();
   }
 
   /**
@@ -362,6 +410,67 @@ class VerifyController {
       target: { side: BattleSides.enemies, index: targetIndex },
     });
   }
+
+  /**
+   * Deterministically play the launched battle to a terminal outcome — the
+   * "an agent fought the encounter to the end on the live canvas" driver the
+   * Field↔Battle e2e (#82) uses to prove a launched fight resolves and control
+   * returns to the Field. Each turn it advances to the next player decision, then
+   * has Wren cast the flux **Spark** (the slice's strongest single-target action —
+   * ×1.5 on the flux-weak construct/Ashling, building Pressure → Break) when she
+   * can afford the AP, else a free **Strike**, at the first standing enemy. Bounded
+   * by `maxTurns` so a stalemate can never hang the suite. No-op outside a battle.
+   * @param maxTurns - The hard cap on decision iterations (default 400).
+   * @returns The terminal phase reached (`"won"` / `"lost"`), or "" if not in battle.
+   */
+  autoWin(maxTurns = 400): string {
+    for (let turn = 0; turn < maxTurns; turn += 1) {
+      // Re-read the attached view each turn: a resolution may swap the scene
+      // (Battle → Field) mid-drive, after which there is nothing left to act on.
+      const view = this.#view;
+      if (!view) {
+        return "";
+      }
+      view.advanceTurn();
+      const phase = this.#driveAutoTurn(view);
+      if (phase !== null) {
+        return phase;
+      }
+    }
+    return this.#view?.state()?.phase ?? "";
+  }
+
+  /**
+   * Drive one {@link autoWin} turn against an attached battle view: cast Spark when
+   * Wren can afford it, else Strike, at the first standing enemy. Returns the
+   * terminal phase when the battle has ended (or there is nothing to act on), or
+   * null when the fight is still live and the caller should keep driving.
+   * @param view - The attached battle view to act on.
+   * @returns The terminal phase to stop on, or null to continue.
+   */
+  #driveAutoTurn(view: BattleView): string | null {
+    const sparkApCost = 4;
+    const state = view.state();
+    if (!state) {
+      return "";
+    }
+    if (state.phase === "won" || state.phase === "lost") {
+      return state.phase;
+    }
+    const targetIndex = state.enemies.findIndex(enemy => enemy.hp > 0);
+    if (targetIndex < 0) {
+      return state.phase;
+    }
+    const wrenAp = state.party[0]?.ap ?? 0;
+    const actor = { side: BattleSides.party, index: 0 } as const;
+    const target = { side: BattleSides.enemies, index: targetIndex } as const;
+    view.act(
+      wrenAp >= sparkApCost
+        ? { kind: "craft", id: "spark", actor, target }
+        : { kind: "strike", actor, target }
+    );
+    return null;
+  }
 }
 
 /** The shared verification controller (also read by gameplay code for seeding). */
@@ -410,8 +519,11 @@ export function installVerifyBridge(): void {
     act: (action: BattleAction) => verifyBridge.act(action),
     advanceTurn: () => verifyBridge.advanceTurn(),
     strike: () => verifyBridge.strike(),
+    autoWin: (maxTurns?: number) => verifyBridge.autoWin(maxTurns),
     field: () => verifyBridge.field(),
     examine: () => verifyBridge.examine(),
+    engage: () => verifyBridge.engage(),
+    traverse: () => verifyBridge.traverse(),
     // Drive the real shared SaveService so the e2e writes, reloads, and reads the
     // same IndexedDB store the game uses — proving the round-trip survives a page
     // reload (PRD #41 AC7 / AC5).

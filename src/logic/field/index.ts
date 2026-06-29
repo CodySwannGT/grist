@@ -23,6 +23,10 @@ export {
 export {
   startField,
   stepField,
+  beginDescent,
+  advanceAfterBattle,
+  traverseToNext,
+  pendingLaunch,
   encounterForRoom,
   loreForProp,
   canTraverse,
