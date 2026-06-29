@@ -25,6 +25,7 @@ import { saveService } from "../services/save-service";
 import { type HudModel } from "../ui/battle-controller";
 import { autoWinView, strikeView } from "./battle-driver";
 import { BenchCell, type BenchView, type VerifyBenchState } from "./bench-view";
+import { RunStateCell, type VerifyRunState } from "./run-state-cell";
 import { WorldStateCell } from "./world-state-cell";
 
 /** A read-only snapshot of one combatant for assertions. */
@@ -193,6 +194,17 @@ interface VerifyApi {
    * value once {@link VerifyApi.reckon} has fired.
    */
   readonly regionTone: () => string | null;
+  /**
+   * The bundled {@link VerifyRunState} snapshot — the resolved free-vs-wield
+   * choice, the moralLedger/karma, the learning progression (learned + in-progress),
+   * and the shared grist wallet — or null before a save has been adopted. Seeded by
+   * {@link VerifyApi.save} (the same payload it persists) and held by the
+   * {@link RunStateCell}, so the slice e2e (#89) can read the choice + karma +
+   * learning + economy scene-agnostically — without a live battle / field / bench
+   * scene — the way {@link VerifyApi.worldState} exposes the world-state flag
+   * (PRD #41 AC5 / FR3 / FR6 / FR7). See `uat/run-state-cell` for the rationale.
+   */
+  readonly runState: () => VerifyRunState | null;
 }
 
 declare global {
@@ -331,10 +343,8 @@ class VerifyController {
    * @returns The resolution snapshot or null.
    */
   resolution(): VerifyResolution | null {
-    return (
-      (this.#view ?? this.#fieldView ?? this.#bench.view())?.resolution() ??
-      null
-    );
+    const view = this.#view ?? this.#fieldView ?? this.#bench.view();
+    return view?.resolution() ?? null;
   }
 
   /**
@@ -490,6 +500,16 @@ export const verifyBridge = new VerifyController();
 const worldStateCell = new WorldStateCell();
 
 /**
+ * The bridge-held run-state cell (#88). A module singleton, like
+ * {@link verifyBridge} and {@link worldStateCell}: holds the resolved free-vs-wield
+ * choice, the moral ledger, the learning progression, and the shared grist wallet
+ * adopted from the persisted save, so the slice e2e can read them scene-agnostically.
+ * Kept off the controller (in its own cell) so the bridge stays under its line
+ * budget — it is a pure test seam, not gameplay state.
+ */
+const runStateCell = new RunStateCell();
+
+/**
  * The seed encoded in the `?seed=` query, or null when absent/invalid. Lets a
  * battle boot deterministically without a post-load restart.
  * @returns The parsed seed, or null.
@@ -557,6 +577,10 @@ export function installVerifyBridge(): void {
       // flip/read path (worldState/reckon/regionTone) and the persisted path stay
       // consistent: the flag the e2e saves is the flag the bridge then exposes.
       worldStateCell.adopt(save.worldState);
+      // Adopt the run-state sub-shapes (choice + moralLedger + learning + wallet)
+      // for the same reason: the choice/karma/learning the e2e saves are exactly
+      // the values runState() then surfaces.
+      runStateCell.adopt(save);
       try {
         await saveService.save(save);
         return true;
@@ -570,5 +594,6 @@ export function installVerifyBridge(): void {
     worldState: () => worldStateCell.read(),
     reckon: () => worldStateCell.reckon(),
     regionTone: () => worldStateCell.regionTone(),
+    runState: () => runStateCell.snapshot(),
   };
 }
