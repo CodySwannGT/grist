@@ -31,10 +31,29 @@ export type SceneFlag = boolean | string | number;
 export type NarrativeLedger = Readonly<Record<string, SceneFlag>>;
 
 /**
+ * One branch choice offered at a {@link DialogueNode}: a stable `id`, the player-
+ * facing `label`, and the `to` id of the scene the choice crosses to when taken.
+ * A node carries an array of these only where the script forks; a plain linear
+ * node omits `choices` entirely and uses `next`. Pure serializable data — no
+ * behavior, addressed by id so the graph round-trips through `JSON.stringify`.
+ */
+export interface DialogueChoice {
+  /** The stable choice id, unique within its node. */
+  readonly id: string;
+  /** The player-facing choice label the presenter renders. */
+  readonly label: string;
+  /** The id of the scene this choice crosses to (entered at its first node). */
+  readonly to: string;
+}
+
+/**
  * One line of dialogue inside a scene: its stable `id`, the `speaker` and `text`
  * to render, and the `id` of the node it advances to. `next` is absent on the
  * scene's terminal node — {@link advanceScene} then crosses to the scene's
- * `nextScene` (or ends the narrative when that is absent too). Referenced by id,
+ * `nextScene` (or ends the narrative when that is absent too). A node may instead
+ * (or also) carry `choices`: at such a fork node the presenter branches on a
+ * chosen {@link DialogueChoice} rather than walking `next`. `portrait` names the
+ * portrait-slot content id when it differs from the `speaker`. Referenced by id,
  * never by object identity, so the graph stays plain serializable data.
  */
 export interface DialogueNode {
@@ -46,6 +65,10 @@ export interface DialogueNode {
   readonly text: string;
   /** The id of the next node in this scene, or absent at the scene's last node. */
   readonly next?: string;
+  /** The branch choices offered at a fork node, or absent on a linear node. */
+  readonly choices?: readonly DialogueChoice[];
+  /** The portrait-slot content id, or absent to default to {@link speaker}. */
+  readonly portrait?: string;
 }
 
 /**

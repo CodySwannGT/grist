@@ -317,3 +317,95 @@ export const BenchTextStyles = {
     color: BenchColors.progressLabel,
   },
 } as const;
+
+/**
+ * Cross-cutting dialogue/cutscene event names emitted on the EventsCenter bus
+ * (never on `game.events`). The dialogue presenter ({@link import("./ui/dialogue")
+ * .DialoguePresenter}) subscribes to `Input` — a device-tagged semantic dialogue
+ * intent (advance / branch-choice / skip) the scene or a future input service
+ * publishes — and folds it through the pure presenter reducers
+ * (`logic/narrative/presenter`). Raw keys/pointers never leave the publisher; only
+ * these named intents do (the dialogue counterpart of {@link FieldEvents.Input}).
+ */
+export const DialogueEvents = {
+  Input: "dialogue-input",
+} as const;
+
+/**
+ * Render depth of the dialogue presenter chrome, above field/battle/bench chrome
+ * so a played cutscene overlays the scene beneath it.
+ */
+export const DIALOGUE_DEPTH = 200;
+
+/**
+ * Dialogue-presenter layout in logical (384×216) pixels: a bottom caption box with
+ * a left portrait slot, the speaker name above the caption, and a right-aligned
+ * vertical list of branch-choice buttons rendered at a fork. First-pass — the
+ * *shape* (a portrait + speaker + caption banner with optional stacked choices) is
+ * the contract, not the exact constants.
+ */
+export const DialogueLayout = {
+  /** The caption banner box (bottom of the screen). */
+  boxX: 8,
+  boxY: 158,
+  boxWidth: 368,
+  boxHeight: 50,
+  /** The square portrait slot inset into the box's left edge. */
+  portraitX: 14,
+  portraitY: 164,
+  portraitSize: 38,
+  /** The speaker-name label (above the caption, right of the portrait). */
+  speakerX: 60,
+  speakerY: 163,
+  /** The wrapped caption body (right of the portrait). */
+  captionX: 60,
+  captionY: 176,
+  captionWrapWidth: 308,
+  /** Branch-choice buttons: a right-aligned vertical list above the box. */
+  choiceRightX: 372,
+  choiceTopY: 96,
+  choiceWidth: 150,
+  choiceHeight: 16,
+  choiceGap: 4,
+  choicePadX: 6,
+} as const;
+
+/** Dialogue presenter chrome colors (programmatic art only — no assets). */
+export const DialogueColors = {
+  boxFill: 0x0d111a,
+  boxStroke: 0x39455c,
+  portraitFill: 0x222a39,
+  portraitStroke: 0xffd166,
+  speaker: "#ffd166",
+  caption: "#e8e8ea",
+  choiceFill: 0x222a39,
+  choiceStroke: 0x39455c,
+  choiceText: "#9be7c4",
+} as const;
+
+/**
+ * Dialogue-presenter text styles (monospace chrome). Kept here with the other
+ * typed Dialogue constants so the presenter stays a thin renderer and a color/size
+ * change is a single edit. The shapes match Phaser's text-style object.
+ */
+export const DialogueTextStyles = {
+  /** The speaker-name label above the caption. */
+  speaker: {
+    fontFamily: "monospace",
+    fontSize: "9px",
+    color: DialogueColors.speaker,
+  },
+  /** The wrapped caption body. */
+  caption: {
+    fontFamily: "monospace",
+    fontSize: "8px",
+    color: DialogueColors.caption,
+    wordWrap: { width: DialogueLayout.captionWrapWidth },
+  },
+  /** A branch-choice button label. */
+  choice: {
+    fontFamily: "monospace",
+    fontSize: "8px",
+    color: DialogueColors.choiceText,
+  },
+} as const;
