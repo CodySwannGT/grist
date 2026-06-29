@@ -196,7 +196,26 @@ export function advanceDialogue(
     return { ...state, done: true };
   }
   const narrative = advanceScene(state.narrative, table);
-  return { narrative, done: isSceneComplete(narrative, table) };
+  return { narrative, done: terminalAt(narrative, table) };
+}
+
+/**
+ * Whether a narrative cursor sits at a true end-of-narrative: a terminal node that
+ * is NOT a fork. A fork node (no `next`, no `nextScene`, but with `choices`) looks
+ * "scene-complete" to {@link isSceneComplete} yet is not done — it awaits a branch
+ * choice. This choice-aware check is what {@link advanceDialogue} flips `done` on,
+ * so advancing *into* a fork does not prematurely end the narrative.
+ * @param narrative - The narrative cursor to test.
+ * @param table - The scene table.
+ * @returns True when the cursor is at a non-fork terminal node.
+ */
+function terminalAt(narrative: NarrativeState, table: SceneTable): boolean {
+  const scene = table[narrative.sceneId];
+  const node = scene ? findNode(scene, narrative.nodeId) : undefined;
+  if (node && nodeChoices(node).length > 0) {
+    return false;
+  }
+  return isSceneComplete(narrative, table);
 }
 
 /**
@@ -232,7 +251,7 @@ function branchDialogue(
     ...opening,
     flags: state.narrative.flags,
   };
-  return { narrative, done: isSceneComplete(narrative, table) };
+  return { narrative, done: terminalAt(narrative, table) };
 }
 
 /**
@@ -257,36 +276,53 @@ export function presentDialogue(
     case "branch":
       return branchDialogue(state, input.choiceId, table);
     case "skip":
-      return state.done ? state : { ...state, done: true };
+      // Skip dismisses the dialogue entirely: clear the node cursor so the view
+      // renders blank (vs. reaching a final node naturally, which keeps the last
+      // line on screen). The scene/flag ledger is preserved for any save layer.
+      return state.done
+        ? state
+        : { narrative: { ...state.narrative, nodeId: "" }, done: true };
   }
 }
 
+/** A blank, done view-model — what a skipped/ended presenter renders. */
+const DONE_VIEW: DialogueView = {
+  speaker: "",
+  caption: "",
+  portraitSlot: "",
+  choices: [],
+  branching: false,
+  done: true,
+};
+
 /**
- * Derive the serializable {@link DialogueView} for the current presenter state, or
- * `null` when the cursor addresses no node (malformed). A `done` presenter renders
- * an empty caption and no choices; a fork node renders its choice labels and sets
- * `branching`; a linear node renders an empty choice list. The portrait slot
+ * Derive the serializable {@link DialogueView} for the current presenter state. A
+ * presenter that has been **skipped** (its cursor cleared) or otherwise addresses
+ * no node renders the blank {@link DONE_VIEW}. Otherwise the current node's speaker,
+ * full caption, and portrait slot are shown — including at a **naturally reached**
+ * final node, where the last line stays on screen and `done` is true (advancing is
+ * then a no-op). A fork node renders its choice labels, sets `branching`, and is
+ * never `done`; a linear node renders an empty choice list. The portrait slot
  * resolves to the node's explicit `portrait`, falling back to its `speaker`.
  * @param state - The presenter state.
  * @param table - The scene table.
- * @returns The view-model, or `null` for a malformed cursor.
+ * @returns The view-model (always non-null; blank-and-done when there is no node).
  */
 export function dialogueView(
   state: DialoguePresenterState,
   table: SceneTable
-): DialogueView | null {
+): DialogueView {
   const node = currentNode(state, table);
   if (!node) {
-    return null;
+    return DONE_VIEW;
   }
-  const ended = isDialogueDone(state, table);
-  const choices = ended ? [] : nodeChoices(node);
+  const choices = nodeChoices(node);
   return {
     speaker: node.speaker,
-    caption: ended ? "" : node.text,
+    caption: node.text,
     portraitSlot: node.portrait ?? node.speaker,
     choices: choices.map(choice => ({ id: choice.id, label: choice.label })),
     branching: choices.length > 0,
-    done: ended,
+    done: isDialogueDone(state, table),
   };
 }

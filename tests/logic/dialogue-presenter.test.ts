@@ -140,6 +140,22 @@ describe("advance — walk the dialogue chain, then cross scenes", () => {
     expect(isDialogueDone(next, table)).toBe(true);
   });
 
+  it("advancing INTO a fork node lands on the fork, not done (regression)", () => {
+    // Walking off a scene's terminal node into a next scene whose opening node is a
+    // fork must surface the fork (branching) — never prematurely flip done, even
+    // though a fork node looks scene-complete to isSceneComplete (no next/nextScene).
+    const table = script();
+    const atClose: DialoguePresenterState = {
+      narrative: { sceneId: PROLOGUE, nodeId: CLOSE, flags: {} },
+      done: false,
+    };
+    const atFork = presentDialogue(atClose, ADVANCE, table);
+    expect(atFork.narrative.sceneId).toBe(FORK);
+    expect(atFork.done).toBe(false);
+    const view = dialogueView(atFork, table);
+    expect(view.branching).toBe(true);
+  });
+
   it("advance on a branching node is a no-op (a choice must be made)", () => {
     const table = script();
     const atFork: DialoguePresenterState = {
@@ -213,18 +229,17 @@ describe("skip — jump straight to the end of the narrative", () => {
 describe("dialogueView — the serializable speaker/caption/portrait view-model", () => {
   it("renders the current node's speaker, full caption, and portrait slot", () => {
     const view = dialogueView(start(), script());
-    expect(view).not.toBeNull();
-    expect(view!.speaker).toBe(WREN);
-    expect(view!.caption).toBe("The Drip stirs.");
-    expect(view!.done).toBe(false);
-    expect(view!.branching).toBe(false);
-    expect(view!.choices).toEqual([]);
+    expect(view.speaker).toBe(WREN);
+    expect(view.caption).toBe("The Drip stirs.");
+    expect(view.done).toBe(false);
+    expect(view.branching).toBe(false);
+    expect(view.choices).toEqual([]);
   });
 
   it("falls back to the speaker id for the portrait slot when no portrait is set", () => {
     const view = dialogueView(start(), script());
     // The prologue's open node has no explicit portrait → slot resolves to speaker.
-    expect(view!.portraitSlot).toBe(WREN);
+    expect(view.portraitSlot).toBe(WREN);
   });
 
   it("surfaces the explicit portrait slot when the node sets one", () => {
@@ -234,7 +249,7 @@ describe("dialogueView — the serializable speaker/caption/portrait view-model"
       done: false,
     };
     const view = dialogueView(atFork, table);
-    expect(view!.portraitSlot).toBe(WREN);
+    expect(view.portraitSlot).toBe(WREN);
   });
 
   it("exposes the branch choices and the branching flag at a fork node", () => {
@@ -244,29 +259,46 @@ describe("dialogueView — the serializable speaker/caption/portrait view-model"
       done: false,
     };
     const view = dialogueView(atFork, table);
-    expect(view!.branching).toBe(true);
-    expect(view!.choices).toEqual([
+    expect(view.branching).toBe(true);
+    expect(view.choices).toEqual([
       { id: FREE_PATH, label: "Free it" },
       { id: WIELD_PATH, label: "Wield it" },
     ]);
   });
 
-  it("reports done with no caption once the narrative has ended", () => {
+  it("keeps the final line on screen when the narrative ends naturally", () => {
+    // Reaching the final node of the final scene (via advance/branch) is done, but
+    // the last line stays visible — done means "no further advance", not "blank".
+    const table = script();
+    const atEnd: DialoguePresenterState = {
+      narrative: { sceneId: ASHFALL, nodeId: OPEN, flags: {} },
+      done: false,
+    };
+    const view = dialogueView(atEnd, table);
+    expect(view.done).toBe(true);
+    expect(view.caption).toBe("Ashfall.");
+    expect(view.choices).toEqual([]);
+  });
+
+  it("renders blank once skipped (the dialogue is dismissed)", () => {
     const table = script();
     const skipped = presentDialogue(start(), SKIP, table);
     const view = dialogueView(skipped, table);
-    expect(view!.done).toBe(true);
-    expect(view!.caption).toBe("");
-    expect(view!.choices).toEqual([]);
+    expect(view.done).toBe(true);
+    expect(view.caption).toBe("");
+    expect(view.speaker).toBe("");
+    expect(view.choices).toEqual([]);
   });
 
-  it("is null for a cursor that addresses no node (totality)", () => {
+  it("renders blank-and-done for a cursor that addresses no node (totality)", () => {
     const table = script();
     const orphan: DialoguePresenterState = {
       narrative: { sceneId: "nope", nodeId: OPEN, flags: {} },
       done: false,
     };
-    expect(dialogueView(orphan, table)).toBeNull();
+    const view = dialogueView(orphan, table);
+    expect(view.caption).toBe("");
+    expect(view.done).toBe(true);
   });
 });
 

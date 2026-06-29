@@ -222,23 +222,22 @@ export class DialoguePresenter {
 
   /**
    * Re-render the chrome from the current {@link DialogueView}: update the speaker
-   * and caption text (guarded — repaints only on change), reveal/hide the portrait
-   * + box when done, and populate the choice buttons at a fork. Allocates nothing
+   * and caption text (guarded — repaints only on change), show the box/portrait
+   * while a caption is on screen (so the final line stays visible; only a skip /
+   * end blanks it), and populate the choice buttons at a fork. Allocates nothing
    * and is safe to call every frame.
    * @returns void
    */
   refresh(): void {
     const view = dialogueView(this.#state, this.#table);
-    const visible = view !== null && !view.done;
+    const visible = view.caption !== "";
     this.#box.setVisible(visible);
     this.#portrait.setVisible(visible);
     this.#speaker.object.setVisible(visible);
     this.#caption.object.setVisible(visible);
-    if (view) {
-      this.#speaker.set(view.speaker);
-      this.#caption.set(view.caption);
-    }
-    this.#renderChoices(view?.choices ?? []);
+    this.#speaker.set(view.speaker);
+    this.#caption.set(view.caption);
+    this.#renderChoices(view.choices);
   }
 
   /**
@@ -272,7 +271,7 @@ export class DialoguePresenter {
    * @returns True when done.
    */
   get done(): boolean {
-    return dialogueView(this.#state, this.#table)?.done ?? true;
+    return dialogueView(this.#state, this.#table).done;
   }
 
   /**
@@ -283,14 +282,13 @@ export class DialoguePresenter {
    */
   model(): DialogueModel {
     const view = dialogueView(this.#state, this.#table);
-    const speaker = view?.speaker ?? "";
     return {
-      speaker,
-      caption: view?.caption ?? "",
-      portraitSlot: view?.portraitSlot ?? speaker,
-      branching: view?.branching ?? false,
-      done: view?.done ?? true,
-      choices: (view?.choices ?? []).map((choice, index) => ({
+      speaker: view.speaker,
+      caption: view.caption,
+      portraitSlot: view.portraitSlot,
+      branching: view.branching,
+      done: view.done,
+      choices: view.choices.map((choice, index) => ({
         id: choice.id,
         label: choice.label,
         rect: dialogueChoiceRect(index),

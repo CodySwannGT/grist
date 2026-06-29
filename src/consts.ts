@@ -20,6 +20,7 @@ export const SceneKeys = {
   Battle: "Battle",
   Field: "Field",
   Bench: "Bench",
+  Dialogue: "Dialogue",
 } as const;
 
 /**
