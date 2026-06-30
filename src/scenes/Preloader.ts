@@ -100,10 +100,11 @@ export class Preloader extends Phaser.Scene {
 /**
  * Resolve which gameplay scene to start from the URL: the Field scene when the
  * page carries `?scene=field`, the Bench (growth) scene when it carries
- * `?scene=bench`, the Dialogue presenter scene when it carries `?scene=dialogue`
- * or `?scene=opening` (the Ch.1 opening — the Dialogue scene selects the Ch.1
- * script over the demo for `opening`; #105), case-insensitive, with the
- * `?start=<Scene>` alias, else the default Battle.
+ * `?scene=bench`, the Dialogue presenter scene when it carries `?scene=dialogue`,
+ * `?scene=opening` (the Ch.1 opening — the Dialogue scene selects the Ch.1 script
+ * over the demo for `opening`; #105), or `?scene=mill` (Wren's "What the mill took"
+ * side-story beat; #111), case-insensitive, with the `?start=<Scene>` alias, else
+ * the default Battle.
  * Reading the query here (not in `gameConfig`) keeps the scene registry static and
  * the default boot — every existing battle test — unchanged. The bench and dialogue
  * starts are verification entry points (growth slice #86; dialogue presenter #104),
@@ -127,7 +128,14 @@ function startScene(): string {
   if (requested === "bench") {
     return SceneKeys.Bench;
   }
-  if (requested === "dialogue" || requested === "opening") {
+  if (
+    requested === "dialogue" ||
+    requested === "opening" ||
+    requested === "mill"
+  ) {
+    // `mill` boots the Dialogue scene over Wren's "What the mill took" side-story
+    // beat (#111); the Dialogue scene selects the mill script for that selector, the
+    // same way `opening` selects the Ch.1 script.
     return SceneKeys.Dialogue;
   }
   if (requested === "region") {

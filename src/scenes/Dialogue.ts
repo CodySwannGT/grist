@@ -31,6 +31,8 @@ import {
   CH1_REVEAL_NODE_ID,
   CH1_SCRIPT,
   SABLE_REVEALED_FLAG,
+  SIDE_MILL_SCENE_ID,
+  SIDE_MILL_SCRIPT,
 } from "../content";
 import type { DialoguePresenterInput, SceneDef } from "../logic/narrative";
 import { DialogueInputService } from "../services/dialogue-input";
@@ -47,6 +49,15 @@ import { launchCh1Ambush } from "./field-launch";
 
 /** The `?scene=` value that mounts the Ch.1 opening over the demo script (#105). */
 const OPENING_SCENE_PARAM = "opening";
+
+/**
+ * The `?scene=` value that mounts Wren's "What the mill took" side-story beat (#111).
+ * A plain authored dialogue script (no Ch.1 reveal/ambush handoff), reachable for the
+ * verification e2e the same way `?scene=opening` selects the Ch.1 opening — so the
+ * discoverable beat and its render-or-not fork render on the live canvas while the
+ * existing `?scene=opening` / `?scene=dialogue` selectors stay green.
+ */
+const MILL_SCENE_PARAM = "mill";
 
 /** Fallback field seed for the Ch.1 ambush when no `?seed=`/bridge seed is set. */
 const CH1_AMBUSH_SEED = 0x9e3779b1;
@@ -122,6 +133,17 @@ export class Dialogue extends Phaser.Scene {
             ?.toLowerCase() ?? "");
     if (requested === OPENING_SCENE_PARAM) {
       return { table: CH1_SCRIPT, opening: CH1_OPENING_SCENE_ID, ch1: true };
+    }
+    if (requested === MILL_SCENE_PARAM) {
+      // The mill side-story beat (#111): a plain authored script with no Ch.1
+      // reveal/ambush handoff, so `ch1` is false (the after-step is a no-op). Its
+      // render-or-not fork's PERSISTED consequence rides the bridge's mill-beat cell
+      // (the `MoralLedger` the save layer writes), not this presenter's flags.
+      return {
+        table: SIDE_MILL_SCRIPT,
+        opening: SIDE_MILL_SCENE_ID,
+        ch1: false,
+      };
     }
     return {
       table: demoDialogueScript(),
