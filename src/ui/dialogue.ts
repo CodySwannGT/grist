@@ -34,10 +34,13 @@ import {
   dialogueView,
   initialDialoguePresenter,
   presentDialogue,
+  writeLedgerFlag,
   type DialogueChoiceView,
   type DialoguePresenterInput,
   type DialoguePresenterState,
+  type NarrativeLedger,
   type SceneDef,
+  type SceneFlag,
 } from "../logic/narrative";
 import { eventsCenter } from "../services/events";
 import { GuardedText } from "./hud-text";
@@ -72,6 +75,12 @@ export interface DialogueModel {
   readonly branching: boolean;
   readonly done: boolean;
   readonly choices: readonly DialogueChoiceModel[];
+  /**
+   * The live narrative-ledger flags (e.g. the Ch.1 `sable-revealed` flag the
+   * scene folds at the reveal node). Carried on the model so the verification
+   * bridge can assert "the hook landed" without a separate bridge surface (#105).
+   */
+  readonly flags: NarrativeLedger;
 }
 
 /**
@@ -315,6 +324,37 @@ export class DialoguePresenter {
   }
 
   /**
+   * The id of the dialogue node the presenter cursor currently addresses (the
+   * underlying narrative cursor). The owning scene reads this after a driven
+   * advance to detect when an authored beat — e.g. the Ch.1 reveal node — has been
+   * reached, so it can fold the matching ledger flag at the adapter level (reducers
+   * never auto-write flags). Empty once a skip has cleared the cursor.
+   * @returns The current node id.
+   */
+  get nodeId(): string {
+    return this.#state.narrative.nodeId;
+  }
+
+  /**
+   * Fold one named, serializable ledger flag into the presenter's narrative state
+   * via the pure {@link writeLedgerFlag} reducer. This is the **adapter-level** flag
+   * write the architecture reserves for the scene (the pure presenter/scene reducers
+   * never auto-write flags): the Ch.1 scene calls this when the cursor reaches the
+   * reveal node to record that the hook has landed. Mutates nothing — it swaps in a
+   * fresh state with the flag folded — and re-renders so the model reflects it.
+   * @param name - The flag name to write (e.g. the Ch.1 `sable-revealed` flag).
+   * @param value - The serializable flag value.
+   * @returns void
+   */
+  writeFlag(name: string, value: SceneFlag): void {
+    this.#state = {
+      ...this.#state,
+      narrative: writeLedgerFlag(this.#state.narrative, name, value),
+    };
+    this.refresh();
+  }
+
+  /**
    * Build the full dialogue view-model for the UAT bridge: the derived
    * {@link DialogueView} plus each active choice's on-screen hit-rect. Allocates —
    * called on demand under `?uat=1`, never from the per-frame render path.
@@ -333,6 +373,7 @@ export class DialoguePresenter {
         label: choice.label,
         rect: dialogueChoiceRect(index),
       })),
+      flags: this.#state.narrative.flags,
     };
   }
 

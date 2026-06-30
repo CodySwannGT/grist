@@ -11,8 +11,10 @@
  */
 import type Phaser from "phaser";
 import { SceneKeys, type BattleLaunchData } from "../consts";
+import { CH1_AMBUSH_ENCOUNTER } from "../content";
 import {
   FieldActionKinds,
+  FieldPhases,
   advanceAfterBattle,
   pendingLaunch,
   startField,
@@ -141,6 +143,48 @@ export function launchPendingBattle(
   setFieldState(registry, state);
   scene.scene.start(SceneKeys.Battle, launch);
   return true;
+}
+
+/**
+ * Build the synthetic field session the Ch.1 opening hands off to (#105 AC2): a
+ * normal Room-A descent session, forced into the `triggered` phase pending the
+ * Ch.1 tutorial ambush — so the existing #82 {@link launchPendingBattle} path can
+ * launch it byte-identically. This is an override at the **launch boundary only**:
+ * `MARROW_MAP` and the rigid Room-A→`warren-street` binding are untouched
+ * (`?scene=field` still launches warren-street in Room A), and the field sim is not
+ * forked — we start from {@link startField} (valid rooms + threaded RNG) and only
+ * set the two fields {@link pendingLaunch} reads. Pure (Phaser-free, no ambient
+ * read), so the same seed always yields the same session and it round-trips through
+ * `JSON.stringify`.
+ * @param seed - The 32-bit field seed (threaded from the opening boot).
+ * @returns A triggered session whose pending launch is the Ch.1 tutorial ambush.
+ */
+export function ch1AmbushSession(seed: number): FieldState {
+  return {
+    ...startField(seed),
+    phase: FieldPhases.triggered,
+    pendingEncounter: CH1_AMBUSH_ENCOUNTER,
+  };
+}
+
+/**
+ * Launch the Ch.1 tutorial ambush from the opening's end (#105 AC2): hand the
+ * synthetic {@link ch1AmbushSession} to the existing #82 launcher, which stashes it
+ * on the registry (so the post-battle resume restores it and credits the shared
+ * wallet via {@link applyBattleResult}) and starts the Battle scene. The ambush
+ * therefore begins immediately after the reveal, and a win flows back through the
+ * normal Field resume — no new combat or economy code, no field-sim fork.
+ * @param scene - The scene starting the Battle (the Dialogue scene at the handoff).
+ * @param registry - The scene registry (stashes the session for the resume).
+ * @param seed - The 32-bit field seed to run the ambush under.
+ * @returns True when the battle launch was started.
+ */
+export function launchCh1Ambush(
+  scene: Phaser.Scene,
+  registry: Phaser.Data.DataManager,
+  seed: number
+): boolean {
+  return launchPendingBattle(scene, registry, ch1AmbushSession(seed));
 }
 
 /**
