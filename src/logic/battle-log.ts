@@ -87,10 +87,17 @@ export function formatLogEvent(event: BattleEvent): string {
  * @returns The log lines to draw, oldest first, newest last.
  */
 export function battleLogLines(state: BattleState): readonly string[] {
-  // Format every event to its line, drop the non-action (empty) ones, then keep
-  // only the most-recent `maxLines` — oldest-first for top-down rendering. The log
-  // is itself bounded by the engine, so the walk stays cheap; `slice` caps what
-  // the HUD ever draws so the render never grows unboundedly.
-  const lines = state.log.map(formatLogEvent).filter(line => line !== "");
-  return lines.slice(Math.max(0, lines.length - BattleLogTuning.maxLines));
+  // Reverse-scan from the tail, formatting only until the visible budget is full,
+  // so the work is bounded by `maxLines` rather than the total log length. The
+  // collected lines come out newest-first; reverse once for oldest-first
+  // top-down rendering. `reduceRight` keeps the accumulation immutable (no array
+  // mutation), and short-circuits formatting once the cap is reached.
+  const newestFirst = state.log.reduceRight<readonly string[]>((acc, event) => {
+    if (acc.length >= BattleLogTuning.maxLines) {
+      return acc;
+    }
+    const line = formatLogEvent(event);
+    return line === "" ? acc : [...acc, line];
+  }, []);
+  return [...newestFirst].reverse();
 }

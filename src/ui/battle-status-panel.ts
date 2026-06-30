@@ -29,18 +29,21 @@ import { battleLogLines, BattleLogTuning } from "../logic/battle-log";
 export class BattleStatusPanel {
   readonly #scene: Phaser.Scene;
   readonly #objects: Phaser.GameObjects.GameObject[] = [];
+  readonly #pressureBg: Phaser.GameObjects.Rectangle;
   readonly #pressureFill: Phaser.GameObjects.Rectangle;
   readonly #telegraph: GuardedText;
   readonly #logLines: readonly GuardedText[];
 
   /**
    * Build the status widgets once: the Pressure meter (track + fill), the
-   * telegraph label, and the pooled battle-log line labels.
+   * telegraph label, and the pooled battle-log line labels. The track starts
+   * hidden — it is shown only alongside the fill when a living target renders, so
+   * it never lingers as an orphan bar between targets.
    * @param scene - The owning battle scene.
    */
   constructor(scene: Phaser.Scene) {
     this.#scene = scene;
-    this.#buildBar(HudColors.pressureBg, true);
+    this.#pressureBg = this.#buildBar(HudColors.pressureBg, false);
     this.#pressureFill = this.#buildBar(HudColors.pressureFill, false);
     this.#telegraph = this.#label(
       HudLayout.telegraphCenterX,
@@ -126,6 +129,8 @@ export class BattleStatusPanel {
    */
   #renderPressure(enemy: Combatant | undefined): void {
     if (!enemy || enemy.hp <= 0) {
+      // Hide the track with the fill so no orphan bar lingers between targets.
+      this.#pressureBg.setVisible(false);
       this.#pressureFill.setVisible(false);
       return;
     }
@@ -134,6 +139,7 @@ export class BattleStatusPanel {
     this.#pressureFill.fillColor = meter.broken
       ? HudColors.breakFill
       : HudColors.pressureFill;
+    this.#pressureBg.setVisible(true);
     this.#pressureFill.setVisible(true);
   }
 

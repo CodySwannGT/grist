@@ -6,6 +6,7 @@ import {
 } from "../../src/logic/combat/telegraph";
 import {
   ActionKinds,
+  AtbTuning,
   type BattleState,
   type Combatant,
   type Stats,
@@ -86,7 +87,7 @@ describe("enemy telegraph", () => {
   });
 
   it("exposes the imminence ratio so the HUD can fill a telegraph meter", () => {
-    const state = withEnemies([foe("a", 30, 100)]);
+    const state = withEnemies([foe("a", 30, AtbTuning.ready)]);
     expect(enemyTelegraph(state)?.charge).toBe(1);
   });
 

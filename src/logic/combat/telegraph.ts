@@ -14,13 +14,9 @@
  * ratio the HUD fills as a telegraph meter.
  * @module logic/combat/telegraph
  */
+import { enemyIntentKind } from "./ai";
 import { AtbTuning } from "./engine";
-import {
-  ActionKinds,
-  type ActionKind,
-  type BattleState,
-  type Combatant,
-} from "./types";
+import { type ActionKind, type BattleState, type Combatant } from "./types";
 
 /** Telegraph tuning. `warnAtb` is the gauge value at which the intent surfaces. */
 export const TelegraphTuning = {
@@ -86,7 +82,9 @@ export function enemyTelegraph(state: BattleState): EnemyTelegraph | null {
   }
   return {
     index: next.index,
-    kind: ActionKinds.strike,
+    // The intent is read from the shared AI source of truth, so the warning the
+    // player sees and the turn the enemy actually takes can never disagree.
+    kind: enemyIntentKind(state),
     charge: Math.min(next.combatant.atb / AtbTuning.ready, 1),
   };
 }
