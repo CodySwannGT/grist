@@ -31,7 +31,7 @@ const MARROW = "marrow-bound";
 interface SaveDataV2 {
   // The literal `2` so this structural shape is assignable to the versioned
   // `CurrentSave` the `__VERIFY__.save` bridge expects.
-  readonly version: 2;
+  readonly version: 3;
   readonly party: readonly {
     readonly id: string;
     readonly level: number;
@@ -57,6 +57,15 @@ interface SaveDataV2 {
   };
   readonly rng: { readonly seed: number; readonly state: number };
   readonly worldState: "reach" | "ashfall";
+  readonly build: {
+    readonly statBonuses: Readonly<Record<string, number>>;
+    readonly equippedShards: readonly string[];
+  };
+  readonly scene: {
+    readonly sceneId: string;
+    readonly nodeId: string;
+    readonly flags: Readonly<Record<string, boolean | string | number>>;
+  } | null;
 }
 
 /**
@@ -67,7 +76,7 @@ interface SaveDataV2 {
  */
 function wieldSave(): SaveDataV2 {
   return {
-    version: 2,
+    version: 3,
     party: [{ id: "wren", level: 4, shard: MARROW, shardMode: "wield" }],
     grist: 7,
     inventory: [{ id: "salve", qty: 3 }],
@@ -77,6 +86,8 @@ function wieldSave(): SaveDataV2 {
     moralLedger: { karma: -1, freeChoices: 0, wieldChoices: 1 },
     rng: { seed: 12345, state: 987654321 },
     worldState: "reach",
+    build: { statBonuses: {}, equippedShards: [] },
+    scene: null,
   };
 }
 

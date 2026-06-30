@@ -69,7 +69,7 @@ async function bootWithBridge(page: Page): Promise<void> {
  * the spec needs no app import (mirrors `region-template.spec.ts`).
  */
 interface SaveDataV2 {
-  readonly version: 2;
+  readonly version: 3;
   readonly party: readonly { readonly id: string; readonly level: number }[];
   readonly grist: number;
   readonly inventory: readonly { readonly id: string; readonly qty: number }[];
@@ -86,6 +86,15 @@ interface SaveDataV2 {
   };
   readonly rng: { readonly seed: number; readonly state: number };
   readonly worldState: "reach" | "ashfall";
+  readonly build: {
+    readonly statBonuses: Readonly<Record<string, number>>;
+    readonly equippedShards: readonly string[];
+  };
+  readonly scene: {
+    readonly sceneId: string;
+    readonly nodeId: string;
+    readonly flags: Readonly<Record<string, boolean | string | number>>;
+  } | null;
 }
 
 /**
@@ -96,7 +105,7 @@ interface SaveDataV2 {
  */
 function reachSave(): SaveDataV2 {
   return {
-    version: 2,
+    version: 3,
     party: [{ id: "wren", level: 1 }],
     grist: 0,
     inventory: [],
@@ -106,6 +115,8 @@ function reachSave(): SaveDataV2 {
     moralLedger: { karma: 0, freeChoices: 0, wieldChoices: 0 },
     rng: { seed: 4242, state: 4242 },
     worldState: "reach",
+    build: { statBonuses: {}, equippedShards: [] },
+    scene: null,
   };
 }
 

@@ -229,7 +229,7 @@ describe("the ledger flag is serializable / consumable by SaveService (AC)", () 
       wieldChoices: freed ? 0 : 1,
     };
     const text = serialize({
-      version: 2,
+      version: 3,
       party: [],
       grist: 0,
       inventory: [],
@@ -239,6 +239,8 @@ describe("the ledger flag is serializable / consumable by SaveService (AC)", () 
       moralLedger: ledger,
       rng: { seed: 0, state: 0 },
       worldState: "reach",
+      build: { statBonuses: {}, equippedShards: [] },
+      scene: null,
     });
     expect(JSON.parse(text).moralLedger).toEqual({
       karma: 1,

@@ -23,11 +23,11 @@ const MARROW = "marrow-bound";
  * A representative resolved-wield slice payload: a spent wallet, an in-progress
  * spell, learned spells, a resolved wield choice, and the matching moral ledger.
  * Mirrors the shape `__VERIFY__.save` carries (and the save-reload e2e seeds).
- * @returns A complete v2 save in a resolved-wield mid-run state.
+ * @returns A complete v3 save in a resolved-wield mid-run state.
  */
 function wieldSave(): CurrentSave {
   return {
-    version: 2,
+    version: 3,
     party: [{ id: "wren", level: 4, shard: MARROW, shardMode: "wield" }],
     grist: 7,
     inventory: [{ id: "salve", qty: 3 }],
@@ -37,6 +37,8 @@ function wieldSave(): CurrentSave {
     moralLedger: { karma: -1, freeChoices: 0, wieldChoices: 1 },
     rng: { seed: 12345, state: 987654321 },
     worldState: "reach",
+    build: { statBonuses: { spd: 2 }, equippedShards: [MARROW] },
+    scene: null,
   };
 }
 

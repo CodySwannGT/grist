@@ -120,6 +120,25 @@ const migrateV1ToV2: MigrationStep = payload => ({
 });
 
 /**
+ * Lift a v2 save to v3. v3 introduces the persisted character build and scene
+ * progress (#116); v2 predates both. Every existing field is carried verbatim
+ * (spread, not re-derived, so the rng lineage and every other axis survive
+ * unchanged) and the two new axes forward-fill to their "nothing yet" baseline —
+ * an empty build (no bench stat augments, no equipped shards) and a `null` scene
+ * (no narrative scene entered) — so a v2 player keeps every byte of their run and
+ * gains the new structure resolved-to-empty rather than fabricated. Re-stamps
+ * `version` to 3.
+ * @param payload - The loose v2 record.
+ * @returns A v3-shaped payload (validated by the caller before it is handed back).
+ */
+const migrateV2ToV3: MigrationStep = payload => ({
+  ...payload,
+  version: 3,
+  build: { statBonuses: {}, equippedShards: [] },
+  scene: null,
+});
+
+/**
  * The migration registry, keyed by the *source* version each step upgrades from.
  * `MIGRATIONS[n]` lifts a v`n` payload to v`n+1`. Add the next step here (and
  * bump {@link SAVE_VERSION}) when the shape changes; {@link runChain} picks it up
@@ -128,6 +147,7 @@ const migrateV1ToV2: MigrationStep = payload => ({
 const MIGRATIONS: Readonly<Record<number, MigrationStep>> = {
   0: migrateV0ToV1,
   1: migrateV1ToV2,
+  2: migrateV2ToV3,
 };
 
 /**
