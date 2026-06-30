@@ -141,5 +141,8 @@ function startScene(): string {
   if (requested === "region") {
     return SceneKeys.Region;
   }
+  if (requested === "menu") {
+    return SceneKeys.Menu;
+  }
   return SceneKeys.Battle;
 }

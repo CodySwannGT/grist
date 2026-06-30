@@ -15,6 +15,7 @@ import { Field } from "../scenes/Field";
 import { Bench } from "../scenes/Bench";
 import { Dialogue } from "../scenes/Dialogue";
 import { Region } from "../scenes/Region";
+import { Menu } from "../scenes/Menu";
 
 /** The configuration passed to `new Phaser.Game()`. */
 export const gameConfig: Phaser.Types.Core.GameConfig = {
@@ -36,6 +37,7 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   // existing battle test is unchanged. Field↔Battle wiring is a follow-up (#72); the
   // Bench is reached from the growth flow (#86); the Dialogue scene is the
   // dialogue-presenter verification entry (#104); the Region scene is the per-region
-  // boot + asset-pipeline verification entry (#137).
-  scene: [Boot, Preloader, Battle, Field, Bench, Dialogue, Region],
+  // boot + asset-pipeline verification entry (#137); the Menu is the pause/main menu
+  // reached via `?scene=menu` (#113), whose Builds entry reuses the Bench growth screen.
+  scene: [Boot, Preloader, Battle, Field, Bench, Dialogue, Region, Menu],
 };
