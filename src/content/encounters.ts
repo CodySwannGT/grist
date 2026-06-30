@@ -34,6 +34,7 @@ export const EncounterIds = {
   drownedKingdom: "drowned-kingdom",
   requiemHall: "requiem-hall",
   deepAudit: "deep-audit",
+  halcyonChase: "halcyon-chase",
 } as const;
 
 /** An encounter id (the literal-union of every defined encounter key). */
@@ -92,6 +93,20 @@ export const ENCOUNTERS: {
     enemies: [EnemyIds.requiemWraith, EnemyIds.deepAuditor],
     backdrop: Backdrops.marrow,
   },
+  // ── The Halcyon chase — the Ch.2 climax boss (#109, Story #96) ──────────────
+  // A solo-boss encounter against the Halcyon frame-knight (the boss form,
+  // distinct from the out-of-scope `halcyon` playable defector). Reuses the
+  // shared `marrow` backdrop placeholder (per-region art is out of scope). The
+  // lone boss block (difficulty 364) tops the escalation ladder as the strictly
+  // hardest fight of the run — the end-of-Ch.2 climax. NO sim changes: the fight
+  // plays on the reused Phase-2 ATB core (Pressure→Break→Severance), and the
+  // shared grist pool funds the costed Bind that presses the Break — the live
+  // "spend grist to win faster?" tension.
+  "halcyon-chase": {
+    id: EncounterIds.halcyonChase,
+    enemies: [EnemyIds.halcyonKnight],
+    backdrop: Backdrops.marrow,
+  },
 };
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -134,8 +149,9 @@ export function encounterDifficulty(def: EncounterDef): number {
  * the existing {@link ENCOUNTERS} — every entry plays on the reused Phase-2 sim,
  * so the ladder adds escalation without touching combat math. The ascent reads,
  * by score: tutorial-ambush (33) → warren-street (54) → drowned-kingdom (71) →
- * the-drip (154) → requiem-hall (167) → deep-audit (232) → the-cage (280). The
- * strict-increase invariant is asserted in the test suite via
+ * the-drip (154) → requiem-hall (167) → deep-audit (232) → the-cage (280) →
+ * halcyon-chase (364), the Ch.2 climax boss appended as the strictly hardest
+ * fight (#109). The strict-increase invariant is asserted in the test suite via
  * {@link isStrictlyEscalating}.
  */
 export const ESCALATION_LADDER: readonly EncounterId[] = [
@@ -146,6 +162,7 @@ export const ESCALATION_LADDER: readonly EncounterId[] = [
   EncounterIds.requiemHall,
   EncounterIds.deepAudit,
   EncounterIds.theCage,
+  EncounterIds.halcyonChase,
 ];
 
 /**
