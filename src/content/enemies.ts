@@ -79,10 +79,23 @@ export const EnemyIds = {
   drownedHusk: "drowned-husk",
   requiemWraith: "requiem-wraith",
   deepAuditor: "deep-auditor",
+  halcyonKnight: "halcyon-knight",
 } as const;
 
 /** An enemy id (the literal-union of every defined enemy key). */
 export type EnemyId = (typeof EnemyIds)[keyof typeof EnemyIds];
+
+/**
+ * The enemy AI behavior-profile ids the sim dispatches on. Authored as a const
+ * map (the project's no-magic-strings idiom) so each profile id is written once
+ * and shared across enemies — notably `breakBoss`, the Break-gated boss profile
+ * (Pressure→Break→Severance) reused by every slice/region boss.
+ */
+const EnemyAi = {
+  tempo: "tempo",
+  renderPressure: "render-pressure",
+  breakBoss: "break-boss",
+} as const;
 
 /**
  * The slice enemy roster. The mapped type binds each entry's `id` to its table
@@ -96,7 +109,7 @@ export const ENEMIES: {
     name: "Marrow scrapper",
     stats: { hp: 40, ap: 0, pow: 8, foc: 0, def: 4, wrd: 2, spd: 8, lck: 2 },
     elements: {},
-    ai: "tempo",
+    ai: EnemyAi.tempo,
     lootGrist: 6,
   },
   "render-construct": {
@@ -104,7 +117,7 @@ export const ENEMIES: {
     name: 'Render-construct "Vesper"',
     stats: { hp: 70, ap: 6, pow: 6, foc: 10, def: 8, wrd: 6, spd: 7, lck: 4 },
     elements: { flux: 1.5 },
-    ai: "render-pressure",
+    ai: EnemyAi.renderPressure,
     lootGrist: 10,
     teaches: [Statuses.rendering],
   },
@@ -122,7 +135,7 @@ export const ENEMIES: {
       lck: 8,
     },
     elements: { flux: 1.5 },
-    ai: "break-boss",
+    ai: EnemyAi.breakBoss,
     lootGrist: 20,
     element: Elements.ash,
     breakGatedPhase1: true,
@@ -138,7 +151,7 @@ export const ENEMIES: {
     // autoWin driver clears it under a fixed seed. First-pass non-HP stats.
     stats: { hp: 24, ap: 0, pow: 6, foc: 0, def: 2, wrd: 1, spd: 7, lck: 2 },
     elements: {},
-    ai: "tempo",
+    ai: EnemyAi.tempo,
     lootGrist: 4,
   },
   // ── The Roots / the Deep roster (#143) ────────────────────────────────────
@@ -150,7 +163,7 @@ export const ENEMIES: {
     name: "Drowned husk",
     stats: { hp: 52, ap: 0, pow: 9, foc: 2, def: 5, wrd: 3, spd: 5, lck: 2 },
     elements: { flux: 1.5 },
-    ai: "tempo",
+    ai: EnemyAi.tempo,
     lootGrist: 8,
   },
   "requiem-wraith": {
@@ -158,7 +171,7 @@ export const ENEMIES: {
     name: "Requiem wraith",
     stats: { hp: 64, ap: 6, pow: 7, foc: 11, def: 6, wrd: 8, spd: 9, lck: 4 },
     elements: { flux: 0.5 },
-    ai: "render-pressure",
+    ai: EnemyAi.renderPressure,
     lootGrist: 11,
   },
   "deep-auditor": {
@@ -175,8 +188,39 @@ export const ENEMIES: {
       lck: 6,
     },
     elements: { gloom: 0.5 },
-    ai: "break-boss",
+    ai: EnemyAi.breakBoss,
     lootGrist: 16,
+  },
+  // ── The Halcyon frame-knight — the Ch.2 chase boss (#109, Story #96 / PD-3.5,
+  // PRD #42 FR3 + AC5) ───────────────────────────────────────────────────────
+  // The enemy frame-knight Halcyon pilots at the climax of the Ch.2 chase — the
+  // boss form, DISTINCT from the out-of-scope `halcyon` playable defector
+  // (`content/party`). Authored as DATA reusing the shipped Phase-2 boss core:
+  // the `break-boss` AI profile + `breakGatedPhase1` gate the phase-1 damage
+  // window behind a Break (Pressure→Break→Severance), and the shared grist pool
+  // funds the costed Bind that presses the Break faster — the live "spend grist
+  // to win faster?" tension. NO sim changes: only a new stat block. The climax
+  // of the run, so its lone block out-survives the slice Ashling boss (HP220) to
+  // top the escalation ladder. First-pass non-HP stats (tuning deferred,
+  // decision 0003).
+  "halcyon-knight": {
+    id: EnemyIds.halcyonKnight,
+    name: "Halcyon, the frame-knight",
+    stats: {
+      hp: 300,
+      ap: 24,
+      pow: 18,
+      foc: 16,
+      def: 16,
+      wrd: 14,
+      spd: 12,
+      lck: 8,
+    },
+    elements: { flux: 1.5 },
+    ai: EnemyAi.breakBoss,
+    lootGrist: 24,
+    element: Elements.ash,
+    breakGatedPhase1: true,
   },
 };
 
