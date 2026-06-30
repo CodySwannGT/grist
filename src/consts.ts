@@ -22,6 +22,7 @@ export const SceneKeys = {
   Bench: "Bench",
   Dialogue: "Dialogue",
   Region: "Region",
+  Menu: "Menu",
 } as const;
 
 /**
