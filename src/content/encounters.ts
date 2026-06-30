@@ -25,11 +25,12 @@ export interface EncounterDef {
   readonly backdrop: BackdropId;
 }
 
-/** Canonical encounter ids (the slice's three rooms). */
+/** Canonical encounter ids (the slice's three rooms + the Ch.1 tutorial ambush). */
 export const EncounterIds = {
   warrenStreet: "warren-street",
   theDrip: "the-drip",
   theCage: "the-cage",
+  tutorialAmbush: "tutorial-ambush",
 } as const;
 
 /** An encounter id (the literal-union of every defined encounter key). */
@@ -57,6 +58,14 @@ export const ENCOUNTERS: {
   "the-cage": {
     id: EncounterIds.theCage,
     enemies: [EnemyIds.theAshling],
+    backdrop: Backdrops.marrow,
+  },
+  // The Ch.1 "drop goes wrong" ambush (#105 AC2/AC3): a single weak House-Mourne
+  // enforcer — the first tutorialized ATB fight, launched immediately after the
+  // Sable reveal. One weak enemy keeps the deterministic autoWin win reliable.
+  "tutorial-ambush": {
+    id: EncounterIds.tutorialAmbush,
+    enemies: [EnemyIds.houseEnforcer],
     backdrop: Backdrops.marrow,
   },
 };
