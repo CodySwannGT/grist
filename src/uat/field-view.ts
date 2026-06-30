@@ -58,6 +58,15 @@ export interface FieldView {
   readonly engage: () => void;
   /** Traverse to the next room, firing its trigger and launching the next battle. */
   readonly traverse: () => void;
+  /**
+   * Transition to the growth (Bench) screen WITHIN the same page session so the
+   * shared run-state wallet carried from a battle is spent on the live canvas — the
+   * Ch.1 opening's earn→spend draw-down (#105 AC3). A verification-only action (like
+   * {@link engage} / {@link traverse}): the bridge starts the Bench scene, which
+   * reads the same registry run-state, so the spend draws down the SAME shared pool
+   * (not a battle-local copy), provable as a before/after delta without a page reload.
+   */
+  readonly growAtBench: () => void;
 }
 
 /**

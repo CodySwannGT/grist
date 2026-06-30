@@ -15,6 +15,7 @@ import { Field } from "../scenes/Field";
 import { Bench } from "../scenes/Bench";
 import { Dialogue } from "../scenes/Dialogue";
 import { Region } from "../scenes/Region";
+import { Opening } from "../scenes/Opening";
 
 /** The configuration passed to `new Phaser.Game()`. */
 export const gameConfig: Phaser.Types.Core.GameConfig = {
@@ -30,12 +31,13 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     autoCenter: Phaser.Scale.NO_CENTER,
     zoom: Phaser.Scale.MAX_ZOOM,
   },
-  // Field, Bench, Dialogue, and Region are registered alongside Battle but only
-  // *started* by the Preloader on demand (`?scene=field` / `?scene=bench` /
-  // `?scene=dialogue` / `?scene=region`); the default boot lands on Battle, so every
-  // existing battle test is unchanged. Field↔Battle wiring is a follow-up (#72); the
-  // Bench is reached from the growth flow (#86); the Dialogue scene is the
-  // dialogue-presenter verification entry (#104); the Region scene is the per-region
-  // boot + asset-pipeline verification entry (#137).
-  scene: [Boot, Preloader, Battle, Field, Bench, Dialogue, Region],
+  // Field, Bench, Dialogue, Region, and Opening are registered alongside Battle but
+  // only *started* by the Preloader on demand (`?scene=field` / `?scene=bench` /
+  // `?scene=dialogue` / `?scene=region` / `?scene=opening`); the default boot lands on
+  // Battle, so every existing battle test is unchanged. Field↔Battle wiring is a
+  // follow-up (#72); the Bench is reached from the growth flow (#86); the Dialogue
+  // scene is the dialogue-presenter verification entry (#104); the Region scene is the
+  // per-region boot + asset-pipeline verification entry (#137); the Opening scene is
+  // the Ch.1 cold-start entry (#105).
+  scene: [Boot, Preloader, Battle, Field, Bench, Dialogue, Region, Opening],
 };

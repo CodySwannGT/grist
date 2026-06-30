@@ -46,3 +46,10 @@ export {
   isDialogueDone,
   presentDialogue,
 } from "./presenter";
+export type { OpeningFlowState } from "./opening";
+export {
+  buildOpeningAmbushLaunch,
+  foldRevealFlag,
+  isAtRevealNode,
+  newOpeningFlow,
+} from "./opening";

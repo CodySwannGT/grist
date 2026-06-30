@@ -36,6 +36,12 @@ import {
   type VerifyFieldState,
 } from "./field-view";
 import {
+  OpeningCell,
+  openingApi,
+  type OpeningApi,
+  type OpeningView,
+} from "./opening-view";
+import {
   RegionSceneCell,
   type RegionView,
   type VerifyRegionSceneState,
@@ -92,7 +98,7 @@ export interface BattleView {
 export type { FieldView };
 
 /** The shape installed on `window.__VERIFY__`. */
-interface VerifyApi extends DialogueApi, DataCellApi {
+interface VerifyApi extends DialogueApi, DataCellApi, OpeningApi {
   readonly scene: () => string;
   readonly state: () => VerifyBattleState | null;
   readonly resolution: () => VerifyResolution | null;
@@ -119,6 +125,14 @@ interface VerifyApi extends DialogueApi, DataCellApi {
   readonly engage: () => void;
   /** Traverse to the next room, firing its trigger and launching the next battle. */
   readonly traverse: () => void;
+  /**
+   * Transition the active Field to the growth (Bench) screen within the same page
+   * (#105 AC3): the post-ambush Field carries the shared run-state wallet, and the
+   * Bench spends from that same registry wallet — so the opening e2e proves the
+   * shared HUD grist pool draws down by exactly the spend without a page reload. A
+   * no-op outside the Field scene.
+   */
+  readonly growAtBench: () => void;
   /**
    * A snapshot of the growth/bench screen (grist, shard, learning, build), or
    * null outside the Bench scene. Lets the bench e2e (#86) assert the equip /
@@ -213,6 +227,8 @@ class VerifyController {
   readonly region = new RegionSceneCell();
   readonly #bench = new BenchCell();
   readonly dialogue = new DialogueCell();
+  /** The composed Ch.1 opening seam (#105), public like {@link dialogue}. */
+  readonly opening = new OpeningCell();
   #pendingSeed: number | null = null;
 
   /**
@@ -229,7 +245,14 @@ class VerifyController {
    */
   attach(
     sceneKey: string,
-    view: BattleView | FieldView | BenchView | DialogueView | RegionView | null
+    view:
+      | BattleView
+      | FieldView
+      | BenchView
+      | DialogueView
+      | RegionView
+      | OpeningView
+      | null
   ): void {
     this.#sceneKey = sceneKey;
     this.#view = null;
@@ -237,10 +260,16 @@ class VerifyController {
     this.region.attach(null);
     this.#bench.attach(null);
     this.dialogue.attach(null);
+    this.opening.attach(null);
     if (view === null) {
       return;
     }
-    if (isFieldView(view)) {
+    if (OpeningCell.claims(view)) {
+      // Discriminate the opening view first: it carries a `dialogue()` (like the
+      // Dialogue view) but is uniquely identified by `openingFlow`, so the opening
+      // check must precede the dialogue check.
+      this.opening.attach(view);
+    } else if (isFieldView(view)) {
       this.#fieldView = view;
     } else if (RegionSceneCell.claims(view)) {
       this.region.attach(view);
@@ -293,7 +322,8 @@ class VerifyController {
       this.#fieldView ??
       this.region.view() ??
       this.#bench.view() ??
-      this.dialogue.view();
+      this.dialogue.view() ??
+      this.opening.view();
     return view?.resolution() ?? null;
   }
 
@@ -338,6 +368,16 @@ class VerifyController {
    */
   traverse(): void {
     this.#fieldView?.traverse();
+  }
+
+  /**
+   * Transition the active Field to the growth (Bench) screen in the same page
+   * session via the field view (#105 AC3) — the opening's earn→spend draw-down path.
+   * No-op outside the Field scene.
+   * @returns void
+   */
+  growAtBench(): void {
+    this.#fieldView?.growAtBench();
   }
 
   /**
@@ -495,11 +535,15 @@ export function installVerifyBridge(): void {
     examine: () => verifyBridge.examine(),
     engage: () => verifyBridge.engage(),
     traverse: () => verifyBridge.traverse(),
+    growAtBench: () => verifyBridge.growAtBench(),
     bench: () => verifyBridge.bench().snapshot(verifyBridge.scene()),
     equipShard: () => verifyBridge.bench().view()?.equipShard(),
     buyRunnersReflex: () => verifyBridge.bench().view()?.buyRunnersReflex(),
     accelerateCinder: () => verifyBridge.bench().view()?.accelerateCinder(),
     ...dialogueApi(verifyBridge.dialogue, () => verifyBridge.scene()),
+    // The Ch.1 opening snapshot + drive entries (#105) — composed from the
+    // bridge-held opening cell, the `dialogueApi` way; null outside the Opening scene.
+    ...openingApi(verifyBridge.opening, () => verifyBridge.scene()),
     // The save / world-state / region-data / enemy-family entries — composed
     // from the bridge-held data cells, the `dialogueApi` way; null outside the
     // scene/state each reads (PRD #41 AC5/AC7).

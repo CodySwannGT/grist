@@ -20,6 +20,7 @@ import {
   traverseToNext,
   type FieldState,
 } from "../logic/field";
+import { buildOpeningAmbushLaunch } from "../logic/narrative";
 import { applyBattleResult, type RunState } from "../logic/run-state";
 import {
   getFieldState,
@@ -141,6 +142,37 @@ export function launchPendingBattle(
   setFieldState(registry, state);
   scene.scene.start(SceneKeys.Battle, launch);
   return true;
+}
+
+/**
+ * Hand off the Ch.1 opening to the tutorial ambush (#105 AC2) via the EXISTING
+ * Field↔Battle launcher path — no new launch mechanism, no forked sim. When the
+ * cold-start opening narrative ends, this starts a fresh field session (so the
+ * post-ambush return restores a real session and folds the loot exactly once, the
+ * single-owner rule {@link resumeFieldSession} enforces), stashes it on the
+ * registry, and starts the Battle scene with the deterministic
+ * {@link buildOpeningAmbushLaunch ambush launch} (the tutorial-ambush encounter +
+ * a battle seed derived from the opening seed). The launched battle is marked
+ * field-launched, so on victory it returns to the Field with the ambush grist
+ * credited to the SHARED run-state wallet — the earn half of AC3.
+ * @param scene - The Opening scene (used only to start the Battle scene).
+ * @param registry - The scene registry.
+ * @param run - The current run progression (carried into the stashed session's run).
+ * @param openingSeed - The 32-bit cold-start opening seed.
+ * @returns void
+ */
+export function launchOpeningAmbush(
+  scene: Phaser.Scene,
+  registry: Phaser.Data.DataManager,
+  run: RunState,
+  openingSeed: number
+): void {
+  const launch: BattleLaunchData = buildOpeningAmbushLaunch(openingSeed);
+  // Stash a fresh field session so the Battle's field-launched return path restores
+  // a real session and the loot is folded exactly once on the way back.
+  setRunState(registry, run);
+  setFieldState(registry, startField(openingSeed));
+  scene.scene.start(SceneKeys.Battle, launch);
 }
 
 /**

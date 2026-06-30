@@ -34,10 +34,12 @@ import {
   dialogueView,
   initialDialoguePresenter,
   presentDialogue,
+  writeLedgerFlag,
   type DialogueChoiceView,
   type DialoguePresenterInput,
   type DialoguePresenterState,
   type SceneDef,
+  type SceneFlag,
 } from "../logic/narrative";
 import { eventsCenter } from "../services/events";
 import { GuardedText } from "./hud-text";
@@ -312,6 +314,24 @@ export class DialoguePresenter {
    */
   get done(): boolean {
     return dialogueView(this.#state, this.#table).done;
+  }
+
+  /**
+   * Fold a named, serializable moral-ledger flag into the presenter's narrative
+   * state via the pure {@link writeLedgerFlag} reducer — the seam an authoring scene
+   * (e.g. the Ch.1 opening writing `sable-revealed` at the reveal beat) uses so a
+   * flag is data the adapter writes, never a reducer side effect. The scene cursor
+   * is untouched; only the ledger is rebuilt, so the result round-trips for
+   * SaveService. The caption display is unaffected, so no re-render is needed.
+   * @param name - The flag name to write.
+   * @param value - The serializable flag value (boolean / string / number).
+   * @returns void
+   */
+  writeFlag(name: string, value: SceneFlag): void {
+    this.#state = {
+      ...this.#state,
+      narrative: writeLedgerFlag(this.#state.narrative, name, value),
+    };
   }
 
   /**

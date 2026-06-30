@@ -35,7 +35,7 @@ import {
   type FieldIntent,
   type FieldMoveDir,
 } from "../services/field-input-map";
-import { getRunState } from "../services/run-store";
+import { getRunState, setRunState } from "../services/run-store";
 import { drawFieldBackdrop } from "./field-chrome";
 import {
   advanceToNextRoom,
@@ -431,6 +431,16 @@ export class Field extends Phaser.Scene {
         // Advance to the next room, firing its trigger — which launches the next
         // battle (the deterministic "agent walked to the next encounter" path).
         this.#state = advanceToNextRoom(this, this.registry, this.#state);
+      },
+      growAtBench: () => {
+        // Transition to the growth (Bench) screen in the SAME page session (#105
+        // AC3): persist the current run so the Bench reads the very wallet this
+        // Field carries (the ambush grist credited on the post-battle resume), and
+        // start the Bench. The Bench spends from that same registry run-state, so a
+        // sink purchase draws down the SAME shared pool — provable as a before/after
+        // delta with no page reload (and no battle-local copy).
+        setRunState(this.registry, this.#run);
+        this.scene.start(SceneKeys.Bench);
       },
     };
   }

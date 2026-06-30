@@ -100,8 +100,10 @@ export class Preloader extends Phaser.Scene {
 /**
  * Resolve which gameplay scene to start from the URL: the Field scene when the
  * page carries `?scene=field`, the Bench (growth) scene when it carries
- * `?scene=bench`, the Dialogue presenter scene when it carries `?scene=dialogue`
- * (case-insensitive, with the `?start=<Scene>` alias), else the default Battle.
+ * `?scene=bench`, the Dialogue presenter scene when it carries `?scene=dialogue`,
+ * the Region scene when it carries `?scene=region`, the Ch.1 Opening scene when it
+ * carries `?scene=opening` (case-insensitive, with the `?start=<Scene>` alias), else
+ * the default Battle.
  * Reading the query here (not in `gameConfig`) keeps the scene registry static and
  * the default boot — every existing battle test — unchanged. The bench and dialogue
  * starts are verification entry points (growth slice #86; dialogue presenter #104),
@@ -130,6 +132,9 @@ function startScene(): string {
   }
   if (requested === "region") {
     return SceneKeys.Region;
+  }
+  if (requested === "opening") {
+    return SceneKeys.Opening;
   }
   return SceneKeys.Battle;
 }
