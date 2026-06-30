@@ -75,6 +75,7 @@ export const EnemyIds = {
   marrowScrapper: "marrow-scrapper",
   renderConstruct: "render-construct",
   theAshling: "the-ashling",
+  houseEnforcer: "house-enforcer",
 } as const;
 
 /** An enemy id (the literal-union of every defined enemy key). */
@@ -123,6 +124,19 @@ export const ENEMIES: {
     element: Elements.ash,
     breakGatedPhase1: true,
     shardReward: BoundIds.marrowBound,
+  },
+  "house-enforcer": {
+    id: EnemyIds.houseEnforcer,
+    name: "House Mourne enforcer",
+    // The Ch.1 "drop goes wrong" ambusher (#105): House muscle sent to recover
+    // Sable. Deliberately the weakest enemy in the slice — lower HP than the
+    // Phase-1 scrapper (HP40) and unarmored — so the first, tutorialized ATB
+    // skirmish is reliably winnable for a fresh party and the deterministic
+    // autoWin driver clears it under a fixed seed. First-pass non-HP stats.
+    stats: { hp: 24, ap: 0, pow: 6, foc: 0, def: 2, wrd: 1, spd: 7, lck: 2 },
+    elements: {},
+    ai: "tempo",
+    lootGrist: 4,
   },
 };
 

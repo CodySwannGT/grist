@@ -9,7 +9,7 @@
  * branch / skip + captions on the live canvas. No gameplay state — a thin test seam.
  * @module uat/dialogue-view
  */
-import type { SceneDef } from "../logic/narrative";
+import type { NarrativeLedger, SceneDef, SceneFlag } from "../logic/narrative";
 import type { DialogueModel } from "../ui/dialogue";
 import { type VerifyResolution } from "./bridge";
 
@@ -39,6 +39,12 @@ export interface VerifyDialogueState {
   readonly done: boolean;
   /** The active branch choices — id + label (empty on a linear / ended node). */
   readonly choices: readonly VerifyDialogueChoice[];
+  /**
+   * The live narrative-ledger flags, so the opening e2e can assert "the hook
+   * landed" (the Ch.1 `sable-revealed` flag flips true at the reveal node) without
+   * a separate bridge surface (#105). Empty on the demo script (no reveal node).
+   */
+  readonly flags: NarrativeLedger;
 }
 
 /**
@@ -86,6 +92,7 @@ function toVerifyDialogueState(
       id: choice.id,
       label: choice.label,
     })),
+    flags: model.flags,
   };
 }
 
@@ -136,6 +143,18 @@ export class DialogueCell {
   view(): DialogueView | null {
     return this.#view;
   }
+
+  /**
+   * Read one live narrative-ledger flag by name from the attached dialogue model,
+   * or null outside the Dialogue scene / when the flag is unwritten. Lets the
+   * opening e2e assert the Ch.1 `sable-revealed` flag flipped true at the reveal
+   * node directly, without snapshotting the whole flag record (#105).
+   * @param name - The flag name to read.
+   * @returns The flag value, or null when absent.
+   */
+  ledgerFlag(name: string): SceneFlag | null {
+    return this.#view?.dialogue().flags[name] ?? null;
+  }
 }
 
 /** The dialogue slice of the `window.__VERIFY__` surface (#104). */
@@ -148,6 +167,12 @@ export interface DialogueApi {
   readonly branchDialogue: (choiceId: string) => void;
   /** Skip the rest of the dialogue (jump to done). */
   readonly skipDialogue: () => void;
+  /**
+   * One live narrative-ledger flag by name, or null outside the Dialogue scene /
+   * when unwritten — the opening e2e reads `ledgerFlag("sable-revealed")` to assert
+   * the Ch.1 hook landed at the reveal node (#105).
+   */
+  readonly ledgerFlag: (name: string) => SceneFlag | null;
 }
 
 /**
@@ -168,6 +193,7 @@ export function dialogueApi(
     advanceDialogue: () => cell.view()?.advance(),
     branchDialogue: (choiceId: string) => cell.view()?.branch(choiceId),
     skipDialogue: () => cell.view()?.skip(),
+    ledgerFlag: (name: string) => cell.ledgerFlag(name),
   };
 }
 
