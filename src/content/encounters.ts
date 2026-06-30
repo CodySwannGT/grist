@@ -31,6 +31,9 @@ export const EncounterIds = {
   theDrip: "the-drip",
   theCage: "the-cage",
   tutorialAmbush: "tutorial-ambush",
+  drownedKingdom: "drowned-kingdom",
+  requiemHall: "requiem-hall",
+  deepAudit: "deep-audit",
 } as const;
 
 /** An encounter id (the literal-union of every defined encounter key). */
@@ -66,6 +69,27 @@ export const ENCOUNTERS: {
   "tutorial-ambush": {
     id: EncounterIds.tutorialAmbush,
     enemies: [EnemyIds.houseEnforcer],
+    backdrop: Backdrops.marrow,
+  },
+  // ── The Roots / the Deep encounters (#143) ────────────────────────────────
+  // The buried-ruins encounter rooms. The backdrop reuses the shared `marrow`
+  // placeholder (per-region art is out of scope; the Region scene resolves the
+  // shared `region-backdrop` texture at boot). The Reach and Ashfall variant
+  // encounter tables (authored in `content/regions`) draw DIFFERENT subsets of
+  // these so the region reads observably differently across the Reckoning.
+  "drowned-kingdom": {
+    id: EncounterIds.drownedKingdom,
+    enemies: [EnemyIds.drownedHusk],
+    backdrop: Backdrops.marrow,
+  },
+  "requiem-hall": {
+    id: EncounterIds.requiemHall,
+    enemies: [EnemyIds.drownedHusk, EnemyIds.requiemWraith],
+    backdrop: Backdrops.marrow,
+  },
+  "deep-audit": {
+    id: EncounterIds.deepAudit,
+    enemies: [EnemyIds.requiemWraith, EnemyIds.deepAuditor],
     backdrop: Backdrops.marrow,
   },
 };

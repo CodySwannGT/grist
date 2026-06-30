@@ -21,8 +21,6 @@ export {
   ENEMIES,
   EnemyIds,
   EnemyFamilies,
-  ENEMY_FAMILIES,
-  RegisteredFamilyIds,
   authorEnemyFamily,
   isCompleteEnemyFamily,
   isEnemyFamily,
@@ -37,8 +35,12 @@ export {
   type FamilyRegionEntry,
   type FamilyRegionStates,
   type RegionStatBlock,
-  type RegisteredFamilyId,
 } from "./enemies";
+export {
+  ENEMY_FAMILIES,
+  RegisteredFamilyIds,
+  type RegisteredFamilyId,
+} from "./enemy-families";
 export {
   BOUNDS,
   BoundIds,

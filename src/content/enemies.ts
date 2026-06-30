@@ -76,6 +76,9 @@ export const EnemyIds = {
   renderConstruct: "render-construct",
   theAshling: "the-ashling",
   houseEnforcer: "house-enforcer",
+  drownedHusk: "drowned-husk",
+  requiemWraith: "requiem-wraith",
+  deepAuditor: "deep-auditor",
 } as const;
 
 /** An enemy id (the literal-union of every defined enemy key). */
@@ -137,6 +140,43 @@ export const ENEMIES: {
     elements: {},
     ai: "tempo",
     lootGrist: 4,
+  },
+  // ── The Roots / the Deep roster (#143) ────────────────────────────────────
+  // First-pass stats (tuning deferred, decision 0003). These ride the buried
+  // pre-Sundering ruins: the hollowed dead of the drowned old kingdom, the Sidhe
+  // requiem-hall's lingering things, and the cold Auditors that audit the Deep.
+  "drowned-husk": {
+    id: EnemyIds.drownedHusk,
+    name: "Drowned husk",
+    stats: { hp: 52, ap: 0, pow: 9, foc: 2, def: 5, wrd: 3, spd: 5, lck: 2 },
+    elements: { flux: 1.5 },
+    ai: "tempo",
+    lootGrist: 8,
+  },
+  "requiem-wraith": {
+    id: EnemyIds.requiemWraith,
+    name: "Requiem wraith",
+    stats: { hp: 64, ap: 6, pow: 7, foc: 11, def: 6, wrd: 8, spd: 9, lck: 4 },
+    elements: { flux: 0.5 },
+    ai: "render-pressure",
+    lootGrist: 11,
+  },
+  "deep-auditor": {
+    id: EnemyIds.deepAuditor,
+    name: "Deep Auditor",
+    stats: {
+      hp: 90,
+      ap: 12,
+      pow: 10,
+      foc: 14,
+      def: 10,
+      wrd: 12,
+      spd: 8,
+      lck: 6,
+    },
+    elements: { gloom: 0.5 },
+    ai: "break-boss",
+    lootGrist: 16,
   },
 };
 
@@ -281,79 +321,6 @@ export interface EnemyFamilyDef {
   readonly name: string;
   readonly regions: readonly FamilyRegionEntry[];
 }
-
-/** Canonical ids of the families registered in {@link ENEMY_FAMILIES}. */
-export const RegisteredFamilyIds = {
-  marrowGangs: EnemyFamilies.marrowGangs,
-} as const;
-
-/** A registered family id (the literal-union of every {@link ENEMY_FAMILIES} key). */
-export type RegisteredFamilyId =
-  (typeof RegisteredFamilyIds)[keyof typeof RegisteredFamilyIds];
-
-/**
- * The enemy-family table. The mapped type binds each entry's `id` to its table
- * key, so the key and the `id` can never drift — the same idiom `ENEMIES` /
- * `ENCOUNTERS` / `BOUNDS` / `REGIONS` use. The `marrow-gangs` family is the
- * canonical example: the Marrow under-city scrappers authored against the schema
- * with a Marrow-region Reach block and its drained-palette Ashfall variant (a new
- * Gloom attack), the "a family is added by authoring data" proof. The full
- * eight-family roster is authored as each region increment is built (decision
- * 0003); the schema (this table's *type*) is complete for all eight tags now.
- */
-export const ENEMY_FAMILIES: {
-  readonly [K in RegisteredFamilyId]: EnemyFamilyDef & { readonly id: K };
-} = {
-  "marrow-gangs": {
-    id: RegisteredFamilyIds.marrowGangs,
-    name: "Marrow gangs",
-    regions: [
-      {
-        region: "marrow",
-        reach: {
-          region: "marrow",
-          stats: {
-            hp: 40,
-            ap: 0,
-            pow: 8,
-            foc: 0,
-            def: 4,
-            wrd: 2,
-            spd: 8,
-            lck: 2,
-          },
-          elements: {},
-          lootGrist: 6,
-        },
-        ashfall: {
-          drainedPalette: "ash-drained",
-          stats: {
-            hp: 48,
-            ap: 0,
-            pow: 9,
-            foc: 4,
-            def: 4,
-            wrd: 3,
-            spd: 7,
-            lck: 2,
-          },
-          // Warped: gains a Gloom weakness/affinity read distinct from the Reach
-          // block (which had none).
-          elements: { gloom: 1.5 },
-          lootGrist: 6,
-          attacks: [
-            {
-              id: "entropy-bite",
-              name: "Entropy Bite",
-              element: Elements.gloom,
-              power: 12,
-            },
-          ],
-        },
-      },
-    ],
-  },
-};
 
 /**
  * Resolve a family's live stat block for a region *through* the world-state flag —
