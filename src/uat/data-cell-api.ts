@@ -15,6 +15,7 @@ import { type CurrentSave } from "../logic/save";
 import { type WorldState } from "../logic/world";
 import { saveService } from "../services/save-service";
 import { BoundSiteCell, type VerifyBoundSiteState } from "./bound-site-cell";
+import { BuildCell, type VerifyBuildState } from "./build-cell";
 import {
   DefectionCell,
   type OpenDefectionOptions,
@@ -137,6 +138,14 @@ const defectionCell = new DefectionCell();
 const travelCell = new TravelCell(walletCell);
 
 /**
+ * The bridge-held build cell (#116): the persisted character build (bench stat
+ * augments + equipped shards) projected into a live battle via the real combat engine,
+ * so the save-reload e2e can prove the grown build is fielded by a later battle —
+ * hydrated from `save.build` on adopt, not merely round-tripped through IndexedDB.
+ */
+const buildCell = new BuildCell();
+
+/**
  * Adopt a {@link CurrentSave} into the bridge-held world-state + run-state cells so
  * the in-memory read paths (`worldState` / `reckon` / `regionTone` / `runState`)
  * reflect it — the single sync point shared by a successful persist and a reload.
@@ -154,6 +163,10 @@ function adoptIntoCells(save: CurrentSave): void {
   // live stats + kit), not the fresh starting party — the hydration path the e2e
   // asserts after reload (#146).
   defectionCell.adopt(save);
+  // buildCell.adopt holds save.build so the post-reload battle snapshot fields the
+  // *restored* grown build (the persisted stat augments), not the empty starting
+  // build — the battle-hydration path the save-reload e2e asserts after reload (#116).
+  buildCell.adopt(save);
 }
 
 /**
@@ -202,6 +215,9 @@ async function clearAndReset(): Promise<void> {
   // Reset the defection cell back to the fresh starting party alongside the others so
   // a clearSave leaves defection() reading [wren, tobi], not a stale recruited roster.
   defectionCell.reset();
+  // Reset the build cell to the empty build alongside the others so a clearSave fields
+  // the base party in the next snapshot, not a stale grown build (#116).
+  buildCell.reset();
   travelCell.reset();
   // Reset the shared wallet to the slice default alongside the travel cell so both
   // halves of the run return to a known origin together.
@@ -241,6 +257,13 @@ export interface DataCellApi {
   readonly encounterLadder: () => VerifyEncounterLadderState;
   /** The bundled run-state snapshot (choice + karma + learning + wallet), or null. */
   readonly runState: () => VerifyRunState | null;
+  /**
+   * The persisted character build (#116) projected into a live battle: the stored
+   * stat augments + equipped shards, and the party as the real combat engine fields
+   * it with those augments applied — so the save-reload e2e can prove the grown build
+   * carries into a later battle, not just into IndexedDB storage.
+   */
+  readonly build: () => VerifyBuildState;
   /**
    * Anchor a region's single Bound site through the template (#135). Defaults to the
    * canonical `marrow` region; pass `regionId: "roots"` to open Velith the
@@ -325,6 +348,7 @@ export function dataCellApi(): DataCellApi {
     enemy: () => enemyCell.snapshot(worldStateCell.read() ?? "reach"),
     encounterLadder: () => encounterLadderCell.snapshot(),
     runState: () => runStateCell.snapshot(),
+    build: () => buildCell.snapshot(),
     openBoundSite: (regionId?: string) => boundSiteCell.open(regionId),
     chooseBound: (mode: ShardMode) => boundSiteCell.choose(mode),
     boundSite: () => boundSiteCell.snapshot(),

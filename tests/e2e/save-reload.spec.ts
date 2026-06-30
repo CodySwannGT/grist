@@ -225,12 +225,20 @@ test.describe("GRIST — save persistence verification (UAT)", () => {
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
 
+    // Baseline (cleared store from beforeEach → empty build): the SPD the lead
+    // combatant fields in a live battle with NO build grown yet. Read from the real
+    // combat engine through the bridge so the proof below needs no hardcoded base
+    // stat — the +5 is measured as a delta against the game's own base.
+    const SPD_AUGMENT = 5;
+    const baseline = await page.evaluate(() => window.__VERIFY__!.build());
+    const baseSpd = baseline.battleParty[0]!.stats.spd;
+
     // A growth change: the bench buys a +5 SPD augment and equips a fresh shard —
     // a build measurably different from the slice baseline.
     const grown: SaveDataV3 = {
       ...SLICE_IN_PROGRESS,
       build: {
-        statBonuses: { spd: 5 },
+        statBonuses: { spd: SPD_AUGMENT },
         equippedShards: ["velith-deepbound"],
       },
     };
@@ -245,15 +253,32 @@ test.describe("GRIST — save persistence verification (UAT)", () => {
     // boundary: a fresh document + fresh SaveService reads the same IndexedDB.
     await bootWithBridge(page);
 
+    // Rehydrate the bridge cells from the restored save (the post-reload read).
     const restored = await page.evaluate(() => window.__VERIFY__!.loadSave());
     // The grown build is restored byte-for-byte: the augment and the equipped
-    // shard the post-reload run (and the battle it enters) reads are exactly what
-    // was saved — growth is data, never re-derived.
+    // shard the post-reload run reads are exactly what was saved — growth is data,
+    // never re-derived. (The persistence half of the AC.)
     expect(restored?.build).toEqual({
-      statBonuses: { spd: 5 },
+      statBonuses: { spd: SPD_AUGMENT },
       equippedShards: ["velith-deepbound"],
     });
-    expect(restored?.build.statBonuses.spd).toBe(5);
+    expect(restored?.build.statBonuses.spd).toBe(SPD_AUGMENT);
+
+    // The hydration half of the AC — "growth persists into a later battle": project
+    // the restored build into a LIVE battle through the real combat engine and assert
+    // the lead combatant actually fields the grown SPD (base + augment), and that the
+    // equipped shard survived. A regression where reload keeps `build` in storage but
+    // battle hydration drops the augment would leave the live SPD at `baseSpd` and
+    // fail here — exactly the gap a DTO-only round-trip cannot catch.
+    const fielded = await page.evaluate(() => window.__VERIFY__!.build());
+    expect(fielded.statBonuses).toEqual({ spd: SPD_AUGMENT });
+    expect(fielded.equippedShards).toEqual(["velith-deepbound"]);
+    expect(fielded.battleParty[0]!.stats.spd).toBe(baseSpd + SPD_AUGMENT);
+    // The run-wide augment reaches every fielded member, not only the lead.
+    for (const member of fielded.battleParty) {
+      expect(member.stats.spd).toBeGreaterThanOrEqual(SPD_AUGMENT);
+    }
+
     expect(errors).toEqual([]);
   });
 });
