@@ -25,21 +25,32 @@ import {
 } from "./types";
 
 // ---------------------------------------------------------------------------
-// Lore beats for examinable props (the rendering notice in Room A).
+// Lore beats for examinable props (environmental storytelling in the Marrow).
 // The Field scene renders these; the field logic only holds the text so the
-// scene stays a thin adapter with no authored copy.
+// scene stays a thin adapter with no authored copy. Two props are authored:
+// the runner-warrens rendering notice (Room A) and the rendering-house vat
+// (Room B) — the latter is the #106 "what the city eats" beat.
 // ---------------------------------------------------------------------------
 
 /**
  * Authored lore beats keyed by prop id. Only props listed here are examinable
  * in the field logic sense — the Field scene may decorate others with visual
  * affordances but the sim will ignore examine actions for non-lore props.
+ *
+ * The `render-vat` beat is the rendering-house environmental-lore prop (#106):
+ * its copy is drawn from `wiki/narrative/world.md` §"Grist (what the world runs
+ * on)" — the Houses render people into black grist; the Marrow runs on the dead.
  */
 const LORE_BEATS: Readonly<Record<string, string>> = {
   "warren-sign":
     'A faded placard reads: "Warren St. — RENDERING IN PROGRESS. ' +
     "All residents must evacuate by order of the Civic Authority. " +
     'Compliance ensures continued Binding access." The ink has long since run.',
+  "render-vat":
+    "A rendering vat sweats black grist behind cracked glass. A manifest is " +
+    'bolted beside it: "INTAKE — debtors, undesirables, the unclaimed." This ' +
+    "is what the city eats: the Marrow runs on the dead, rendered down to the " +
+    "fuel that keeps its lights on. Most of its living never let themselves know it.",
 };
 
 // ---------------------------------------------------------------------------
@@ -461,6 +472,26 @@ export function encounterForRoom(
   }
   const encounterId = MARROW_MAP[roomId].encounter;
   return ENCOUNTERS[encounterId];
+}
+
+/**
+ * Return the id of the examinable (lore-bearing) prop placed in `roomId`, or
+ * `null` when the room has no authored lore prop. A prop is examinable in the
+ * logic sense when the room defines it (in {@link MARROW_MAP}) AND it has an
+ * authored beat in {@link LORE_BEATS} — so the runner-warrens (Room A) resolve
+ * to the `warren-sign`, the rendering-house pass (Room B) to the `render-vat`,
+ * and the descent (Room C) to `null`. This is the single source of truth the
+ * Field scene uses to decide which prop to render as the examinable marker in
+ * the current room, replacing the old hard-coded Room-A pin — so the scene
+ * stays a thin adapter and the lore wiring lives entirely in pure logic. Pure
+ * selector — reads nothing ambient.
+ * @param roomId - The room to resolve the examinable prop for.
+ * @returns The examinable prop id, or null when the room has none.
+ */
+export function examinablePropForRoom(roomId: MarrowRoomId): string | null {
+  const room = MARROW_MAP[roomId];
+  const prop = room.props.find(candidate => candidate.id in LORE_BEATS);
+  return prop?.id ?? null;
 }
 
 /**
