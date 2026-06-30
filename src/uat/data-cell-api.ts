@@ -1,17 +1,20 @@
 /**
  * The data-cell slice of the verification (UAT) bridge — the scene-agnostic
  * `window.__VERIFY__` entry points backed by the bridge-held *data* cells
- * (save / world-state / run-state / region-data / enemy-family), extracted from
- * `uat/bridge.ts` the same way the field / bench / dialogue / region-scene seams are
- * (keeping the bridge under its line budget). These cells hold pure test state — no
- * Phaser, no gameplay objects — so an e2e can persist + reload a save, flip the
- * world-state, and read a template-authored region / enemy-family scene-agnostically,
- * without a live scene attached.
+ * (save / world-state / run-state / region-data / enemy-family / bound-site),
+ * extracted from `uat/bridge.ts` the same way the field / bench / dialogue /
+ * region-scene seams are (keeping the bridge under its line budget). These cells hold
+ * pure test state — no Phaser, no gameplay objects — so an e2e can persist + reload a
+ * save, flip the world-state, read a template-authored region / enemy-family, and
+ * make a region's Bound-site free-vs-wield choice (#135) scene-agnostically, without a
+ * live scene attached.
  * @module uat/data-cell-api
  */
+import { type ShardMode } from "../logic/save/types";
 import { type CurrentSave } from "../logic/save";
 import { type WorldState } from "../logic/world";
 import { saveService } from "../services/save-service";
+import { BoundSiteCell, type VerifyBoundSiteState } from "./bound-site-cell";
 import { EnemyCell, type VerifyEnemyState } from "./enemy-cell";
 import { RegionCell, type VerifyRegionState } from "./region-cell";
 import { RunStateCell, type VerifyRunState } from "./run-state-cell";
@@ -45,6 +48,15 @@ const regionCell = new RegionCell();
  * enemy-family e2e can load a family and observe its Reach block warp to Ashfall.
  */
 const enemyCell = new EnemyCell();
+
+/**
+ * The bridge-held Bound-site cell (#135): a region's single Bound site anchored
+ * through the Bound-site template and resolved with the Phase-2 free-vs-wield kit,
+ * so the Bound-site e2e can reach a site, choose free/wield, and observe the
+ * diverging karma/corruption scene-agnostically. The persistence-across-reload half
+ * rides the existing save path (the e2e persists the settled choice + reloads).
+ */
+const boundSiteCell = new BoundSiteCell();
 
 /**
  * Adopt a {@link CurrentSave} into the bridge-held world-state + run-state cells so
@@ -129,6 +141,12 @@ export interface DataCellApi {
   readonly enemy: () => VerifyEnemyState | null;
   /** The bundled run-state snapshot (choice + karma + learning + wallet), or null. */
   readonly runState: () => VerifyRunState | null;
+  /** Anchor the canonical region's single Bound site through the template (#135). */
+  readonly openBoundSite: () => void;
+  /** Commit the free-vs-wield choice at the opened Bound site (`free` / `wield`). */
+  readonly chooseBound: (mode: ShardMode) => void;
+  /** The opened/settled Bound-site snapshot (shard + variant + karma + corruption), or null. */
+  readonly boundSite: () => VerifyBoundSiteState | null;
 }
 
 /**
@@ -154,5 +172,8 @@ export function dataCellApi(): DataCellApi {
     loadEnemy: () => enemyCell.load(),
     enemy: () => enemyCell.snapshot(worldStateCell.read() ?? "reach"),
     runState: () => runStateCell.snapshot(),
+    openBoundSite: () => boundSiteCell.open(),
+    chooseBound: (mode: ShardMode) => boundSiteCell.choose(mode),
+    boundSite: () => boundSiteCell.snapshot(),
   };
 }
