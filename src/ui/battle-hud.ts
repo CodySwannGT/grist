@@ -4,8 +4,10 @@
  * {@link BattleState} and the {@link BattleController}'s selection, the shared
  * grist wallet, the battle-speed widget, each party member's HP / AP / filling
  * ATB gauge with a ready cue, the current target with its Pressure → Break state,
- * and the Strike / Craft / Bind / Item / Defend command menu (costs shown,
- * unaffordable commands greyed). It owns no combat rules and reads no raw input:
+ * and the active member's command menu — drawn from that member's authored kit
+ * (#110), so Wren's tempo menu (Strike / Craft / Bind / Defend) and Tobi's
+ * gadgeteer/support menu (Strike / Augment / Item / Defend) are visibly different
+ * (costs shown, unaffordable commands greyed). It owns no combat rules and reads no raw input:
  * its interactive widgets feed the semantic {@link InputService}, and its render
  * is steady-state allocation-free (pooled objects, {@link GuardedText}). Free with
  * {@link destroy} on scene shutdown.
@@ -243,7 +245,13 @@ export class BattleHud {
     this.#speed.set(`SPD ${speedLabel(controller.speed)}`, HudColors.grist);
     this.#renderTarget(state, target);
     this.#renderParty(state, actor);
-    this.#renderMenu(state, controller.highlight, actor !== null, actorAp);
+    this.#renderMenu(
+      state,
+      controller.commandOrder(state),
+      controller.highlight,
+      actor !== null,
+      actorAp
+    );
   }
 
   /**
@@ -305,24 +313,41 @@ export class BattleHud {
   }
 
   /**
-   * Render the command menu: highlight the selection, grey unaffordable commands,
-   * and dim the whole menu when no actor is ready.
+   * Render the command menu for the active member's kit: only the commands in
+   * `order` are drawn (each at its slot in that order), so Wren and Tobi surface
+   * *visibly different command menus* (#110). A command not in the active kit is
+   * hidden (label cleared, box hidden). Highlights the selection, greys
+   * unaffordable commands, and dims the whole menu when no actor is ready.
    * @param state - The battle state.
-   * @param highlight - The highlighted command index.
+   * @param order - The active member's command order (the kit menu).
+   * @param highlight - The highlighted slot index within `order`.
    * @param menuOpen - Whether a party actor is ready.
    * @param actorAp - The ready actor's AP (0 when none).
    * @returns void
    */
   #renderMenu(
     state: BattleState,
+    order: readonly CommandId[],
     highlight: number,
     menuOpen: boolean,
     actorAp: number
   ): void {
-    this.#buttons.forEach((button, index) => {
+    // The highlighted command id (the controller's `highlight` indexes the active
+    // member's kit order), matched by id so the right button lights up regardless
+    // of which catalog slot it occupies.
+    const highlightedId = menuOpen ? order[highlight] : undefined;
+    this.#buttons.forEach(button => {
+      // Each button keeps its fixed catalog position + tap zone; a command not in
+      // the active member's kit is simply hidden, so Wren (Strike/Craft/Bind/
+      // Defend) and Tobi (Strike/Augment/Item/Defend) show different menus.
+      if (!order.includes(button.id)) {
+        button.box.setVisible(false);
+        button.label.set("", HudColors.dim);
+        return;
+      }
       const affordable =
         menuOpen && commandAffordable(button.id, actorAp, state.grist);
-      const highlighted = menuOpen && index === highlight;
+      const highlighted = menuOpen && button.id === highlightedId;
       button.box.setVisible(highlighted);
       button.label.set(
         `${commandLabel(button.id)}${commandCostLabel(button.id)}`,

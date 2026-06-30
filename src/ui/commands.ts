@@ -1,10 +1,13 @@
 /**
- * The battle command menu catalog (combat-spec / ui-ux-and-controls): the five
- * player commands — **Strike / Craft / Bind / Item / Defend** — and the pure
- * mapping from a selected command to the {@link BattleAction} the sim reducer
- * accepts. The HUD renders this catalog and the controller turns a confirmed
- * command into an action; both share this one source so the labels, costs, and
- * action shapes can never drift. Phaser-free and total, so it unit-tests headless.
+ * The battle command menu catalog (combat-spec / ui-ux-and-controls): the
+ * player commands — **Strike / Craft / Bind / Augment / Item / Defend** — and
+ * the pure mapping from a selected command to the {@link BattleAction} the sim
+ * reducer accepts. Each party member surfaces only their authored *kit* of these
+ * commands ({@link commandOrderFor}), so two controllable members present
+ * visibly different menus (#110) through the one unchanged reducer. The HUD
+ * renders the active member's kit and the controller turns a confirmed command
+ * into an action; both share this one source so the labels, costs, and action
+ * shapes can never drift. Phaser-free and total, so it unit-tests headless.
  * @module ui/commands
  */
 import { BindSpellIds, SpellIds, type AnySpellId } from "../content";
@@ -17,30 +20,48 @@ import {
   type BattleAction,
   type CombatantRef,
 } from "../logic/combat";
+import { Commands, type CommandId, type CommandKit } from "../logic/commands";
+
+// The canonical command vocabulary lives in the content-free, Phaser-free
+// `logic/commands` module so the content tables can author per-member kits
+// without an import cycle into this UI module. Re-export it here so the existing
+// `ui/commands` import surface (Commands / CommandId) is unchanged for callers.
+// `CommandKit` is consumed from `logic/commands` directly (e.g. `content/party`),
+// so it is intentionally not re-exported here.
+export { Commands, type CommandId };
 
 /**
- * Canonical command ids, in menu order. Reference the keyed values rather than
- * inline strings so a typo is a compile error and the order is one source.
+ * The full menu order the HUD lays out by default when no member kit narrows it
+ * (every command, in canonical order). Per-member menus are derived from a
+ * member's {@link CommandKit} via {@link commandOrderFor}.
  */
-export const Commands = {
-  strike: "strike",
-  craft: "craft",
-  bind: "bind",
-  item: "item",
-  defend: "defend",
-} as const;
-
-/** A command id (`"strike" | "craft" | "bind" | "item" | "defend"`). */
-export type CommandId = (typeof Commands)[keyof typeof Commands];
-
-/** The menu order the HUD lays out and the keyboard navigates through. */
 export const COMMAND_ORDER: readonly CommandId[] = [
   Commands.strike,
   Commands.craft,
   Commands.bind,
+  Commands.augment,
   Commands.item,
   Commands.defend,
 ];
+
+/**
+ * The command order to lay out for the active party member: the member's own
+ * {@link CommandKit} (e.g. Wren's Strike/Craft/Bind/Defend vs Tobi's
+ * Strike/Augment/Item/Defend), filtered to the catalog so an unknown id can
+ * never reach the menu. Falls back to the full {@link COMMAND_ORDER} when no kit
+ * is supplied (no member ready). Pure and allocation-light — call it on a turn
+ * boundary (when the active actor changes), never per frame.
+ * @param kit - The active member's command kit, or undefined when none is ready.
+ * @returns The command ids to render, in the member's authored order.
+ */
+export function commandOrderFor(
+  kit: CommandKit | undefined
+): readonly CommandId[] {
+  if (kit === undefined || kit.length === 0) {
+    return COMMAND_ORDER;
+  }
+  return kit.filter(id => id in COMMANDS);
+}
 
 /**
  * A command's static definition: its menu label, the reducer {@link ActionKind}
@@ -53,7 +74,11 @@ interface CommandDef {
   readonly spellId?: AnySpellId;
 }
 
-/** The command table. Craft defaults to Spark, Bind to the Emberwisp summon. */
+/**
+ * The command table. Craft defaults to Spark, Bind to the Emberwisp summon.
+ * Augment is the gadgeteer/support tool slot (Tobi's identity): a free,
+ * non-spell action that issues the reducer's already-accepted `augment` kind.
+ */
 const COMMANDS: Record<CommandId, CommandDef> = {
   strike: { label: "Strike", kind: ActionKinds.strike },
   craft: { label: "Craft", kind: ActionKinds.craft, spellId: SpellIds.spark },
@@ -62,6 +87,7 @@ const COMMANDS: Record<CommandId, CommandDef> = {
     kind: ActionKinds.bind,
     spellId: BindSpellIds.bindWisp,
   },
+  augment: { label: "Augment", kind: ActionKinds.augment },
   item: { label: "Item", kind: ActionKinds.item },
   defend: { label: "Defend", kind: ActionKinds.defend },
 };

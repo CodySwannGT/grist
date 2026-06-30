@@ -4,13 +4,19 @@
  * reference resolves to a defined {@link BoundId}. Pure data — no Phaser.
  * @module content/party
  */
+import { Commands, type CommandKit } from "../logic/commands";
 import { type Stats } from "../logic/combat/types";
 import { BoundIds, type BoundId } from "./bounds";
 
 /**
  * A playable party member. `baseStats` is the level-3 starting block; `shard` is
  * the equipped Bound (optional — Tobi starts shard-less); `signatureKit` lists
- * the hand-authored, non-shard actions (e.g. Wren's Flurry, Tobi's Stun-Dart).
+ * the hand-authored, non-shard actions (e.g. Wren's Flurry, Tobi's Stun-Dart);
+ * `kit` is the ordered battle-command menu the member surfaces — the data behind
+ * "visibly different command kits" (#110): Wren reads as the caster/tempo unit
+ * (Strike + Craft + Bind), Tobi as the gadgeteer/support unit (Strike + Augment
+ * + Item + Defend), so the two members present genuinely different menus through
+ * the one unchanged ATB reducer.
  */
 export interface PartyMemberDef {
   readonly id: PartyMemberId;
@@ -19,6 +25,7 @@ export interface PartyMemberDef {
   readonly baseStats: Stats;
   readonly shard?: BoundId;
   readonly signatureKit: readonly string[];
+  readonly kit: CommandKit;
 }
 
 /** Canonical party-member ids. */
@@ -57,6 +64,17 @@ export const PARTY: {
     },
     shard: BoundIds.emberwisp,
     signatureKit: ["Flurry"],
+    // Tempo/caster kit: Wren wields a Bound (Emberwisp), so her menu carries the
+    // full caster loadout — Craft (cast) + Bind (summon) — alongside the
+    // Strike / Item / Defend baseline. Her menu is the established protagonist
+    // menu; Tobi's gadgeteer kit (below) is the differentiator (#110).
+    kit: [
+      Commands.strike,
+      Commands.craft,
+      Commands.bind,
+      Commands.item,
+      Commands.defend,
+    ],
   },
   tobi: {
     id: PartyMemberIds.tobi,
@@ -73,6 +91,12 @@ export const PARTY: {
       lck: 6,
     },
     signatureKit: ["Stun-Dart"],
+    // Gadgeteer/support kit: Tobi is shard-less and no caster — his identity is
+    // augment-driven tools + items, NOT Craft/Bind. The Augment + Item slots in
+    // place of Wren's Craft/Bind are what make the two menus *visibly different*
+    // (#110), routed through the same unchanged reducer (augment/item spend a
+    // turn the engine already accepts).
+    kit: [Commands.strike, Commands.augment, Commands.item, Commands.defend],
   },
   // Halcyon Mourne, the fallen knight — the FRAME SPECIALIST who defects in the
   // Roots / the Deep "after the requiem reveals the truth" (#146;
@@ -104,5 +128,8 @@ export const PARTY: {
       lck: 5,
     },
     signatureKit: ["Frame-Lance"],
+    // Frame/anvil kit: Halcyon's heavy frame actives ride the Augment slot, with
+    // the Strike/Defend baseline — a third distinct menu (no Craft, no Bind).
+    kit: [Commands.strike, Commands.augment, Commands.defend],
   },
 };
