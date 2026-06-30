@@ -94,6 +94,41 @@ export function severanceAvailable(combatant: Combatant): boolean {
 }
 
 /**
+ * A combatant's Pressure → Break meter projection: the 0→1 fill the HUD draws as
+ * a bar advancing toward Break, plus the post-Break flag the HUD uses to switch
+ * the bar to its BREAK state.
+ */
+export interface PressureMeter {
+  /** The 0→1 fill toward Break (`pressure ÷ breakThreshold`, clamped). */
+  readonly fill: number;
+  /** Whether the target has already Broken (the bar shows its BREAK state). */
+  readonly broken: boolean;
+}
+
+/**
+ * A combatant's {@link PressureMeter}: the 0→1 fill toward Break and the Broken
+ * flag. `fill` is `pressure ÷ breakThreshold` clamped to `[0, 1]`, reusing the
+ * same {@link CombatTuning.breakThreshold} the {@link addPressure} transition
+ * checks — so the meter fills full exactly when the target Breaks and never
+ * overflows once Pressure runs past the threshold.
+ * @remarks
+ * - Pure and total: a read-only projection of a single combatant, RNG- and
+ *   Phaser-free, so the HUD stays a thin renderer and the fill is unit-testable
+ *   headless.
+ * - The HUD must drive a pooled bar's `scaleX` from `fill`, never re-derive the
+ *   threshold, so the meter and the Break transition can never disagree.
+ * @param combatant - The combatant whose Pressure to read.
+ * @returns The meter fill (0→1) and whether the target is Broken.
+ */
+export function pressureMeter(combatant: Combatant): PressureMeter {
+  const fill = Math.min(
+    Math.max(combatant.pressure / CombatTuning.breakThreshold, 0),
+    1
+  );
+  return { fill, broken: combatant.broken };
+}
+
+/**
  * The grist loot a defeated combatant yields: its enemy table value, or 0 when
  * the corpse is `spent` (a Rendering-kill), when the ref is not an enemy (a
  * party member), or when the ref is unknown.

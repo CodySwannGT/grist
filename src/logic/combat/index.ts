@@ -58,7 +58,9 @@ export {
   tickStatuses,
   addPressure,
   severanceAvailable,
+  pressureMeter,
   lootGristFor,
+  type PressureMeter,
 } from "./effects";
 export {
   ResourceTuning,
@@ -67,3 +69,8 @@ export {
   canAfford,
   type ActionCost,
 } from "./resource";
+export {
+  TelegraphTuning,
+  enemyTelegraph,
+  type EnemyTelegraph,
+} from "./telegraph";

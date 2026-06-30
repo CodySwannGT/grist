@@ -71,6 +71,18 @@ export const HudLayout = {
   menuPadX: 4,
   /** Target marker: a caret this far above the targeted enemy's center. */
   markerYOffset: 18,
+  /** Target Pressure meter: a small bar under the target label. */
+  pressureBarLeftX: 152,
+  pressureBarY: 28,
+  pressureBarW: 80,
+  pressureBarH: 3,
+  /** Telegraph: an enemy-intent warning line under the target Pressure meter. */
+  telegraphCenterX: 192,
+  telegraphY: 33,
+  /** Battle log: a left-aligned, bottom-up stack of the recent action lines. */
+  logLeftX: 4,
+  logTopY: 120,
+  logLineH: 9,
 } as const;
 
 /** HUD palette. Text is light on the dark backdrop; grist-gold is the highlight. */
@@ -86,6 +98,14 @@ export const HudColors = {
   atbFill: 0x4cc2e0,
   atbBg: 0x1d2738,
   marker: 0xffd166,
+  /** Pressure meter: a warning amber fill over a dark track; red track at Break. */
+  pressureFill: 0xff9f43,
+  pressureBg: 0x2a1d16,
+  breakFill: 0xff7a6b,
+  /** Telegraph warning text (an enemy is about to strike). */
+  telegraph: "#ff9f43",
+  /** Battle-log line text (dimmer than the live HUD readouts). */
+  log: "#aab2c0",
 } as const;
 
 /**
