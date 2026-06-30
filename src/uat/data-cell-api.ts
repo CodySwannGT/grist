@@ -172,8 +172,12 @@ export interface DataCellApi {
   readonly enemy: () => VerifyEnemyState | null;
   /** The bundled run-state snapshot (choice + karma + learning + wallet), or null. */
   readonly runState: () => VerifyRunState | null;
-  /** Anchor the canonical region's single Bound site through the template (#135). */
-  readonly openBoundSite: () => void;
+  /**
+   * Anchor a region's single Bound site through the template (#135). Defaults to the
+   * canonical `marrow` region; pass `regionId: "roots"` to open Velith the
+   * Deep-bound's site (#144). An unknown id falls back to `marrow`.
+   */
+  readonly openBoundSite: (regionId?: string) => void;
   /** Commit the free-vs-wield choice at the opened Bound site (`free` / `wield`). */
   readonly chooseBound: (mode: ShardMode) => void;
   /** The opened/settled Bound-site snapshot (shard + variant + karma + corruption), or null. */
@@ -213,7 +217,7 @@ export function dataCellApi(): DataCellApi {
     loadEnemy: () => enemyCell.load(),
     enemy: () => enemyCell.snapshot(worldStateCell.read() ?? "reach"),
     runState: () => runStateCell.snapshot(),
-    openBoundSite: () => boundSiteCell.open(),
+    openBoundSite: (regionId?: string) => boundSiteCell.open(regionId),
     chooseBound: (mode: ShardMode) => boundSiteCell.choose(mode),
     boundSite: () => boundSiteCell.snapshot(),
     earnSkiff: () => travelCell.earnSkiff(),

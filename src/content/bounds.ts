@@ -104,14 +104,18 @@ export const BOUNDS: {
     variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.1 } },
   },
   // The Roots/Deep Bound DATA REFERENCE per #143: Velith, the Deep-bound — the
-  // ancient, near-free power that remembers the Choir, sited in the buried ruins
-  // beneath the corpse (wiki/design/regions.md). Element `flux` (the wild pooled
-  // Weave of the Deep). "Near-free" is encoded as a zero Wield corruption rate:
-  // unlike the Marrow Bound, carrying Velith in Wield accrues no corruption,
-  // reflecting a power so old it is almost beyond the Reckoning's leash. This is a
-  // MINIMAL, data-only reference so the Roots region can `site` it via `boundSite`;
-  // the Velith Bound-site INTERACTION (free-vs-wield UI/flow) is #144, and full
-  // stat tuning is deferred (decision 0003).
+  // ancient, "near-free" power that remembers the Choir, sited in the buried ruins
+  // beneath the corpse (wiki/design/regions.md, bestiary.md). Element `flux` (the
+  // wild pooled Weave of the Deep). #143 shipped this as a MINIMAL data-only
+  // reference (a zero Wield rate placeholder) so the Roots region could `site` it;
+  // #144 tunes the free-vs-wield interaction itself. "Near-free" is the *gentlest*
+  // carry of any Bound — its Wield corruption is the LOWEST in the table (half the
+  // Marrow Bound's 0.1) — but NOT zero: a power this old is almost, not entirely,
+  // beyond the Reckoning's leash, and the franchise's moral fork (bestiary.md:
+  // "wielding = accruing corruption") only holds if wielding Velith actually
+  // accrues some. A zero Wield rate would make "free" and "wield" indistinguishable,
+  // contradicting PRD #43 AC7. Free remains corruption-free (the safe attunement).
+  // Combat stat tuning beyond the corruption rate stays deferred (decision 0003).
   "velith-deepbound": {
     id: BoundIds.velithDeepbound,
     name: "Velith, the Deep-bound",
@@ -127,7 +131,7 @@ export const BOUNDS: {
     },
     teaches: [SpellIds.spark],
     growthBias: { foc: 2, spd: 1 },
-    corruptionRate: 0,
-    variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0 } },
+    corruptionRate: 0.05,
+    variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.05 } },
   },
 };
