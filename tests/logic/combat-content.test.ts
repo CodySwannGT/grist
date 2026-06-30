@@ -158,10 +158,19 @@ describe("combat content: imports no Phaser (AC3)", () => {
 });
 
 describe("combat content: encounter loadout shape (AC4 interim)", () => {
-  it("the Phase-1 party is exactly the two spec'd combatants with HP/AP", () => {
-    const party = Object.values(PARTY);
-    expect(party).toHaveLength(2);
-    for (const member of party) {
+  it("the Phase-1 starting party (Wren + Tobi) carry positive HP/AP", () => {
+    // The starting party is Wren + Tobi; the table also carries later recruits (the
+    // Ch.4 defector Halcyon, #146), so this asserts the starting pair specifically
+    // rather than capping the table size as recruits are authored.
+    const starters = [PARTY[PartyMemberIds.wren], PARTY[PartyMemberIds.tobi]];
+    for (const member of starters) {
+      expect(member.baseStats.hp).toBeGreaterThan(0);
+      expect(member.baseStats.ap).toBeGreaterThan(0);
+    }
+  });
+
+  it("every authored party member carries positive HP/AP (totality)", () => {
+    for (const member of Object.values(PARTY)) {
       expect(member.baseStats.hp).toBeGreaterThan(0);
       expect(member.baseStats.ap).toBeGreaterThan(0);
     }

@@ -16,6 +16,11 @@ import { type WorldState } from "../logic/world";
 import { saveService } from "../services/save-service";
 import { BoundSiteCell, type VerifyBoundSiteState } from "./bound-site-cell";
 import {
+  DefectionCell,
+  type OpenDefectionOptions,
+  type VerifyDefectionState,
+} from "./defection-cell";
+import {
   EncounterLadderCell,
   type VerifyEncounterLadderState,
 } from "./encounter-ladder-cell";
@@ -98,6 +103,16 @@ const boundSiteCell = new BoundSiteCell();
 const requiemHallCell = new RequiemHallCell();
 
 /**
+ * The bridge-held defection cell (#146): Halcyon's Ch.4 defection + party expansion,
+ * gated on the Sidhe requiem-hall (#145) reaching its `truth` beat and recruited
+ * through the pure defection reducer in `logic/party`, so the defection e2e can reach
+ * the trigger, fire it, read the expanded active party roster (with Halcyon's authored
+ * stats + kit), and persist/reload it through the existing save path —
+ * scene-agnostically, without a live scene attached.
+ */
+const defectionCell = new DefectionCell();
+
+/**
  * The bridge-held travel cell (#136): the earned-freedom mobility chain (foot →
  * skiff → airship → fast-travel) and its capability/knowledge soft-gate live here in
  * memory (tier / gate / fast-travel semantics delegated to `logic/travel`), so the
@@ -122,6 +137,11 @@ function adoptIntoCells(save: CurrentSave): void {
   // run-state read and the travel spend both observe the save's grist (and any later
   // draw-down) — one shared wallet, seeded in one place.
   runStateCell.adopt(save);
+  // defectionCell.adopt rebuilds its held roster from save.party, so a reload's
+  // loadSave() rehydrates the defection read to the *restored* roster (Halcyon with her
+  // live stats + kit), not the fresh starting party — the hydration path the e2e
+  // asserts after reload (#146).
+  defectionCell.adopt(save);
 }
 
 /**
@@ -167,6 +187,9 @@ async function clearAndReset(): Promise<void> {
   await saveService.clear();
   worldStateCell.reset();
   runStateCell.reset();
+  // Reset the defection cell back to the fresh starting party alongside the others so
+  // a clearSave leaves defection() reading [wren, tobi], not a stale recruited roster.
+  defectionCell.reset();
   travelCell.reset();
   // Reset the shared wallet to the slice default alongside the travel cell so both
   // halves of the run return to a known origin together.
@@ -232,6 +255,20 @@ export interface DataCellApi {
   readonly playRequiemHallToCompletion: () => void;
   /** The requiem-hall snapshot (reachability + beat + phase + completion + hash), or null. */
   readonly requiemHall: () => VerifyRequiemHallState | null;
+  /**
+   * Open Halcyon's defection requiem-hall in the Roots / the Deep (#146). Defaults to
+   * a Ch.4-ready run (Velith attuned); pass `{ withVelith: false }` to open the
+   * soft-gated hall so firing too early never recruits her.
+   */
+  readonly openDefection: (options?: OpenDefectionOptions) => void;
+  /** Drive the defection's requiem to its `truth` beat (the trigger; no-op when gated). */
+  readonly playDefectionRequiem: () => void;
+  /** Fire Halcyon's defection (no-op before the requiem truth, or once she has joined). */
+  readonly fireDefection: () => void;
+  /** The defection snapshot (the active roster with stats + kit, and whether Halcyon joined). */
+  readonly defection: () => VerifyDefectionState;
+  /** Project the post-defection roster into a CurrentSave the `save` path persists. */
+  readonly defectionSave: () => CurrentSave;
   /** Earn the skiff (foot → skiff), opening regional travel (#136). */
   readonly earnSkiff: () => void;
   /** Earn the airship (skiff → airship), opening the full Reach and fast-travel (#136). */
@@ -276,6 +313,12 @@ export function dataCellApi(): DataCellApi {
     playRequiemHall: () => requiemHallCell.play(),
     playRequiemHallToCompletion: () => requiemHallCell.playToCompletion(),
     requiemHall: () => requiemHallCell.snapshot(),
+    openDefection: (options?: OpenDefectionOptions) =>
+      defectionCell.openRequiem(options),
+    playDefectionRequiem: () => defectionCell.playRequiemToTruth(),
+    fireDefection: () => defectionCell.fireDefection(),
+    defection: () => defectionCell.snapshot(),
+    defectionSave: () => defectionCell.toSave(),
     earnSkiff: () => travelCell.earnSkiff(),
     earnAirship: () => travelCell.earnAirship(),
     discoverSafehouse: (safehouse: string) => travelCell.discover(safehouse),
