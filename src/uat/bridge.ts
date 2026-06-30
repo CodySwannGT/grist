@@ -36,6 +36,7 @@ import {
   type FieldView,
   type VerifyFieldState,
 } from "./field-view";
+import { EnemyCell, type VerifyEnemyState } from "./enemy-cell";
 import { RegionCell, type VerifyRegionState } from "./region-cell";
 import { RunStateCell, type VerifyRunState } from "./run-state-cell";
 import { WorldStateCell } from "./world-state-cell";
@@ -180,6 +181,26 @@ interface VerifyApi extends DialogueApi {
    * (defaults to Act I `reach` until a save adopts/`reckon` flips one).
    */
   readonly region: () => VerifyRegionState | null;
+  /**
+   * Load the canonical example enemy family (`marrow-gangs`) authored against the
+   * {@link EnemyFamilyDef} schema into the bridge-held enemy cell (#138) — the
+   * scene-agnostic "an agent loaded a schema-authored family through the content
+   * barrel" verification action. No-op-safe: loading is pure data (no engine edit,
+   * no Phaser).
+   */
+  readonly loadEnemy: () => void;
+  /**
+   * A snapshot of the loaded family's Marrow-region block resolved *through* the
+   * live world-state — its id + tag validity, the resolved loot, the drained-palette
+   * marker and Gloom attacks (only in Ashfall), whether it passed schema validation,
+   * and a stable determinism hash — or null before {@link VerifyApi.loadEnemy} has
+   * run. Lets the family e2e (#138) assert the family loads and validates, resolves
+   * its Reach block before the Reckoning, and warps to its Ashfall variant (drained
+   * palette + a new Gloom attack distinct from Reach) after. Resolves against the
+   * bridge-held world-state (defaults to Act I `reach` until a save adopts/`reckon`
+   * flips one).
+   */
+  readonly enemy: () => VerifyEnemyState | null;
   /**
    * The bundled {@link VerifyRunState} snapshot — the resolved free-vs-wield
    * choice, the moralLedger/karma, the learning progression (learned + in-progress),
@@ -506,6 +527,17 @@ const runStateCell = new RunStateCell();
 const regionCell = new RegionCell();
 
 /**
+ * The bridge-held enemy-family cell (#138). A module singleton, like
+ * {@link regionCell}: holds a family authored against the {@link EnemyFamilyDef}
+ * schema and reads its per-region block through the live world-state flag, so the
+ * enemy-family e2e can load a family and observe its Reach block warp to its
+ * Ashfall variant scene-agnostically. Kept off the controller (in its own cell) so
+ * the bridge stays under its line budget — it is a pure test seam, not gameplay
+ * state.
+ */
+const enemyCell = new EnemyCell();
+
+/**
  * The seed encoded in the `?seed=` query, or null when absent/invalid. Lets a
  * battle boot deterministically without a post-load restart.
  * @returns The parsed seed, or null.
@@ -596,6 +628,12 @@ export function installVerifyBridge(): void {
     // regionTone() reads. Defaults to Act I `reach` until a save adopts or
     // `reckon()` flips one, so the region snapshot tracks the Reckoning.
     region: () => regionCell.snapshot(worldStateCell.read() ?? "reach"),
+    loadEnemy: () => enemyCell.load(),
+    // Resolve the loaded family's region block through the live world-state flag —
+    // the same flag region() reads. Defaults to Act I `reach` until a save adopts
+    // or `reckon()` flips one, so the family snapshot warps to its Ashfall variant
+    // the instant the Reckoning fires.
+    enemy: () => enemyCell.snapshot(worldStateCell.read() ?? "reach"),
     runState: () => runStateCell.snapshot(),
   };
 }

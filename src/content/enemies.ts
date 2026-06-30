@@ -3,6 +3,31 @@
  * TS-module table. HP, per-element weakness multipliers, and loot-grist are
  * authoritative from the vertical-slice-build; the remaining stats are first-pass
  * placeholders scaled to each enemy's role. Pure data — no Phaser.
+ *
+ * This module also ships the **enemy-family + Ashfall-variant stat-block schema**
+ * (#138, PRD #43 FR6): the typed scaffolding by which every region declares its
+ * enemies as data and reuses them across both world-states. An
+ * {@link EnemyFamilyDef} tags one of the eight families ({@link EnemyFamilies}),
+ * carries a {@link RegionStatBlock} per region it appears in, and authors an
+ * {@link AshfallVariant} per region — a drained-palette marker plus the
+ * entropy/Gloom attack hooks the Reckoning warps it with. The variant resolves
+ * through the existing world-state flag (`logic/world`, #134) with
+ * {@link resolveFamilyStatBlock}: the Reach stat block before the Reckoning, the
+ * warped Ashfall block after — the same `{ reach, ashfall }` read-seam regions
+ * and economy use, so the schema never re-implements the flip.
+ *
+ * Following the typed-table idiom of `regions.ts` / `encounters.ts` /
+ * `bounds.ts`: a mapped type binds each family entry's `id` to its table key (an
+ * undefined id is a compile error), and the eight family tags are a closed union
+ * so an unknown tag fails both at compile time and in {@link validateEnemyFamily}.
+ * Pure data — ZERO Phaser imports (FR9), no I/O, no RNG (`Math.random` /
+ * `Date.now` are lint-banned in game code; this module reads nothing ambient and
+ * is a total function of its inputs).
+ *
+ * The schema is the framework, not the content (per #138 Out of Scope, decision
+ * 0003): a single canonical example family (`marrow-gang`) is authored here as the
+ * "a family is added by authoring data" proof — the full per-region bestiary and
+ * final v1 slot counts are authored as each region increment is built.
  * @module content/enemies
  */
 import {
@@ -12,6 +37,11 @@ import {
   type StatusId,
   type Stats,
 } from "../logic/combat/types";
+import {
+  resolveByWorldState,
+  type WorldState,
+  type WorldStateResolver,
+} from "../logic/world";
 import { BoundIds, type BoundId } from "./bounds";
 
 /**
@@ -95,3 +125,351 @@ export const ENEMIES: {
     shardReward: BoundIds.marrowBound,
   },
 };
+
+// ───────────────────────────────────────────────────────────────────────────
+// Enemy-family + Ashfall-variant stat-block schema (#138, PRD #43 FR6)
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * The eight enemy families of Grist (PRD #43 FR6) as a closed keyed enum. A
+ * family is the highest-level grouping a per-region stat block is authored under;
+ * an entry tagged with anything outside this union is a compile error on a literal
+ * and a {@link validateEnemyFamily} failure on data forced past the compiler. Use
+ * the keyed values (e.g. `EnemyFamilies.frames`) rather than inline strings so a
+ * typo is caught and there is one source of truth — the same idiom `Elements` /
+ * `Statuses` use.
+ */
+export const EnemyFamilies = {
+  /** Marrow gangs — the under-city scrappers of the Reach. */
+  marrowGangs: "marrow-gangs",
+  /** House enforcers — the standing muscle of the great Houses. */
+  houseEnforcers: "house-enforcers",
+  /** Frames — piloted exo-rigs. */
+  frames: "frames",
+  /** Vesper constructs — the render-pressure automata. */
+  vesperConstructs: "vesper-constructs",
+  /** Quill drones — the swarming surveyors. */
+  quillDrones: "quill-drones",
+  /** Rendered husks — the hollowed remains of the Rendering. */
+  renderedHusks: "rendered-husks",
+  /** Ashland horrors — the native terrors of the ash wastes. */
+  ashlandHorrors: "ashland-horrors",
+  /** The Auditors — the cold arbiters of the Reckoning. */
+  auditors: "auditors",
+} as const;
+
+/** An enemy-family tag (the closed literal-union of the eight families). */
+export type EnemyFamily = (typeof EnemyFamilies)[keyof typeof EnemyFamilies];
+
+/** The set of valid family tags, for the runtime {@link validateEnemyFamily} guard. */
+const ENEMY_FAMILY_VALUES: ReadonlySet<string> = new Set<string>(
+  Object.values(EnemyFamilies)
+);
+
+/**
+ * Whether a value is one of the eight defined enemy-family tags. The runtime
+ * counterpart of the {@link EnemyFamily} compile-time union: a tag forced past the
+ * compiler (e.g. authored content with a typo'd family) is caught here. Pure.
+ * @param tag - The candidate family tag.
+ * @returns True when `tag` is a defined family.
+ */
+export function isEnemyFamily(tag: string): tag is EnemyFamily {
+  return ENEMY_FAMILY_VALUES.has(tag);
+}
+
+/**
+ * A single warped attack a family gains in its Ashfall variant — the entropy/Gloom
+ * hooks the Reckoning grants (PRD #43 FR6). `id` is the attack's stable key;
+ * `name` is its display name; `element` is the (typed {@link ElementId}) damage
+ * element — `gloom` for the void/entropy attacks that define the warped read.
+ * `power` is the first-pass magnitude (final tuning is authoring-time, deferred).
+ * Pure data; the runtime that *resolves* an attack into combat is elsewhere.
+ */
+export interface AshfallAttack {
+  readonly id: string;
+  readonly name: string;
+  readonly element: ElementId;
+  readonly power: number;
+}
+
+/**
+ * A family's per-region **Reach** stat block — the base (Act I) read of the family
+ * in one region. `region` is the region key the block is authored for (a free-form
+ * string id matching a `content/regions` region, kept loose so a family is added
+ * by authoring data, not by widening an engine union); `stats` is the combat
+ * {@link Stats} block; `elements` is the per-element weakness multiplier map
+ * (same convention as {@link EnemyDef}); `lootGrist` is the grist on defeat. This
+ * is the pre-Reckoning value the {@link AshfallVariant} warps.
+ */
+export interface RegionStatBlock {
+  readonly region: string;
+  readonly stats: Stats;
+  readonly elements: Partial<Record<ElementId, number>>;
+  readonly lootGrist: number;
+}
+
+/**
+ * A family's per-region **Ashfall** variant — the warped (Act II) read after the
+ * Reckoning fires (PRD #43 FR6). `drainedPalette` is the drained-palette marker
+ * (the desaturated visual key the warped form renders under — the schema carries
+ * the marker; the desaturation render pass is out of scope). `stats` /
+ * `elements` / `lootGrist` are the variant's own combat block, distinct from the
+ * Reach block. `attacks` is the non-empty list of new entropy/Gloom attacks the
+ * variant gains — at least one Gloom attack is required for a valid variant
+ * (AC scenario 2), enforced by {@link validateEnemyFamily}.
+ */
+export interface AshfallVariant {
+  readonly drainedPalette: string;
+  readonly stats: Stats;
+  readonly elements: Partial<Record<ElementId, number>>;
+  readonly lootGrist: number;
+  readonly attacks: readonly AshfallAttack[];
+}
+
+/**
+ * A family's both-states content for a single region: the
+ * {@link WorldStateResolver}-shaped `{ reach, ashfall }` pair the family resolves
+ * through the live world-state flag. Reusing the resolver shape from `logic/world`
+ * (#134) means a family reads through the flag with the same machinery regions and
+ * economy use, and makes "both reads present" a structural property of the type
+ * (a missing read is a compile error on a literal and a {@link validateEnemyFamily}
+ * failure on data forced past the compiler).
+ */
+export interface FamilyRegionStates {
+  /** The base Reach (Act I) stat block, read before the Reckoning. */
+  readonly reach: RegionStatBlock;
+  /** The warped Ashfall (Act II) variant, read after the Reckoning. */
+  readonly ashfall: AshfallVariant;
+}
+
+/**
+ * One region the family appears in, with both world-state reads. `region` is the
+ * region key (mirrors {@link RegionStatBlock.region} for direct iteration); `reach`
+ * is the base stat block; `ashfall` is the warped variant. Authored once per region
+ * a family inhabits; {@link resolveFamilyStatBlock} selects the live read.
+ */
+export interface FamilyRegionEntry extends FamilyRegionStates {
+  readonly region: string;
+}
+
+/**
+ * An enemy-family definition — the family-as-data template (#138). `id` is the
+ * family's stable key (a member of the closed {@link EnemyFamily} union, so an
+ * unknown tag is a compile error); `name` is its display name; `regions` is the
+ * non-empty list of per-region {@link FamilyRegionEntry} blocks, each carrying both
+ * a Reach stat block and an Ashfall variant. Everything is authored data: a family
+ * is a new {@link EnemyFamilyDef}, no engine-code edit. Ids of families registered
+ * in {@link ENEMY_FAMILIES} are additionally captured by the
+ * {@link RegisteredFamilyId} literal union for table reads.
+ */
+export interface EnemyFamilyDef {
+  readonly id: EnemyFamily;
+  readonly name: string;
+  readonly regions: readonly FamilyRegionEntry[];
+}
+
+/** Canonical ids of the families registered in {@link ENEMY_FAMILIES}. */
+export const RegisteredFamilyIds = {
+  marrowGangs: EnemyFamilies.marrowGangs,
+} as const;
+
+/** A registered family id (the literal-union of every {@link ENEMY_FAMILIES} key). */
+export type RegisteredFamilyId =
+  (typeof RegisteredFamilyIds)[keyof typeof RegisteredFamilyIds];
+
+/**
+ * The enemy-family table. The mapped type binds each entry's `id` to its table
+ * key, so the key and the `id` can never drift — the same idiom `ENEMIES` /
+ * `ENCOUNTERS` / `BOUNDS` / `REGIONS` use. The `marrow-gangs` family is the
+ * canonical example: the Marrow under-city scrappers authored against the schema
+ * with a Marrow-region Reach block and its drained-palette Ashfall variant (a new
+ * Gloom attack), the "a family is added by authoring data" proof. The full
+ * eight-family roster is authored as each region increment is built (decision
+ * 0003); the schema (this table's *type*) is complete for all eight tags now.
+ */
+export const ENEMY_FAMILIES: {
+  readonly [K in RegisteredFamilyId]: EnemyFamilyDef & { readonly id: K };
+} = {
+  "marrow-gangs": {
+    id: RegisteredFamilyIds.marrowGangs,
+    name: "Marrow gangs",
+    regions: [
+      {
+        region: "marrow",
+        reach: {
+          region: "marrow",
+          stats: {
+            hp: 40,
+            ap: 0,
+            pow: 8,
+            foc: 0,
+            def: 4,
+            wrd: 2,
+            spd: 8,
+            lck: 2,
+          },
+          elements: {},
+          lootGrist: 6,
+        },
+        ashfall: {
+          drainedPalette: "ash-drained",
+          stats: {
+            hp: 48,
+            ap: 0,
+            pow: 9,
+            foc: 4,
+            def: 4,
+            wrd: 3,
+            spd: 7,
+            lck: 2,
+          },
+          // Warped: gains a Gloom weakness/affinity read distinct from the Reach
+          // block (which had none).
+          elements: { gloom: 1.5 },
+          lootGrist: 6,
+          attacks: [
+            {
+              id: "entropy-bite",
+              name: "Entropy Bite",
+              element: Elements.gloom,
+              power: 12,
+            },
+          ],
+        },
+      },
+    ],
+  },
+};
+
+/**
+ * Resolve a family's live stat block for a region *through* the world-state flag —
+ * the family read seam (AC scenario 2). Returns the region's {@link RegionStatBlock}
+ * (Reach) before the Reckoning and its {@link AshfallVariant} after, so the same
+ * authored family surfaces a different block the instant the Reckoning flips the
+ * flag, with no per-call-site branching. Returns null when the family has no entry
+ * for `region`. Pure — delegates the selection to {@link resolveByWorldState}; the
+ * seed never enters.
+ * @param family - The family to read.
+ * @param region - The region key to read the block for.
+ * @param state - The current world-state.
+ * @returns The family's Reach block in reach / Ashfall variant in ashfall for `region`, or null.
+ */
+export function resolveFamilyStatBlock(
+  family: EnemyFamilyDef,
+  region: string,
+  state: WorldState
+): RegionStatBlock | AshfallVariant | null {
+  const entry = family.regions.find(r => r.region === region);
+  if (entry === undefined) {
+    return null;
+  }
+  // The resolver's two arms hold different types (Reach block vs. Ashfall
+  // variant), so read through the flag against their common union — the same
+  // `{ reach, ashfall }` selection regions use, widened to the per-state shapes.
+  const resolver: WorldStateResolver<RegionStatBlock | AshfallVariant> = {
+    reach: entry.reach,
+    ashfall: entry.ashfall,
+  };
+  return resolveByWorldState(state, resolver);
+}
+
+/**
+ * Whether a single Ashfall variant is structurally complete: a non-blank
+ * drained-palette marker and at least one Gloom/entropy attack distinct from the
+ * Reach block (AC scenario 2). A variant with a blank palette or no new attack is
+ * an authoring slip {@link validateEnemyFamily} surfaces as a named error. Pure.
+ * @param variant - The Ashfall variant to inspect (may be absent on data forced past the compiler).
+ * @param region - The region label the variant occupies (for error messages).
+ * @returns The list of error strings for the variant ([] when valid).
+ */
+function ashfallVariantErrors(
+  variant: AshfallVariant | undefined,
+  region: string
+): readonly string[] {
+  if (variant === undefined) {
+    return [`family region '${region}' is missing its ashfall variant`];
+  }
+  const hasGloomAttack = variant.attacks.some(
+    a => a.element === Elements.gloom
+  );
+  return [
+    variant.drainedPalette.trim() === ""
+      ? `family region '${region}' ashfall variant has a blank drained-palette marker`
+      : "",
+    variant.attacks.length === 0
+      ? `family region '${region}' ashfall variant has no new attacks`
+      : "",
+    !hasGloomAttack
+      ? `family region '${region}' ashfall variant has no entropy/Gloom attack`
+      : "",
+  ].filter(message => message !== "");
+}
+
+/**
+ * Validate a region entry against the both-states schema: a non-blank region key,
+ * a present Reach block, and a complete Ashfall variant. Pure.
+ * @param entry - The region entry to validate (the type is the happy path; this guards data forced past it).
+ * @returns The list of error strings ([] when the entry is valid).
+ */
+function regionEntryErrors(entry: FamilyRegionEntry): readonly string[] {
+  const reach = entry.reach as RegionStatBlock | undefined;
+  return [
+    entry.region.trim() === ""
+      ? "family has a region entry with a blank region key"
+      : "",
+    reach === undefined
+      ? `family region '${entry.region}' is missing its reach stat block`
+      : "",
+    ...ashfallVariantErrors(entry.ashfall, entry.region),
+  ].filter(message => message !== "");
+}
+
+/**
+ * Validate an enemy family against the family schema (AC scenarios 1 & 2). Returns
+ * the list of authoring errors — empty when the family is complete. A family with
+ * an unknown tag, no regions, or a region entry missing its Reach block or a valid
+ * Ashfall variant (blank palette / no Gloom attack) fails. Pure: reads only its
+ * input, allocates a fresh array, mutates nothing.
+ * @param family - The family to validate (the type is the happy path; this guards data forced past it).
+ * @returns The list of error strings ([] when the family is valid).
+ */
+export function validateEnemyFamily(family: EnemyFamilyDef): readonly string[] {
+  const regions = family.regions as readonly FamilyRegionEntry[] | undefined;
+  const tagError = !isEnemyFamily(family.id)
+    ? `family has an unknown family tag '${family.id}'`
+    : "";
+  const noRegionsError =
+    regions === undefined || regions.length === 0
+      ? "family declares no per-region stat blocks"
+      : "";
+  const regionErrors = (regions ?? []).flatMap(regionEntryErrors);
+  return [tagError, noRegionsError, ...regionErrors].filter(
+    message => message !== ""
+  );
+}
+
+/**
+ * Whether a family is complete — a known tag, at least one region, and every
+ * region entry carrying a Reach block and a valid Ashfall variant (the boolean
+ * read of {@link validateEnemyFamily}). The predicate the framework's load path
+ * gates on. Pure.
+ * @param family - The family to check.
+ * @returns True when the family passes schema validation.
+ */
+export function isCompleteEnemyFamily(family: EnemyFamilyDef): boolean {
+  return validateEnemyFamily(family).length === 0;
+}
+
+/**
+ * Author an enemy family from plain data — the data-only authoring seam (AC
+ * scenario 1). A thin identity-shaped constructor that returns its input typed as
+ * an {@link EnemyFamilyDef}, so a new family is declared as data and flows through
+ * the same {@link resolveFamilyStatBlock} / {@link validateEnemyFamily} framework
+ * the table uses, with no engine wiring. Authoring a family never edits engine
+ * code; it calls this (or adds an entry to {@link ENEMY_FAMILIES}). Pure.
+ * @param family - The family data to author.
+ * @returns The authored family, typed as an EnemyFamilyDef.
+ */
+export function authorEnemyFamily(family: EnemyFamilyDef): EnemyFamilyDef {
+  return family;
+}

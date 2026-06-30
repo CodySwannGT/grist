@@ -17,7 +17,28 @@ export {
   type BindSpellId,
   type AnySpellId,
 } from "./spells";
-export { ENEMIES, EnemyIds, type EnemyDef, type EnemyId } from "./enemies";
+export {
+  ENEMIES,
+  EnemyIds,
+  EnemyFamilies,
+  ENEMY_FAMILIES,
+  RegisteredFamilyIds,
+  authorEnemyFamily,
+  isCompleteEnemyFamily,
+  isEnemyFamily,
+  resolveFamilyStatBlock,
+  validateEnemyFamily,
+  type EnemyDef,
+  type EnemyId,
+  type EnemyFamily,
+  type EnemyFamilyDef,
+  type AshfallAttack,
+  type AshfallVariant,
+  type FamilyRegionEntry,
+  type FamilyRegionStates,
+  type RegionStatBlock,
+  type RegisteredFamilyId,
+} from "./enemies";
 export {
   BOUNDS,
   BoundIds,
