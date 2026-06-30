@@ -32,6 +32,7 @@ export type SpellId = (typeof SpellIds)[keyof typeof SpellIds];
 export const BindSpellIds = {
   bindWisp: "bind-wisp",
   bindMarrow: "bind-marrow",
+  bindDeep: "bind-deep",
 } as const;
 
 /** A Bind action id. */

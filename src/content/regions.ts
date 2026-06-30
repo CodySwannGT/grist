@@ -109,6 +109,7 @@ export interface RegionDef {
 /** Canonical ids of the regions registered in {@link REGIONS}. */
 export const RegionIds = {
   marrow: "marrow",
+  roots: "roots",
 } as const;
 
 /** A registered region id (the literal-union of every {@link REGIONS} key). */
@@ -147,6 +148,52 @@ export const REGIONS: {
         ],
         encounters: [EncounterIds.theDrip, EncounterIds.theCage],
         sideStories: [{ id: "the-salvage-cache", name: "The Hollow Cache" }],
+      },
+    },
+  },
+  // The Roots / the Deep (#143): the buried pre-Sundering ruins beneath the corpse
+  // — pooled wild Weave, old things lingering, the fantasy heart under the city
+  // (wiki/design/regions.md). Sites Velith, the Deep-bound (the ancient near-free
+  // power that remembers the Choir). Authored against the shipped template in BOTH
+  // world-states: the verdant Reach (a last bright place, the Weave still pooled)
+  // and the ashen Ashfall (the Weave guttering but not dead — a less-total decay
+  // than other regions, still warped/desaturated). Reach and Ashfall draw DIFFERENT
+  // encounter tables so the region reads observably differently across the
+  // Reckoning. The Sidhe requiem-hall set-piece itself is #145 (out of scope here);
+  // this authors it as a key location only.
+  roots: {
+    id: RegionIds.roots,
+    boundSite: BoundIds.velithDeepbound,
+    states: {
+      reach: {
+        name: "The Roots Reach",
+        tone: "verdant",
+        keyLocations: [
+          { id: "drowned-old-kingdom", name: "The Drowned Old Kingdom" },
+          { id: "sidhe-requiem-hall", name: "The Sidhe Requiem-Hall" },
+        ],
+        encounters: [EncounterIds.drownedKingdom, EncounterIds.requiemHall],
+        sideStories: [
+          { id: "the-choir-that-remembers", name: "The Choir That Remembers" },
+        ],
+      },
+      ashfall: {
+        name: "The Roots Ashfall",
+        tone: "ashen",
+        keyLocations: [
+          {
+            id: "drowned-old-kingdom",
+            name: "The Drowned Old Kingdom (guttering)",
+          },
+          {
+            id: "sidhe-requiem-hall",
+            name: "The Sidhe Requiem-Hall (dimmed)",
+          },
+        ],
+        encounters: [EncounterIds.requiemHall, EncounterIds.deepAudit],
+        sideStories: [
+          { id: "the-choir-that-remembers", name: "The Choir Gone Quiet" },
+        ],
       },
     },
   },

@@ -53,6 +53,7 @@ export interface BoundDef {
 export const BoundIds = {
   emberwisp: "emberwisp",
   marrowBound: "marrow-bound",
+  velithDeepbound: "velith-deepbound",
 } as const;
 
 /** A Bound id (the literal-union of every defined shard key). */
@@ -101,5 +102,32 @@ export const BOUNDS: {
     growthBias: { foc: 2 },
     corruptionRate: 0.1,
     variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.1 } },
+  },
+  // The Roots/Deep Bound DATA REFERENCE per #143: Velith, the Deep-bound — the
+  // ancient, near-free power that remembers the Choir, sited in the buried ruins
+  // beneath the corpse (wiki/design/regions.md). Element `flux` (the wild pooled
+  // Weave of the Deep). "Near-free" is encoded as a zero Wield corruption rate:
+  // unlike the Marrow Bound, carrying Velith in Wield accrues no corruption,
+  // reflecting a power so old it is almost beyond the Reckoning's leash. This is a
+  // MINIMAL, data-only reference so the Roots region can `site` it via `boundSite`;
+  // the Velith Bound-site INTERACTION (free-vs-wield UI/flow) is #144, and full
+  // stat tuning is deferred (decision 0003).
+  "velith-deepbound": {
+    id: BoundIds.velithDeepbound,
+    name: "Velith, the Deep-bound",
+    element: Elements.flux,
+    bind: {
+      id: BindSpellIds.bindDeep,
+      name: "Bind: Deep",
+      element: Elements.flux,
+      apCost: 0,
+      gristCost: 12,
+      power: 16,
+      target: SpellTargets.all,
+    },
+    teaches: [SpellIds.spark],
+    growthBias: { foc: 2, spd: 1 },
+    corruptionRate: 0,
+    variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0 } },
   },
 };
