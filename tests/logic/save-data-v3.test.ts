@@ -139,9 +139,38 @@ describe("SaveDataV3 — build & scene corruption guarding (never crash-load)", 
     ).toBeNull();
   });
 
-  it("rejects a build with a non-finite stat bonus", () => {
+  it("rejects a build with a non-finite stat bonus (validator path, not JSON.parse)", () => {
+    // The non-finite-bonus guard lives in `asStatBonuses`'s `isFiniteNumber`
+    // check, but `NaN`/`Infinity` are not JSON-representable — a literal `NaN`
+    // token makes `JSON.parse` throw, so a `{"spd":NaN}` string is rejected at
+    // the parse boundary and never reaches the validator. To genuinely exercise
+    // the validator's finite-number rejection we feed a JSON-valid value that is
+    // a non-finite *number* once parsed: `1e999` parses to `Infinity`, survives
+    // `JSON.parse`, reaches `asStatBonuses`, and must be rejected there. Built on
+    // a fully-valid `sampleSave()` so the only reason this can reject is the bad
+    // bonus — if the finite-number guard were weakened, this test would fail.
     expect(
-      deserialize('{"version":3,"build":{"statBonuses":{"spd":NaN}}}')
+      deserialize(
+        JSON.stringify({
+          ...sampleSave(),
+          build: { statBonuses: { spd: 2, pow: 1 }, equippedShards: [] },
+        }).replace('"pow":1', '"pow":1e999')
+      )
+    ).toBeNull();
+  });
+
+  it("rejects a build whose stat bonus is a non-number (validator finite-number guard)", () => {
+    // A second JSON-valid invalid value that survives `JSON.parse` and reaches
+    // the validator: a string where a finite number is required. `isFiniteNumber`
+    // rejects it on the `typeof === "number"` arm, so the whole save is rejected
+    // rather than loading a build with a phantom string-valued stat.
+    expect(
+      deserialize(
+        JSON.stringify({
+          ...sampleSave(),
+          build: { statBonuses: { spd: "x" }, equippedShards: [] },
+        })
+      )
     ).toBeNull();
   });
 
