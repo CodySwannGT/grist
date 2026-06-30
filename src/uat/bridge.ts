@@ -19,9 +19,7 @@ import {
   type BattleState,
   type Combatant,
 } from "../logic/combat";
-import { type CurrentSave } from "../logic/save";
-import { type WorldState } from "../logic/world";
-import { saveService } from "../services/save-service";
+import { type RegionAction } from "../logic/region";
 import { type HudModel } from "../ui/battle-controller";
 import { autoWinView, strikeView } from "./battle-driver";
 import { BenchCell, type BenchView, type VerifyBenchState } from "./bench-view";
@@ -31,15 +29,17 @@ import {
   type DialogueApi,
   type DialogueView,
 } from "./dialogue-view";
+import { dataCellApi, type DataCellApi } from "./data-cell-api";
 import {
   toVerifyFieldState,
   type FieldView,
   type VerifyFieldState,
 } from "./field-view";
-import { EnemyCell, type VerifyEnemyState } from "./enemy-cell";
-import { RegionCell, type VerifyRegionState } from "./region-cell";
-import { RunStateCell, type VerifyRunState } from "./run-state-cell";
-import { WorldStateCell } from "./world-state-cell";
+import {
+  RegionSceneCell,
+  type RegionView,
+  type VerifyRegionSceneState,
+} from "./region-scene-view";
 
 /** A read-only snapshot of one combatant for assertions. */
 interface VerifyCombatant {
@@ -92,14 +92,20 @@ export interface BattleView {
 export type { FieldView };
 
 /** The shape installed on `window.__VERIFY__`. */
-interface VerifyApi extends DialogueApi {
+interface VerifyApi extends DialogueApi, DataCellApi {
   readonly scene: () => string;
   readonly state: () => VerifyBattleState | null;
   readonly resolution: () => VerifyResolution | null;
   readonly hud: () => HudModel | null;
   readonly hash: () => string | null;
   readonly seed: (seed: number) => void;
-  readonly act: (action: BattleAction) => void;
+  /**
+   * Push an action into the active gameplay scene. A {@link BattleAction} drives
+   * the Battle scene's sim; a {@link RegionAction} (`advance` / `reckon`) drives the
+   * booted Region scene's harness (#137). The bridge dispatches by which view is
+   * attached, so the same `act()` entry serves both — battle callers are unaffected.
+   */
+  readonly act: (action: BattleAction | RegionAction) => void;
   readonly advanceTurn: () => void;
   readonly strike: () => void;
   /**
@@ -125,93 +131,17 @@ interface VerifyApi extends DialogueApi {
   readonly buyRunnersReflex: () => void;
   /** Buy Accelerate: Cinder at the bench; a no-op if unaffordable or not learning. */
   readonly accelerateCinder: () => void;
+  // The save / world-state / region-data / enemy-family read entries are
+  // contributed by {@link DataCellApi} (composed from the bridge-held data
+  // cells), the `dialogueApi` way — keeping this file under its line budget.
   /**
-   * Persist a {@link CurrentSave} to IndexedDB via the real {@link SaveService}
-   * and resolve once the write commits. The persistence-journey driver: the e2e
-   * calls this with a representative run payload, then reloads the page and calls
-   * {@link VerifyApi.loadSave} to assert it was restored exactly from IndexedDB
-   * (PRD #41 AC7 + AC5). Resolves false if persistence is unavailable.
+   * A snapshot of the BOOTED Region scene (#137), or null outside it — the
+   * rendered-scene counterpart of {@link VerifyApi.field}. The Region scene
+   * registers a {@link RegionView}; the bridge dispatches this (and `scene()` /
+   * `hash()` / `act()` / `resolution()`) to it. `booted` is false (with a non-null
+   * `error`) when the region threw on boot — the harness-failure state the e2e asserts.
    */
-  readonly save: (save: CurrentSave) => Promise<boolean>;
-  /**
-   * Restore the persisted save from IndexedDB via the real {@link SaveService}
-   * (the post-reload read). Returns a fresh empty save when nothing is stored or
-   * the payload is unrecoverable — never throws.
-   */
-  readonly loadSave: () => Promise<CurrentSave>;
-  /** Whether a save record is present in IndexedDB. */
-  readonly hasSave: () => Promise<boolean>;
-  /** Delete the persisted save (reset between e2e runs). */
-  readonly clearSave: () => Promise<void>;
-  /**
-   * The bridge-held current world-state, or null if none has been adopted yet.
-   * Seeded by {@link VerifyApi.save} (which adopts the payload's `worldState`) and
-   * flipped in place by {@link VerifyApi.reckon}. Lets the world-state e2e (#134)
-   * assert the Act I `reach` → Act II `ashfall` flip without a battle scene.
-   */
-  readonly worldState: () => WorldState | null;
-  /**
-   * Apply the Reckoning {@link reckon} flip to the bridge-held world-state — the
-   * in-memory flip the world-state e2e drives (`reach` → `ashfall`, idempotent).
-   * The flip consumes no RNG. No-op until a world-state has been adopted.
-   */
-  readonly reckon: () => void;
-  /**
-   * A demonstrative resolver read *through* the live world-state flag: the region
-   * tone (`"verdant"` in `reach`, `"ashen"` in `ashfall`), or null before a
-   * world-state is adopted. Lets the e2e observe a resolver returning its Ashfall
-   * value once {@link VerifyApi.reckon} has fired.
-   */
-  readonly regionTone: () => string | null;
-  /**
-   * Load the canonical example region (`marrow`) authored against the
-   * {@link RegionDef} template into the bridge-held region cell (#133) — the
-   * scene-agnostic "an agent loaded a template-authored region through the content
-   * barrel" verification action. No-op-safe: loading is pure data (no engine
-   * edit, no Phaser).
-   */
-  readonly loadRegion: () => void;
-  /**
-   * A snapshot of the loaded region resolved *through* the live world-state — its
-   * id, the resolved variant name + tone, whether it passed both-states
-   * validation, which variants are present, and a stable determinism hash — or
-   * null before {@link VerifyApi.loadRegion} has run. Lets the region e2e (#133)
-   * assert the region loads, exposes BOTH Reach and Ashfall variants, and that an
-   * incomplete region is rejected. Resolves against the bridge-held world-state
-   * (defaults to Act I `reach` until a save adopts/`reckon` flips one).
-   */
-  readonly region: () => VerifyRegionState | null;
-  /**
-   * Load the canonical example enemy family (`marrow-gangs`) authored against the
-   * {@link EnemyFamilyDef} schema into the bridge-held enemy cell (#138) — the
-   * scene-agnostic "an agent loaded a schema-authored family through the content
-   * barrel" verification action. No-op-safe: loading is pure data (no engine edit,
-   * no Phaser).
-   */
-  readonly loadEnemy: () => void;
-  /**
-   * A snapshot of the loaded family's Marrow-region block resolved *through* the
-   * live world-state — its id + tag validity, the resolved loot, the drained-palette
-   * marker and Gloom attacks (only in Ashfall), whether it passed schema validation,
-   * and a stable determinism hash — or null before {@link VerifyApi.loadEnemy} has
-   * run. Lets the family e2e (#138) assert the family loads and validates, resolves
-   * its Reach block before the Reckoning, and warps to its Ashfall variant (drained
-   * palette + a new Gloom attack distinct from Reach) after. Resolves against the
-   * bridge-held world-state (defaults to Act I `reach` until a save adopts/`reckon`
-   * flips one).
-   */
-  readonly enemy: () => VerifyEnemyState | null;
-  /**
-   * The bundled {@link VerifyRunState} snapshot — the resolved free-vs-wield
-   * choice, the moralLedger/karma, the learning progression (learned + in-progress),
-   * and the shared grist wallet — or null before a save has been adopted. Seeded by
-   * {@link VerifyApi.save} (the same payload it persists) and held by the
-   * {@link RunStateCell}, so the slice e2e (#89) can read the choice + karma +
-   * learning + economy scene-agnostically — without a live battle / field / bench
-   * scene — the way {@link VerifyApi.worldState} exposes the world-state flag
-   * (PRD #41 AC5 / FR3 / FR6 / FR7). See `uat/run-state-cell` for the rationale.
-   */
-  readonly runState: () => VerifyRunState | null;
+  readonly regionRun: () => VerifyRegionSceneState | null;
 }
 
 declare global {
@@ -264,7 +194,7 @@ function toVerifyState(scene: string, state: BattleState): VerifyBattleState {
  * @returns True when the view is a field view.
  */
 function isFieldView(
-  view: BattleView | FieldView | BenchView | DialogueView
+  view: BattleView | FieldView | BenchView | DialogueView | RegionView
 ): view is FieldView {
   return "room" in view;
 }
@@ -279,6 +209,8 @@ class VerifyController {
   #sceneKey = "";
   #view: BattleView | null = null;
   #fieldView: FieldView | null = null;
+  /** The composed region-scene seam (#137), public like {@link dialogue}. */
+  readonly region = new RegionSceneCell();
   readonly #bench = new BenchCell();
   readonly dialogue = new DialogueCell();
   #pendingSeed: number | null = null;
@@ -286,22 +218,23 @@ class VerifyController {
   /**
    * Link the active scene + the view it exposes so the bridge can observe and
    * drive it. A scene attaches whichever view it implements — a {@link BattleView}
-   * (Battle), a {@link FieldView} (Field), a {@link BenchView} (Bench), or a
-   * {@link DialogueView} (Dialogue) — and the bridge dispatches each query to the
-   * present view. Non-gameplay scenes (Boot / Preloader) attach `null`. Attaching
-   * one view clears the others so a stale link can never be read across a scene
-   * transition.
+   * (Battle), a {@link FieldView} (Field), a {@link BenchView} (Bench), a
+   * {@link DialogueView} (Dialogue), or a {@link RegionView} (Region, #137) — and
+   * the bridge dispatches each query to the present view. Non-gameplay scenes
+   * (Boot / Preloader) attach `null`. Attaching one view clears the others so a
+   * stale link can never be read across a scene transition.
    * @param sceneKey - The active scene's key.
-   * @param view - The battle / field / bench / dialogue view, or null for non-gameplay scenes.
+   * @param view - The battle / field / bench / dialogue / region view, or null for non-gameplay scenes.
    * @returns void
    */
   attach(
     sceneKey: string,
-    view: BattleView | FieldView | BenchView | DialogueView | null
+    view: BattleView | FieldView | BenchView | DialogueView | RegionView | null
   ): void {
     this.#sceneKey = sceneKey;
     this.#view = null;
     this.#fieldView = null;
+    this.region.attach(null);
     this.#bench.attach(null);
     this.dialogue.attach(null);
     if (view === null) {
@@ -309,17 +242,15 @@ class VerifyController {
     }
     if (isFieldView(view)) {
       this.#fieldView = view;
-      return;
-    }
-    if (BenchCell.claims(view)) {
+    } else if (RegionSceneCell.claims(view)) {
+      this.region.attach(view);
+    } else if (BenchCell.claims(view)) {
       this.#bench.attach(view);
-      return;
-    }
-    if (DialogueCell.claims(view)) {
+    } else if (DialogueCell.claims(view)) {
       this.dialogue.attach(view);
-      return;
+    } else {
+      this.#view = view;
     }
-    this.#view = view;
   }
 
   /**
@@ -345,8 +276,8 @@ class VerifyController {
    * @returns The current battle snapshot or null.
    */
   state(): VerifyBattleState | null {
-    const state = this.#view?.state() ?? null;
-    return state ? toVerifyState(this.#sceneKey, state) : null;
+    const battle = this.#view?.state();
+    return battle ? toVerifyState(this.#sceneKey, battle) : null;
   }
 
   /**
@@ -360,6 +291,7 @@ class VerifyController {
     const view =
       this.#view ??
       this.#fieldView ??
+      this.region.view() ??
       this.#bench.view() ??
       this.dialogue.view();
     return view?.resolution() ?? null;
@@ -430,23 +362,28 @@ class VerifyController {
   }
 
   /**
-   * The stable digest of the live {@link BattleState} ({@link hashState}), or null
-   * outside a battle scene. The determinism gate samples this across two seeded
+   * The stable digest of the live scene — the {@link BattleState} hash in a battle,
+   * or the booted region-session hash ({@link hashRegionRun}) in the Region scene
+   * (#137), else null. The determinism gate samples this across two seeded
    * play-throughs and asserts an identical progression — same seed + same action
-   * sequence ⇒ identical hashes.
+   * sequence ⇒ identical hashes. Dispatched by which view is attached.
    * @returns The 8-char state hash, or null.
    */
   hash(): string | null {
-    return this.#view?.hash() ?? null;
+    return this.region.hash() ?? this.#view?.hash() ?? null;
   }
 
   /**
-   * Push an action into the sim via the active battle view.
-   * @param action - The battle action to apply.
+   * Push an action into the active gameplay scene. A {@link BattleAction} threads
+   * the Battle scene's sim; a {@link RegionAction} (`advance` / `reckon`) drives the
+   * booted Region scene's harness (#137). `attach` clears the inactive view, so each
+   * branch is a no-op for the other scene — only the attached view receives its action.
+   * @param action - The battle or region action to apply.
    * @returns void
    */
-  act(action: BattleAction): void {
-    this.#view?.act(action);
+  act(action: BattleAction | RegionAction): void {
+    this.region.act(action as RegionAction);
+    this.#view?.act(action as BattleAction);
   }
 
   /**
@@ -498,46 +435,6 @@ class VerifyController {
 export const verifyBridge = new VerifyController();
 
 /**
- * The bridge-held world-state cell (#134). A module singleton, like
- * {@link verifyBridge}: the world-state flag the e2e flips and reads lives here in
- * memory (flip + resolve semantics delegated to `logic/world`), while the
- * canonical flag still rides the persisted save. Kept off the controller so the
- * bridge stays under its line budget — it is a pure test seam, not gameplay state.
- */
-const worldStateCell = new WorldStateCell();
-
-/**
- * The bridge-held run-state cell (#88). A module singleton, like
- * {@link verifyBridge} and {@link worldStateCell}: holds the resolved free-vs-wield
- * choice, the moral ledger, the learning progression, and the shared grist wallet
- * adopted from the persisted save, so the slice e2e can read them scene-agnostically.
- * Kept off the controller (in its own cell) so the bridge stays under its line
- * budget — it is a pure test seam, not gameplay state.
- */
-const runStateCell = new RunStateCell();
-
-/**
- * The bridge-held region cell (#133). A module singleton, like {@link verifyBridge},
- * {@link worldStateCell}, and {@link runStateCell}: holds a region authored against
- * the {@link RegionDef} template and reads it through the live world-state flag, so
- * the region e2e can load a region and observe its both-states variants
- * scene-agnostically. Kept off the controller (in its own cell) so the bridge stays
- * under its line budget — it is a pure test seam, not gameplay state.
- */
-const regionCell = new RegionCell();
-
-/**
- * The bridge-held enemy-family cell (#138). A module singleton, like
- * {@link regionCell}: holds a family authored against the {@link EnemyFamilyDef}
- * schema and reads its per-region block through the live world-state flag, so the
- * enemy-family e2e can load a family and observe its Reach block warp to its
- * Ashfall variant scene-agnostically. Kept off the controller (in its own cell) so
- * the bridge stays under its line budget — it is a pure test seam, not gameplay
- * state.
- */
-const enemyCell = new EnemyCell();
-
-/**
  * The seed encoded in the `?seed=` query, or null when absent/invalid. Lets a
  * battle boot deterministically without a post-load restart.
  * @returns The parsed seed, or null.
@@ -579,13 +476,18 @@ export function installVerifyBridge(): void {
     return;
   }
   window.__VERIFY__ = {
+    // `scene()` / `hash()` / `act()` are dispatched by the active view inside the
+    // controller: the Region scene (#137) registers a RegionView, so `scene()`
+    // reports the Region key, `hash()` returns the booted-session digest, and
+    // `act()` routes a RegionAction to the harness — the same entry points a battle
+    // uses, with the controller selecting the attached view.
     scene: () => verifyBridge.scene(),
     state: () => verifyBridge.state(),
     resolution: () => verifyBridge.resolution(),
     hud: () => verifyBridge.hud(),
     hash: () => verifyBridge.hash(),
     seed: (seed: number) => verifyBridge.seed(seed),
-    act: (action: BattleAction) => verifyBridge.act(action),
+    act: (action: BattleAction | RegionAction) => verifyBridge.act(action),
     advanceTurn: () => verifyBridge.advanceTurn(),
     strike: () => verifyBridge.strike(),
     autoWin: (maxTurns?: number) => verifyBridge.autoWin(maxTurns),
@@ -598,42 +500,12 @@ export function installVerifyBridge(): void {
     buyRunnersReflex: () => verifyBridge.bench().view()?.buyRunnersReflex(),
     accelerateCinder: () => verifyBridge.bench().view()?.accelerateCinder(),
     ...dialogueApi(verifyBridge.dialogue, () => verifyBridge.scene()),
-    // Drive the real shared SaveService so the e2e writes, reloads, and reads the
-    // same IndexedDB store the game uses — proving the round-trip survives a page
-    // reload (PRD #41 AC7 / AC5).
-    save: async (save: CurrentSave) => {
-      // Adopt the payload's world-state into the held cell so the in-memory
-      // flip/read path (worldState/reckon/regionTone) and the persisted path stay
-      // consistent: the flag the e2e saves is the flag the bridge then exposes.
-      worldStateCell.adopt(save.worldState);
-      // Adopt the run-state sub-shapes (choice + moralLedger + learning + wallet)
-      // for the same reason: the choice/karma/learning the e2e saves are exactly
-      // the values runState() then surfaces.
-      runStateCell.adopt(save);
-      try {
-        await saveService.save(save);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-    loadSave: () => saveService.load(),
-    hasSave: () => saveService.has(),
-    clearSave: () => saveService.clear(),
-    worldState: () => worldStateCell.read(),
-    reckon: () => worldStateCell.reckon(),
-    regionTone: () => worldStateCell.regionTone(),
-    loadRegion: () => regionCell.load(),
-    // Resolve the loaded region through the live world-state flag — the same flag
-    // regionTone() reads. Defaults to Act I `reach` until a save adopts or
-    // `reckon()` flips one, so the region snapshot tracks the Reckoning.
-    region: () => regionCell.snapshot(worldStateCell.read() ?? "reach"),
-    loadEnemy: () => enemyCell.load(),
-    // Resolve the loaded family's region block through the live world-state flag —
-    // the same flag region() reads. Defaults to Act I `reach` until a save adopts
-    // or `reckon()` flips one, so the family snapshot warps to its Ashfall variant
-    // the instant the Reckoning fires.
-    enemy: () => enemyCell.snapshot(worldStateCell.read() ?? "reach"),
-    runState: () => runStateCell.snapshot(),
+    // The save / world-state / region-data / enemy-family entries — composed
+    // from the bridge-held data cells, the `dialogueApi` way; null outside the
+    // scene/state each reads (PRD #41 AC5/AC7).
+    ...dataCellApi(),
+    // The BOOTED Region scene snapshot (#137) — read for the active scene, the same
+    // way `bench` reads its cell; null outside the Region scene.
+    regionRun: () => verifyBridge.region.snapshot(verifyBridge.scene()),
   };
 }

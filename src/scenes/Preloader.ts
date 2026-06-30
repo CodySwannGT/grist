@@ -7,7 +7,13 @@
  */
 import Phaser from "phaser";
 import { TextureKeys } from "../assets";
-import { BattleLayout, SceneKeys } from "../consts";
+import {
+  BattleLayout,
+  GameView,
+  RegionColors,
+  RegionLayout,
+  SceneKeys,
+} from "../consts";
 import { verifyBridge } from "../uat/bridge";
 
 const HEAD_RADIUS = 6;
@@ -16,6 +22,8 @@ const BODY_TOP = 11;
 const BODY_INSET = 4;
 const BODY_CORNER = 5;
 const UNIT_COLOR = 0xffffff;
+/** Thickness (logical px) of the region backdrop's horizon divider line. */
+const HORIZON_THICKNESS = 2;
 
 /** Generates the placeholder unit texture, then transitions to the battle. */
 export class Preloader extends Phaser.Scene {
@@ -34,6 +42,7 @@ export class Preloader extends Phaser.Scene {
    */
   create(): void {
     this.#makeUnitTexture();
+    this.#makeRegionBackdropTexture();
     verifyBridge.attach(SceneKeys.Preloader, null);
     this.scene.start(startScene());
   }
@@ -57,6 +66,33 @@ export class Preloader extends Phaser.Scene {
     );
     graphics.fillCircle(width / 2, HEAD_CENTER_Y, HEAD_RADIUS);
     graphics.generateTexture(TextureKeys.Unit, width, height);
+    graphics.destroy();
+  }
+
+  /**
+   * Generate the region side-view backdrop placeholder (#137): a full-screen
+   * 384×216 texture banding a sky over a ground, split by a horizon line. Built
+   * programmatically here (the per-region asset-pipeline precedent — zero binary
+   * assets, zero licensing risk) so the Region scene renders its side-view by
+   * preloading {@link TextureKeys.RegionBackdrop} alone; when real per-region art
+   * lands, the pipeline generates this key from `assets/src` instead.
+   * @returns void
+   */
+  #makeRegionBackdropTexture(): void {
+    const { width, height } = GameView;
+    const graphics = this.add.graphics();
+    graphics.fillStyle(RegionColors.sky, 1);
+    graphics.fillRect(0, 0, width, RegionLayout.horizonY);
+    graphics.fillStyle(RegionColors.ground, 1);
+    graphics.fillRect(
+      0,
+      RegionLayout.horizonY,
+      width,
+      height - RegionLayout.horizonY
+    );
+    graphics.fillStyle(RegionColors.horizon, 1);
+    graphics.fillRect(0, RegionLayout.horizonY, width, HORIZON_THICKNESS);
+    graphics.generateTexture(TextureKeys.RegionBackdrop, width, height);
     graphics.destroy();
   }
 }
@@ -91,6 +127,9 @@ function startScene(): string {
   }
   if (requested === "dialogue") {
     return SceneKeys.Dialogue;
+  }
+  if (requested === "region") {
+    return SceneKeys.Region;
   }
   return SceneKeys.Battle;
 }

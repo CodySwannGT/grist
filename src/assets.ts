@@ -14,4 +14,13 @@
 export const TextureKeys = {
   /** The white, tintable combatant body placeholder (party + enemies). */
   Unit: "unit",
+  /**
+   * The region side-view backdrop placeholder (#137). A single full-screen
+   * 384×216 gradient-banded texture (sky over ground, split by a horizon line) the
+   * Region scene tiles in as its side-view backdrop. Generated programmatically in
+   * the Preloader — the per-region asset-pipeline precedent (zero binary assets,
+   * zero licensing risk); when real per-region art lands, the pipeline
+   * (free-tex-packer-core) generates this key from `assets/src` instead.
+   */
+  RegionBackdrop: "region-backdrop",
 } as const;

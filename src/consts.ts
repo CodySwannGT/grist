@@ -21,6 +21,7 @@ export const SceneKeys = {
   Field: "Field",
   Bench: "Bench",
   Dialogue: "Dialogue",
+  Region: "Region",
 } as const;
 
 /**
@@ -420,5 +421,72 @@ export const DialogueTextStyles = {
     fontFamily: "monospace",
     fontSize: "8px",
     color: DialogueColors.choiceText,
+  },
+} as const;
+
+/**
+ * Region-scene layout in logical (384×216) pixels (#137). The booted region renders
+ * as a side-view (decision 0006): a horizon line splits a sky band from a ground
+ * band, the region name banners the top, and the encounter playlist renders as a
+ * row of markers along the ground that fill in as the harness clears them. The
+ * *shape* (a side-view backdrop + a per-encounter progression readout + a phase
+ * caption) is the contract, not the exact constants.
+ */
+export const RegionLayout = {
+  /** Y of the horizon line splitting the side-view sky from the ground. */
+  horizonY: 132,
+  /** Centered region-name banner Y. */
+  titleY: 8,
+  /** Phase/progress caption Y (under the title). */
+  captionY: 24,
+  /** The first encounter marker's center; subsequent markers step right by `markerGap`. */
+  markerX: 40,
+  markerY: 168,
+  markerSize: 16,
+  markerGap: 30,
+} as const;
+
+/** Region-scene placeholder-art and chrome colors (programmatic art only — no assets). */
+export const RegionColors = {
+  /** The side-view sky band (above the horizon). */
+  sky: 0x1b2733,
+  /** The side-view ground band (below the horizon). */
+  ground: 0x2a2018,
+  /** The horizon divider line. */
+  horizon: 0x4a3a2a,
+  /** An uncleared encounter marker. */
+  markerPending: 0x4a4f5a,
+  /** A cleared encounter marker. */
+  markerCleared: 0xffd166,
+  /** The boot-failure overlay (a region that threw on boot). */
+  bootError: 0xd0706f,
+  title: "#ffd166",
+  caption: "#9be7c4",
+  errorText: "#ffd1d1",
+} as const;
+
+/**
+ * Region-scene text styles (monospace chrome). Kept here with the other typed
+ * Region constants so the scene stays a thin renderer and a color/size change is a
+ * single edit. The shapes match Phaser's text-style object.
+ */
+export const RegionTextStyles = {
+  /** The centered region-name banner. */
+  title: {
+    fontFamily: "monospace",
+    fontSize: "12px",
+    color: RegionColors.title,
+  },
+  /** The phase/progress caption under the title. */
+  caption: {
+    fontFamily: "monospace",
+    fontSize: "9px",
+    color: RegionColors.caption,
+  },
+  /** The boot-failure caption a thrown region surfaces. */
+  error: {
+    fontFamily: "monospace",
+    fontSize: "9px",
+    color: RegionColors.errorText,
   },
 } as const;
