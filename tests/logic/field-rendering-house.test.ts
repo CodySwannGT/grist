@@ -160,22 +160,21 @@ describe("field-logic: rendering-house prop preserves determinism (#106)", () =>
       state = stepField(state, { kind: FieldActionKinds.acknowledge });
       state = stepField(state, { kind: FieldActionKinds.traverse });
       seq.push(state.pendingEncounter);
+      state = stepField(state, {
+        kind: FieldActionKinds.acknowledge,
+      });
       if (examine) {
-        state = stepField(state, {
-          kind: FieldActionKinds.acknowledge,
-        });
         state = stepField(state, {
           kind: FieldActionKinds.examine,
           propId: RENDER_VAT,
         });
-        state = stepField(state, { kind: FieldActionKinds.traverse });
-        seq.push(state.pendingEncounter);
       }
+      state = stepField(state, { kind: FieldActionKinds.traverse });
+      seq.push(state.pendingEncounter);
       return seq;
     };
-    // The first two triggers are identical regardless of the Room-B examine.
     const withoutExamine = walkAndCollect(false);
-    const withExamine = walkAndCollect(true).slice(0, 2);
+    const withExamine = walkAndCollect(true);
     expect(withExamine).toEqual(withoutExamine);
   });
 });
