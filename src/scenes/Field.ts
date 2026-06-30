@@ -347,11 +347,7 @@ export class Field extends Phaser.Scene {
    * @returns void
    */
   #buildHud(): void {
-    const chrome = drawFieldChrome(
-      this,
-      MARROW_MAP[this.#state.currentRoom],
-      this.#examinablePropId() !== null
-    );
+    const chrome = drawFieldChrome(this, MARROW_MAP[this.#state.currentRoom]);
     this.#loreBox = chrome.loreBox;
     this.#loreText = chrome.loreText;
   }

@@ -59,9 +59,14 @@ describe("field key -> intent map", () => {
     expect(keyToFieldIntent("KeyE")).toEqual({ kind: "examine" });
   });
 
-  it("maps the summonable mini-map toggle to M/Tab", () => {
+  it("maps the summonable mini-map toggle to M", () => {
     expect(keyToFieldIntent("KeyM")).toEqual({ kind: "toggle-map" });
-    expect(keyToFieldIntent("Tab")).toEqual({ kind: "toggle-map" });
+  });
+
+  it("leaves Tab unbound so it cannot blur the canvas", () => {
+    // Tab is the browser's focus-navigation key; binding it without a capture
+    // path would move focus off the canvas and stop later keyboard input.
+    expect(keyToFieldIntent("Tab")).toBeNull();
   });
 
   it("returns null for unbound keys", () => {

@@ -36,20 +36,21 @@ export function drawFieldBackdrop(scene: Phaser.Scene): void {
 }
 
 /**
- * Build the static field chrome — the centered room-name banner and, when the
- * current room has an examinable prop, its "[E] examine" affordance — plus the
+ * Build the static field chrome — the centered room-name banner — plus the
  * initially-hidden lore banner the examine surfaces. Returns the lore box/text so
- * the scene can show them on examine. Pulled out of the scene so its body stays a
- * thin renderer; this places fixed chrome and the (hidden) banner only.
+ * the scene can show them on examine. The examine affordance is NOT drawn here:
+ * the field HUD ({@link import("./field-hud").FieldHud}) owns the contextual
+ * "[E] examine <prop>" prompt and shows it only while Wren is in range of the
+ * interactable (#107), so a single, range-gated affordance replaces the old
+ * always-on label. Pulled out of the scene so its body stays a thin renderer;
+ * this places fixed chrome and the (hidden) banner only.
  * @param scene - The Field scene to add the chrome to.
- * @param room - The current room's definition (for its display name + prop gate).
- * @param hasExaminableProp - Whether the room has an examinable lore prop.
+ * @param room - The current room's definition (for its display name).
  * @returns The lore banner box and text (both initially hidden).
  */
 export function drawFieldChrome(
   scene: Phaser.Scene,
-  room: MarrowRoomDef,
-  hasExaminableProp: boolean
+  room: MarrowRoomDef
 ): {
   readonly loreBox: Phaser.GameObjects.Rectangle;
   readonly loreText: Phaser.GameObjects.Text;
@@ -77,15 +78,5 @@ export function drawFieldChrome(
   scene.add
     .text(GameView.width / 2, 6, room.name, FieldTextStyles.roomName)
     .setOrigin(0.5, 0);
-  if (hasExaminableProp) {
-    scene.add
-      .text(
-        FieldLayout.signX,
-        FieldLayout.signY - FieldLayout.signHeight,
-        "[E] examine",
-        FieldTextStyles.prompt
-      )
-      .setOrigin(0.5, 1);
-  }
   return { loreBox, loreText };
 }
