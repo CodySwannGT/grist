@@ -45,7 +45,11 @@ export const FieldMoveDirections = {
  * directional/destination intents to delta-driven position updates, `examine` to
  * a field `examine` action through the pure sim selector, and `toggle-map` to the
  * pure mini-map toggle. Keyboard produces `move` + `examine` + `toggle-map`;
- * touch produces `move-to` + `examine` (the mini-map is summoned from its HUD button).
+ * touch produces `move-to` + `examine` (the mini-map is summoned from its HUD
+ * button). The map toggle binds `M` only — `Tab` is deliberately left unbound
+ * because the browser consumes it for focus navigation (it would blur the
+ * canvas and stop later keyboard input unless captured), so the single
+ * discoverable binding is `M`, advertised by the HUD's "[M] map" hint.
  */
 export type FieldIntent =
   | { readonly kind: "move"; readonly dir: FieldMoveDir }
@@ -66,8 +70,11 @@ const TOGGLE_MAP: FieldIntent = { kind: "toggle-map" };
 /**
  * The field keyboard map, keyed by physical `KeyboardEvent.code` so it is
  * layout-stable: W/S/A/D and the arrow keys step the four cardinals,
- * Enter/Space/E examine the nearest prop, and M/Tab summon or dismiss the
+ * Enter/Space/E examine the nearest prop, and M summons or dismisses the
  * mini-map (ui-ux-and-controls control table — remappable, change it here).
+ * `Tab` is intentionally NOT bound: the browser uses it for focus navigation,
+ * so binding it without a key-capture/preventDefault path would blur the canvas
+ * and stop later keyboard input — `M` is the single, safe, discoverable binding.
  */
 const FIELD_KEY_INTENTS: Readonly<Record<string, FieldIntent>> = {
   KeyW: MOVE_UP,
@@ -82,7 +89,6 @@ const FIELD_KEY_INTENTS: Readonly<Record<string, FieldIntent>> = {
   Space: EXAMINE,
   KeyE: EXAMINE,
   KeyM: TOGGLE_MAP,
-  Tab: TOGGLE_MAP,
 };
 
 /**
