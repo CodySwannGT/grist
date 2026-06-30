@@ -233,6 +233,28 @@ describe("travel — determinism (same inputs ⇒ identical hash progression)", 
     expect(hashTravel(discA)).not.toBe(hashTravel(skiffA));
   });
 
+  it("does NOT collapse a comma-bearing id against two ids (unambiguous serialization)", () => {
+    // ["a,b"] (one safehouse whose id contains a comma) and ["a","b"] (two
+    // safehouses) are distinct knowledge states; a delimiter-join would alias them.
+    const oneCommaId = discoverSafehouse(newTravelState(), "a,b");
+    const twoIds = discoverSafehouse(
+      discoverSafehouse(newTravelState(), "a"),
+      "b"
+    );
+    expect(oneCommaId.discovered).toEqual(["a,b"]);
+    expect(twoIds.discovered).toEqual(["a", "b"]);
+    expect(hashTravel(oneCommaId)).not.toBe(hashTravel(twoIds));
+  });
+
+  it("does NOT collapse a null location against an empty-string location", () => {
+    // null (no fast-travel yet) and "" (an empty-string safehouse id) are distinct;
+    // a `location ?? ""` join would alias them.
+    const base = newTravelState();
+    const nullLocation: TravelState = { ...base, location: null };
+    const emptyLocation: TravelState = { ...base, location: "" };
+    expect(hashTravel(nullLocation)).not.toBe(hashTravel(emptyLocation));
+  });
+
   it("the same action sequence yields an identical hash progression across two runs", () => {
     /**
      * Drive a fixed mobility sequence and collect the per-step digests.

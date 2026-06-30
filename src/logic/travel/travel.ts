@@ -275,19 +275,23 @@ const FNV_OFFSET = 0x811c9dc5;
 const FNV_PRIME = 0x01000193;
 
 /**
- * Canonical, compact serialization of the tracked travel fields — the determinism
- * contract's surface: the tier, the discovered safehouses (in order), the location,
- * and the grist balance.
+ * Canonical, unambiguous serialization of the tracked travel fields — the
+ * determinism contract's surface: the tier, the discovered safehouses (in order),
+ * the location, and the grist balance. Uses `JSON.stringify` so no two distinct
+ * states can collide: a delimiter-join would collapse `["a,b"]` with `["a","b"]`
+ * (a comma inside an id vs. a separator) and `null` location with `""`, breaking the
+ * "every tracked field changes the digest" contract; the JSON encoding keeps array
+ * boundaries and the `null`/`""` distinction intact.
  * @param state - The travel state to serialize.
- * @returns A stable string encoding.
+ * @returns A stable, unambiguous string encoding.
  */
 function serializeTravel(state: TravelState): string {
-  return [
+  return JSON.stringify([
     state.tier,
-    state.discovered.join(","),
-    state.location ?? "",
+    state.discovered,
+    state.location,
     state.wallet.grist,
-  ].join("#");
+  ]);
 }
 
 /**

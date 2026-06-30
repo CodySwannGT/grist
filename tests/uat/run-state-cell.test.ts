@@ -13,6 +13,7 @@ import { describe, expect, it } from "vitest";
 
 import type { CurrentSave } from "../../src/logic/save/types";
 import { RunStateCell } from "../../src/uat/run-state-cell";
+import { WalletCell } from "../../src/uat/wallet-cell";
 
 // Hoisted so the shard id repeated across the payload + assertions below does not
 // trip the no-duplicate-string lint.
@@ -41,13 +42,13 @@ function wieldSave(): CurrentSave {
 
 describe("RunStateCell — the empty cell", () => {
   it("snapshots null before a save is adopted", () => {
-    expect(new RunStateCell().snapshot()).toBeNull();
+    expect(new RunStateCell(new WalletCell()).snapshot()).toBeNull();
   });
 });
 
 describe("RunStateCell — adopting a save", () => {
   it("surfaces the choice + moralLedger + learning + wallet verbatim", () => {
-    const cell = new RunStateCell();
+    const cell = new RunStateCell(new WalletCell());
     cell.adopt(wieldSave());
     expect(cell.snapshot()).toEqual({
       choice: { resolved: true, shard: MARROW, variant: "wield" },
@@ -61,7 +62,7 @@ describe("RunStateCell — adopting a save", () => {
 
 describe("RunStateCell — adopting a fresh / free-choice save", () => {
   it("reflects an unresolved choice and a neutral ledger", () => {
-    const cell = new RunStateCell();
+    const cell = new RunStateCell(new WalletCell());
     cell.adopt({
       ...wieldSave(),
       choice: { resolved: false },
@@ -80,7 +81,7 @@ describe("RunStateCell — adopting a fresh / free-choice save", () => {
   });
 
   it("reflects a re-adopted payload (a later save overwrites the held one)", () => {
-    const cell = new RunStateCell();
+    const cell = new RunStateCell(new WalletCell());
     cell.adopt(wieldSave());
     cell.adopt({
       ...wieldSave(),

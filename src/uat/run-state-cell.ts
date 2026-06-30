@@ -33,6 +33,7 @@ import type {
   SavedChoice,
   SavedLearning,
 } from "../logic/save/types";
+import { type WalletCell } from "./wallet-cell";
 
 /**
  * A read-only, scene-agnostic snapshot of the run's moral + growth + economy
@@ -64,16 +65,32 @@ export interface VerifyRunState {
  */
 export class RunStateCell {
   #save: CurrentSave | null = null;
+  readonly #wallet: WalletCell;
+
+  /**
+   * Construct the run-state cell over the bridge's shared wallet. The cell reads its
+   * grist balance from this injected {@link WalletCell} rather than from the raw
+   * adopted save, so the balance `runState().grist` reports is the **same** live
+   * wallet a fast-travel hop (#136) draws down — one shared wallet, not two.
+   * @param wallet - The bridge's shared grist wallet cell.
+   */
+  constructor(wallet: WalletCell) {
+    this.#wallet = wallet;
+  }
 
   /**
    * Adopt a {@link CurrentSave} into the cell — the seam the persistence path uses
    * so the choice / ledger / learning / wallet the e2e persists become readable in
-   * memory. A later adopt overwrites the held payload. Pure: stores the reference.
+   * memory. The save's grist **seeds the shared wallet** here, so `snapshot().grist`
+   * reflects the persisted balance and any later spend against it (e.g. a #136
+   * fast-travel hop draws down this same wallet). A later adopt overwrites the held
+   * payload and re-seeds the wallet. Pure: stores the reference + seeds the balance.
    * @param save - The save payload to hold.
    * @returns void
    */
   adopt(save: CurrentSave): void {
     this.#save = save;
+    this.#wallet.adopt(save.grist);
   }
 
   /**
@@ -101,7 +118,10 @@ export class RunStateCell {
       moralLedger: save.moralLedger,
       learned: save.learned,
       learning: save.learning,
-      grist: save.grist,
+      // The live shared wallet balance — the same wallet a fast-travel hop (#136)
+      // draws down — not the raw (immutable) save number, so a spend is observable
+      // here too. Seeded from the save's grist by the bridge on adopt.
+      grist: this.#wallet.read(),
     };
   }
 }

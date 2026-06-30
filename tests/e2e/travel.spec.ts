@@ -30,9 +30,66 @@ const MARROW = "marrow-safehouse";
 const VALE = "vale-safehouse";
 
 /**
+ * The serialized save shape the bridge round-trips. Structurally aligned with the
+ * current `CurrentSave` (v2) but declared locally so the spec needs no app import —
+ * mirroring `world-state.spec.ts` / `verify-bridge-run-state.spec.ts`.
+ */
+interface SaveDataV2 {
+  readonly version: 2;
+  readonly party: readonly {
+    readonly id: string;
+    readonly level: number;
+    readonly shard?: string;
+    readonly shardMode?: "free" | "wield";
+  }[];
+  readonly grist: number;
+  readonly inventory: readonly { readonly id: string; readonly qty: number }[];
+  readonly learned: readonly string[];
+  readonly learning: readonly {
+    readonly spell: string;
+    readonly progress: number;
+  }[];
+  readonly choice: {
+    readonly resolved: boolean;
+    readonly shard?: string;
+    readonly variant?: "free" | "wield";
+  };
+  readonly moralLedger: {
+    readonly karma: number;
+    readonly freeChoices: number;
+    readonly wieldChoices: number;
+  };
+  readonly rng: { readonly seed: number; readonly state: number };
+  readonly worldState: "reach" | "ashfall";
+}
+
+/**
+ * A minimal but complete v2 save seeding the **shared grist wallet** at a chosen
+ * balance, so `runState()` is non-null and reports that wallet — the balance a
+ * fast-travel hop must draw down (proving the single-shared-wallet contract, #136).
+ * @param grist - The shared wallet balance to seed.
+ * @returns A complete v2 save at the given grist.
+ */
+function saveWithGrist(grist: number): SaveDataV2 {
+  return {
+    version: 2,
+    party: [{ id: "wren", level: 1 }],
+    grist,
+    inventory: [],
+    learned: [],
+    learning: [],
+    choice: { resolved: false },
+    moralLedger: { karma: 0, freeChoices: 0, wieldChoices: 0 },
+    rng: { seed: 4242, state: 4242 },
+    worldState: "reach",
+  };
+}
+
+/**
  * Wait until the verification bridge is installed with its **travel** contract
- * present. Asserting the whole shape up front means a broken bridge fails here,
- * loudly, instead of silently no-op'ing through an optional chain.
+ * present (plus the run-state/save seam used to assert the shared wallet). Asserting
+ * the whole shape up front means a broken bridge fails here, loudly, instead of
+ * silently no-op'ing through an optional chain.
  * @param page - The Playwright page.
  */
 async function waitForBridge(page: Page): Promise<void> {
@@ -47,7 +104,9 @@ async function waitForBridge(page: Page): Promise<void> {
             typeof api?.discoverSafehouse === "function" &&
             typeof api?.fastTravel === "function" &&
             typeof api?.travel === "function" &&
-            typeof api?.clearSave === "function"
+            typeof api?.clearSave === "function" &&
+            typeof api?.save === "function" &&
+            typeof api?.runState === "function"
           );
         }),
       { timeout: SEEN_TIMEOUT }
@@ -114,6 +173,19 @@ test.describe("GRIST — traversal + fast-travel verification (UAT)", () => {
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
 
+    // Seed the SHARED grist wallet via a persisted save so runState() reports it.
+    // The fast-travel spend must draw down THIS wallet (the single-shared-wallet
+    // contract), not a private balance hidden inside the travel cell.
+    await page.evaluate(
+      save => window.__VERIFY__!.save(save),
+      saveWithGrist(10)
+    );
+    const seededRun = await page.evaluate(() => window.__VERIFY__!.runState());
+    expect(seededRun?.grist).toBe(10);
+    // The travel snapshot reads the SAME shared wallet the run-state reports.
+    const seededTravel = await page.evaluate(() => window.__VERIFY__!.travel());
+    expect(seededTravel.grist).toBe(10);
+
     // Reach the fast-travel capability: airship + two discovered safehouses.
     await page.evaluate(() => {
       const api = window.__VERIFY__!;
@@ -124,21 +196,34 @@ test.describe("GRIST — traversal + fast-travel verification (UAT)", () => {
     });
     const ready = await page.evaluate(() => window.__VERIFY__!.travel());
     expect(ready.canFastTravel).toBe(true);
-    const startGrist = ready.grist;
-    expect(startGrist).toBeGreaterThanOrEqual(4);
 
-    // A successful hop deducts grist from the shared wallet and relocates the party.
+    // Capture the SHARED run-state wallet before the hop.
+    const runBefore = await page.evaluate(() => window.__VERIFY__!.runState());
+    const startGrist = runBefore!.grist;
+    expect(startGrist).toBe(10);
+
+    // A successful hop deducts grist and relocates the party. Assert the deduction
+    // landed on the SHARED wallet that runState() reports — not just the travel
+    // snapshot — so a private bridge-local wallet could not make this pass.
     const spent = await page.evaluate(
       ({ from, to }) => window.__VERIFY__!.fastTravel(from, to),
       { from: MARROW, to: VALE }
     );
     expect(spent).toBeGreaterThan(0);
-    const afterHop = await page.evaluate(() => window.__VERIFY__!.travel());
-    expect(afterHop.grist).toBe(startGrist - spent);
-    expect(afterHop.location).toBe(VALE);
+    const afterHopTravel = await page.evaluate(() =>
+      window.__VERIFY__!.travel()
+    );
+    const afterHopRun = await page.evaluate(() =>
+      window.__VERIFY__!.runState()
+    );
+    expect(afterHopTravel.grist).toBe(startGrist - spent);
+    expect(afterHopTravel.location).toBe(VALE);
+    // THE shared wallet decreased by exactly the spend (the integration proof).
+    expect(afterHopRun!.grist).toBe(startGrist - spent);
+    expect(afterHopRun!.grist).toBe(afterHopTravel.grist);
 
-    // Drain the wallet below the hop cost, then assert an insufficient-grist hop is
-    // REFUSED with the balance unchanged (the edge path).
+    // Drain the shared wallet below the hop cost, then assert an insufficient-grist
+    // hop is REFUSED with the SHARED balance unchanged (the edge path).
     await page.evaluate(
       ({ from, to }) => {
         // Keep hopping until the next hop would be unaffordable.
@@ -151,17 +236,24 @@ test.describe("GRIST — traversal + fast-travel verification (UAT)", () => {
       },
       { from: MARROW, to: VALE }
     );
-    const drained = await page.evaluate(() => window.__VERIFY__!.travel());
-    expect(drained.grist).toBeLessThan(4);
+    const drainedRun = await page.evaluate(() => window.__VERIFY__!.runState());
+    expect(drainedRun!.grist).toBeLessThan(4);
 
-    const balanceBefore = drained.grist;
+    const balanceBefore = drainedRun!.grist;
     const refusedSpend = await page.evaluate(
       ({ from, to }) => window.__VERIFY__!.fastTravel(from, to),
       { from: MARROW, to: VALE }
     );
     expect(refusedSpend).toBe(0);
-    const afterRefusal = await page.evaluate(() => window.__VERIFY__!.travel());
-    expect(afterRefusal.grist).toBe(balanceBefore);
+    const afterRefusalRun = await page.evaluate(() =>
+      window.__VERIFY__!.runState()
+    );
+    const afterRefusalTravel = await page.evaluate(() =>
+      window.__VERIFY__!.travel()
+    );
+    // The SHARED wallet is untouched by the refused hop.
+    expect(afterRefusalRun!.grist).toBe(balanceBefore);
+    expect(afterRefusalTravel.grist).toBe(balanceBefore);
 
     expect(errors).toEqual([]);
   });
