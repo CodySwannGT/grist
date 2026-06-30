@@ -25,6 +25,7 @@ import {
   type VerifyEncounterLadderState,
 } from "./encounter-ladder-cell";
 import { EnemyCell, type VerifyEnemyState } from "./enemy-cell";
+import { MillBeatCell, type VerifyMillBeatState } from "./mill-beat-cell";
 import { RegionCell, type VerifyRegionState } from "./region-cell";
 import {
   RequiemHallCell,
@@ -32,6 +33,7 @@ import {
   type VerifyRequiemHallState,
 } from "./requiem-hall-cell";
 import { RunStateCell, type VerifyRunState } from "./run-state-cell";
+import { type MillDecision } from "../logic/side-story/mill";
 import { TravelCell, type VerifyTravelState } from "./travel-cell";
 import { WalletCell } from "./wallet-cell";
 import { WorldStateCell } from "./world-state-cell";
@@ -92,6 +94,16 @@ const encounterLadderCell = new EncounterLadderCell();
  * rides the existing save path (the e2e persists the settled choice + reloads).
  */
 const boundSiteCell = new BoundSiteCell();
+
+/**
+ * The bridge-held mill-beat cell (#111): Wren's "What the mill took" side-story beat
+ * and its render-or-not choice, resolved through `logic/side-story/mill` (which folds
+ * the persisted free-vs-wield {@link MoralLedger}), so the side-mill e2e can reach the
+ * beat, choose render/spare, observe the diverging persisted karma/tally
+ * scene-agnostically, and persist+reload the save it projects (the AC's
+ * save/reload-survival half rides the existing save path → `runState().moralLedger`).
+ */
+const millBeatCell = new MillBeatCell();
 
 /**
  * The bridge-held requiem-hall cell (#145): the Sidhe requiem-hall Ch.4 set-piece,
@@ -239,6 +251,14 @@ export interface DataCellApi {
   readonly chooseBound: (mode: ShardMode) => void;
   /** The opened/settled Bound-site snapshot (shard + variant + karma + corruption), or null. */
   readonly boundSite: () => VerifyBoundSiteState | null;
+  /** Reach Wren's "What the mill took" side-story beat, opening its render-or-not choice (#111). */
+  readonly openMill: () => void;
+  /** Commit the render-or-not choice at the opened mill beat (`render` / `spare`) (#111). */
+  readonly chooseMill: (decision: MillDecision) => void;
+  /** The opened/settled mill-beat snapshot (shard + variant + persisted karma + corruption), or null. */
+  readonly millBeat: () => VerifyMillBeatState | null;
+  /** Project the settled mill choice into a CurrentSave the `save` path persists (#111). */
+  readonly millSave: () => CurrentSave;
   /**
    * Open the Sidhe requiem-hall Ch.4 set-piece (#145). Defaults to the Roots region
    * with the Ch.4 prerequisites met (Velith freed) in Act I `reach`; pass
@@ -308,6 +328,10 @@ export function dataCellApi(): DataCellApi {
     openBoundSite: (regionId?: string) => boundSiteCell.open(regionId),
     chooseBound: (mode: ShardMode) => boundSiteCell.choose(mode),
     boundSite: () => boundSiteCell.snapshot(),
+    openMill: () => millBeatCell.open(),
+    chooseMill: (decision: MillDecision) => millBeatCell.choose(decision),
+    millBeat: () => millBeatCell.snapshot(),
+    millSave: () => millBeatCell.toSave(),
     openRequiemHall: (regionId?: string, options?: OpenRequiemHallOptions) =>
       requiemHallCell.open(regionId, options),
     playRequiemHall: () => requiemHallCell.play(),
