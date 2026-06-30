@@ -110,7 +110,13 @@ function reachSave(): SaveDataV2 {
 }
 
 test.describe("GRIST — enemy-family verification (UAT)", () => {
+  // Collected page errors for the current test. Registered BEFORE boot in the
+  // beforeEach so a boot-time exception is captured, not missed.
+  let errors: string[] = [];
+
   test.beforeEach(async ({ page }) => {
+    errors = [];
+    page.on("pageerror", error => errors.push(error.message));
     await bootWithBridge(page);
     await page.evaluate(() => window.__VERIFY__!.clearSave());
   });
@@ -118,9 +124,6 @@ test.describe("GRIST — enemy-family verification (UAT)", () => {
   test("[enemy-family-schema-valid] a schema-authored family loads and its per-region block validates", async ({
     page,
   }) => {
-    const errors: string[] = [];
-    page.on("pageerror", error => errors.push(error.message));
-
     // Before loading: no family is held — the cell cannot fabricate one.
     expect(await page.evaluate(() => window.__VERIFY__!.enemy())).toBeNull();
 
@@ -148,9 +151,6 @@ test.describe("GRIST — enemy-family verification (UAT)", () => {
   test("[ashfall-variant-gloom-attack] the family warps to its drained Ashfall variant with a Gloom attack when the Reckoning fires", async ({
     page,
   }) => {
-    const errors: string[] = [];
-    page.on("pageerror", error => errors.push(error.message));
-
     // Seed Act I reach and load the schema-authored family.
     await page.evaluate(save => window.__VERIFY__!.save(save), reachSave());
     await page.evaluate(() => window.__VERIFY__!.loadEnemy());
@@ -185,9 +185,6 @@ test.describe("GRIST — enemy-family verification (UAT)", () => {
   test("[ashfall-variant-gloom-attack] the family hash is deterministic and reproducible across a reload", async ({
     page,
   }) => {
-    const errors: string[] = [];
-    page.on("pageerror", error => errors.push(error.message));
-
     // Seed a fixed world-state and load the family; capture its determinism hash.
     await page.evaluate(save => window.__VERIFY__!.save(save), reachSave());
     await page.evaluate(() => window.__VERIFY__!.loadEnemy());

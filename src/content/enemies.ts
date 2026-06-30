@@ -383,20 +383,32 @@ export function resolveFamilyStatBlock(
  * @returns The list of error strings for the variant ([] when valid).
  */
 function ashfallVariantErrors(
-  variant: AshfallVariant | undefined,
+  variant: Partial<AshfallVariant> | undefined,
   region: string
 ): readonly string[] {
-  if (variant === undefined) {
+  if (variant === undefined || variant === null) {
     return [`family region '${region}' is missing its ashfall variant`];
   }
-  const hasGloomAttack = variant.attacks.some(
-    a => a.element === Elements.gloom
-  );
-  return [
+  // Guard each field against coerced data forced past the compiler: a malformed
+  // variant (e.g. `ashfall: {}`) must yield authoring errors, never throw on
+  // `.trim()` / `.some()` against a non-string / non-array.
+  const paletteError =
+    typeof variant.drainedPalette !== "string" ||
     variant.drainedPalette.trim() === ""
       ? `family region '${region}' ashfall variant has a blank drained-palette marker`
-      : "",
-    variant.attacks.length === 0
+      : "";
+  const attacks = variant.attacks;
+  if (!Array.isArray(attacks)) {
+    return [
+      paletteError,
+      `family region '${region}' ashfall variant has no new attacks`,
+      `family region '${region}' ashfall variant has no entropy/Gloom attack`,
+    ].filter(message => message !== "");
+  }
+  const hasGloomAttack = attacks.some(a => a?.element === Elements.gloom);
+  return [
+    paletteError,
+    attacks.length === 0
       ? `family region '${region}' ashfall variant has no new attacks`
       : "",
     !hasGloomAttack
@@ -413,14 +425,20 @@ function ashfallVariantErrors(
  */
 function regionEntryErrors(entry: FamilyRegionEntry): readonly string[] {
   const reach = entry.reach as RegionStatBlock | undefined;
+  const region = typeof entry.region === "string" ? entry.region : "";
   return [
-    entry.region.trim() === ""
+    region.trim() === ""
       ? "family has a region entry with a blank region key"
       : "",
     reach === undefined
-      ? `family region '${entry.region}' is missing its reach stat block`
+      ? `family region '${region}' is missing its reach stat block`
       : "",
-    ...ashfallVariantErrors(entry.ashfall, entry.region),
+    // The Reach block's own region key must match its enclosing entry, or a
+    // resolve/encounter lookup would read a block tagged for a different region.
+    reach !== undefined && reach.region !== region
+      ? `family region '${region}' reach stat block is tagged for a different region '${reach.region}'`
+      : "",
+    ...ashfallVariantErrors(entry.ashfall, region),
   ].filter(message => message !== "");
 }
 
@@ -434,7 +452,12 @@ function regionEntryErrors(entry: FamilyRegionEntry): readonly string[] {
  * @returns The list of error strings ([] when the family is valid).
  */
 export function validateEnemyFamily(family: EnemyFamilyDef): readonly string[] {
-  const regions = family.regions as readonly FamilyRegionEntry[] | undefined;
+  // Only treat `regions` as iterable when it is genuinely an array — a coerced
+  // shape (e.g. `regions: {}`) must produce an authoring error, not throw on
+  // `.flatMap()`.
+  const regions = Array.isArray(family.regions)
+    ? (family.regions as readonly FamilyRegionEntry[])
+    : undefined;
   const tagError = !isEnemyFamily(family.id)
     ? `family has an unknown family tag '${family.id}'`
     : "";
@@ -443,9 +466,34 @@ export function validateEnemyFamily(family: EnemyFamilyDef): readonly string[] {
       ? "family declares no per-region stat blocks"
       : "";
   const regionErrors = (regions ?? []).flatMap(regionEntryErrors);
-  return [tagError, noRegionsError, ...regionErrors].filter(
+  const duplicateErrors = duplicateRegionErrors(regions ?? []);
+  return [tagError, noRegionsError, ...regionErrors, ...duplicateErrors].filter(
     message => message !== ""
   );
+}
+
+/**
+ * The errors for any region key that appears in more than one entry. A duplicate
+ * region would let one entry silently shadow another under {@link find}-based
+ * resolution, so the schema rejects it. Each duplicated key is reported once. Pure.
+ * @param regions - The family's region entries.
+ * @returns One error per duplicated region key ([] when all keys are unique).
+ */
+function duplicateRegionErrors(
+  regions: readonly FamilyRegionEntry[]
+): readonly string[] {
+  // Pure (no mutation): tally each non-blank region key, then report the ones
+  // that appear more than once, each exactly once.
+  const keys = regions
+    .map(entry => (typeof entry.region === "string" ? entry.region : ""))
+    .filter(region => region !== "");
+  const counts = keys.reduce<Readonly<Record<string, number>>>(
+    (acc, region) => ({ ...acc, [region]: (acc[region] ?? 0) + 1 }),
+    {}
+  );
+  return Object.entries(counts)
+    .filter(([, count]) => count > 1)
+    .map(([region]) => `family declares duplicate region entry '${region}'`);
 }
 
 /**

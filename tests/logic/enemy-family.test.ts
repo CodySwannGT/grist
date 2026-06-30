@@ -1,13 +1,14 @@
 /**
  * Unit coverage for the enemy-family + Ashfall-variant stat-block schema (#138):
- * the eight {@link EnemyFamily} tags, the `ENEMY_FAMILIES` table, the per-region
- * stat blocks, and the both-states (`reach` / `ashfall`) Ashfall-variant schema +
- * validation + resolution through the world-state flag. These are the Phaser-free
- * assertions the issue's Validation Journey names ("EnemyDef family schema +
- * Ashfall-variant resolution"), exercised without a DOM or canvas so they run under
- * vitest. The in-game `__VERIFY__` family-load + variant-warp journey is verified
- * separately by the e2e suite (`tests/e2e/enemy-family.spec.ts`). ZERO Phaser
- * imports by design (FR9).
+ * the eight {@link EnemyFamily} tags, the `ENEMY_FAMILIES` table, and resolution of
+ * the per-region both-states (`reach` / `ashfall`) blocks through the world-state
+ * flag. These are the Phaser-free assertions the issue's Validation Journey names
+ * ("EnemyDef family schema + Ashfall-variant resolution"), exercised without a DOM
+ * or canvas so they run under vitest. The validation-hardening cases (unknown tag,
+ * missing/duplicate/mismatched regions, malformed coerced shapes) live in the
+ * sibling `enemy-family-validation.test.ts`; the in-game `__VERIFY__` family-load +
+ * variant-warp journey is verified by the e2e suite (`tests/e2e/enemy-family.spec.ts`).
+ * ZERO Phaser imports by design (FR9).
  *
  * The schema is the framework, not the content (per #138 Out of Scope / decision
  * 0003): a single example family is authored here as the canonical "a family is
@@ -19,14 +20,10 @@ import {
   ENEMY_FAMILIES,
   EnemyFamilies,
   RegisteredFamilyIds,
-  authorEnemyFamily,
   isCompleteEnemyFamily,
   isEnemyFamily,
   resolveFamilyStatBlock,
   validateEnemyFamily,
-  type AshfallVariant,
-  type EnemyFamilyDef,
-  type RegionStatBlock,
 } from "../../src/content";
 import {
   INITIAL_WORLD_STATE,
@@ -34,59 +31,7 @@ import {
   type WorldState,
 } from "../../src/logic/world";
 
-const MARROW_REGION = "marrow";
-const ASH_DRAINED = "ash-drained";
-
-/**
- * A complete, schema-valid Reach stat block fixture for a region. Both-states
- * authoring requires a matching Ashfall variant (see {@link completeAshfallVariant}).
- * @param region - The region key the block is authored for.
- * @returns A complete reach stat block.
- */
-function completeReachBlock(region: string): RegionStatBlock {
-  return {
-    region,
-    stats: { hp: 40, ap: 0, pow: 8, foc: 0, def: 4, wrd: 2, spd: 8, lck: 2 },
-    elements: {},
-    lootGrist: 6,
-  };
-}
-
-/**
- * A complete, schema-valid Ashfall variant fixture — a drained palette and a new
- * Gloom attack distinct from the Reach block.
- * @returns A complete ashfall variant.
- */
-function completeAshfallVariant(): AshfallVariant {
-  return {
-    drainedPalette: ASH_DRAINED,
-    stats: { hp: 48, ap: 0, pow: 9, foc: 4, def: 4, wrd: 3, spd: 7, lck: 2 },
-    elements: { gloom: 1.5 },
-    lootGrist: 6,
-    attacks: [
-      { id: "entropy-bite", name: "Entropy Bite", element: "gloom", power: 12 },
-    ],
-  };
-}
-
-/**
- * A complete authored family with a single region carrying both world-state reads.
- * @param id - The family tag to author under.
- * @returns A complete, schema-valid family.
- */
-function completeFamily(id: EnemyFamilyDef["id"]): EnemyFamilyDef {
-  return authorEnemyFamily({
-    id,
-    name: "Test family",
-    regions: [
-      {
-        region: MARROW_REGION,
-        reach: completeReachBlock(MARROW_REGION),
-        ashfall: completeAshfallVariant(),
-      },
-    ],
-  });
-}
+import { MARROW_REGION, completeFamily } from "./enemy-family-fixtures";
 
 describe("EnemyFamily tags — the closed eight-family union", () => {
   it("declares exactly the eight families", () => {
@@ -134,115 +79,6 @@ describe("ENEMY_FAMILIES table — authoring as data (AC: data-only)", () => {
         expect(gloom.length).toBeGreaterThan(0);
       }
     }
-  });
-});
-
-describe("per-region stat blocks validate against the schema (AC scenario 1)", () => {
-  it("accepts a family with a complete per-region block", () => {
-    const family = completeFamily(EnemyFamilies.frames);
-    expect(validateEnemyFamily(family)).toEqual([]);
-    expect(isCompleteEnemyFamily(family)).toBe(true);
-  });
-
-  it("rejects a family with an unknown tag forced past the compiler", () => {
-    const broken = {
-      id: "rogue-family",
-      name: "Rogue",
-      regions: [
-        {
-          region: MARROW_REGION,
-          reach: completeReachBlock(MARROW_REGION),
-          ashfall: completeAshfallVariant(),
-        },
-      ],
-    } as unknown as EnemyFamilyDef;
-    const errors = validateEnemyFamily(broken);
-    expect(errors.some(e => e.includes("unknown family tag"))).toBe(true);
-    expect(isCompleteEnemyFamily(broken)).toBe(false);
-  });
-
-  it("rejects a family declaring no per-region stat blocks", () => {
-    const broken = authorEnemyFamily({
-      id: EnemyFamilies.quillDrones,
-      name: "Quill drones",
-      regions: [],
-    });
-    const errors = validateEnemyFamily(broken);
-    expect(errors.some(e => e.includes("no per-region stat blocks"))).toBe(
-      true
-    );
-    expect(isCompleteEnemyFamily(broken)).toBe(false);
-  });
-
-  it("rejects a region entry missing its reach stat block", () => {
-    const broken = {
-      id: EnemyFamilies.houseEnforcers,
-      name: "House enforcers",
-      regions: [{ region: MARROW_REGION, ashfall: completeAshfallVariant() }],
-    } as unknown as EnemyFamilyDef;
-    const errors = validateEnemyFamily(broken);
-    expect(errors.some(e => e.includes("reach stat block"))).toBe(true);
-  });
-});
-
-describe("Ashfall variant warps a family with a Gloom attack (AC scenario 2)", () => {
-  it("rejects an Ashfall variant with a blank drained-palette marker", () => {
-    const broken = authorEnemyFamily({
-      id: EnemyFamilies.renderedHusks,
-      name: "Rendered husks",
-      regions: [
-        {
-          region: MARROW_REGION,
-          reach: completeReachBlock(MARROW_REGION),
-          ashfall: { ...completeAshfallVariant(), drainedPalette: "" },
-        },
-      ],
-    });
-    const errors = validateEnemyFamily(broken);
-    expect(errors.some(e => e.includes("drained-palette"))).toBe(true);
-  });
-
-  it("rejects an Ashfall variant with no new attacks", () => {
-    const broken = authorEnemyFamily({
-      id: EnemyFamilies.ashlandHorrors,
-      name: "Ashland horrors",
-      regions: [
-        {
-          region: MARROW_REGION,
-          reach: completeReachBlock(MARROW_REGION),
-          ashfall: { ...completeAshfallVariant(), attacks: [] },
-        },
-      ],
-    });
-    const errors = validateEnemyFamily(broken);
-    expect(errors.some(e => e.includes("no new attacks"))).toBe(true);
-    expect(errors.some(e => e.includes("Gloom"))).toBe(true);
-  });
-
-  it("rejects an Ashfall variant whose attacks are all non-Gloom", () => {
-    const broken = authorEnemyFamily({
-      id: EnemyFamilies.auditors,
-      name: "The Auditors",
-      regions: [
-        {
-          region: MARROW_REGION,
-          reach: completeReachBlock(MARROW_REGION),
-          ashfall: {
-            ...completeAshfallVariant(),
-            attacks: [
-              {
-                id: "iron-edict",
-                name: "Iron Edict",
-                element: "iron",
-                power: 9,
-              },
-            ],
-          },
-        },
-      ],
-    });
-    const errors = validateEnemyFamily(broken);
-    expect(errors.some(e => e.includes("entropy/Gloom attack"))).toBe(true);
   });
 });
 

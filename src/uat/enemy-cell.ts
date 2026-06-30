@@ -76,20 +76,33 @@ function hashFamily(
   state: WorldState
 ): string {
   const block = resolveFamilyStatBlock(family, region, state);
-  const palette =
-    block !== null && "drainedPalette" in block ? block.drainedPalette : "";
-  const attacks =
-    block !== null && "attacks" in block
-      ? block.attacks.map(a => `${a.id}:${a.element}`).join(",")
-      : "";
-  const canonical = [
-    family.id,
+  // Digest the FULL resolved block — id/region/state plus loot, the whole stat
+  // block, and sorted element entries (and, for Ashfall, the drained palette +
+  // attacks) — so two blocks that differ only in stats or weaknesses cannot
+  // collide and undercut the determinism gate.
+  const canonical = JSON.stringify({
+    id: family.id,
     region,
     state,
-    block === null ? "none" : String(block.lootGrist),
-    palette,
-    attacks,
-  ].join("|");
+    lootGrist: block?.lootGrist ?? null,
+    stats: block === null ? null : block.stats,
+    elements:
+      block === null
+        ? null
+        : Object.entries(block.elements).sort(([a], [b]) =>
+            a < b ? -1 : a > b ? 1 : 0
+          ),
+    drainedPalette:
+      block !== null && "drainedPalette" in block ? block.drainedPalette : null,
+    attacks:
+      block !== null && "attacks" in block
+        ? block.attacks.map(a => ({
+            id: a.id,
+            element: a.element,
+            power: a.power,
+          }))
+        : null,
+  });
   const digest = Array.from(canonical).reduce(
     (hash, char) => Math.imul(hash ^ char.charCodeAt(0), 0x01000193),
     0x811c9dc5
