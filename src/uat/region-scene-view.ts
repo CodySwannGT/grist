@@ -28,7 +28,19 @@ import { type VerifyResolution } from "./bridge";
  * harness rather than crashing the page).
  */
 export interface VerifyRegionSceneState {
+  /**
+   * The active **Phaser** scene key (`"Region"`) — the controller's `#sceneKey`,
+   * the same value `__VERIFY__.scene()` reports. This is the engine-level scene
+   * contract; the region-scoped harness key is {@link runtimeScene}.
+   */
   readonly scene: string;
+  /**
+   * The region-scoped **harness** scene key the booted session declares
+   * (`regionScene(id)`, e.g. `"region:marrow"`) — distinct from the Phaser
+   * {@link scene} key (`"Region"`). `""` when boot threw (no session). Lets the e2e
+   * assert the runtime contract (which region booted) separately from the engine one.
+   */
+  readonly runtimeScene: string;
   readonly regionId: string;
   readonly worldState: string;
   /** The deterministic backdrop asset key the scene booted against. */
@@ -76,6 +88,7 @@ export interface RegionView {
 function failedSnapshot(scene: string, error: string): VerifyRegionSceneState {
   return {
     scene,
+    runtimeScene: "",
     regionId: "",
     worldState: "",
     backdrop: "",
@@ -108,6 +121,7 @@ function toVerifyRegionSceneState(
   }
   return {
     scene,
+    runtimeScene: state.scene,
     regionId: state.regionId,
     worldState: state.worldState,
     backdrop: state.backdrop,
@@ -172,12 +186,19 @@ export class RegionSceneCell {
   }
 
   /**
-   * The booted-session determinism hash, or null outside the Region scene — the
-   * Region-scene arm of the bridge's `hash()`.
-   * @returns The 8-char hex digest, or null.
+   * The booted-session determinism hash — the Region-scene arm of the bridge's
+   * `hash()`. `null` only when no region scene is attached (outside the Region
+   * scene); when a region IS attached but threw on boot, returns the failed-boot
+   * sentinel `"00000000"` so `__VERIFY__.hash()` agrees with
+   * `__VERIFY__.regionRun()?.hash` (which {@link toVerifyRegionSceneState} normalizes
+   * to the same sentinel) — the two read-paths never disagree.
+   * @returns The 8-char hex digest, the `"00000000"` failed-boot sentinel, or null.
    */
   hash(): string | null {
-    return this.#view?.regionHash() ?? null;
+    if (this.#view === null) {
+      return null;
+    }
+    return this.#view.regionHash() ?? "00000000";
   }
 
   /**

@@ -179,7 +179,10 @@ describe("region-runtime — the per-region boot harness (#137)", () => {
     // The harness boots an entirely different authored region — its own scene key,
     // its own encounter playlist — proving it reads the region's data, not Marrow's.
     expect(state.scene).toBe("region:vale");
-    expect(state.backdrop).toBe("backdrop:vale");
+    // Until per-region art exists, every region resolves to the shared placeholder
+    // backdrop key the Preloader generates — an asset the loader can actually load
+    // (the run state never claims a per-region texture Phaser can't resolve).
+    expect(state.backdrop).toBe("region-backdrop");
     expect(state.phase).toBe(RegionPhases.exploring);
     const done = playToComplete(state);
     expect(done.cleared).toEqual([EncounterIds.warrenStreet]);

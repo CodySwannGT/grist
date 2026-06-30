@@ -112,7 +112,7 @@ export class Region extends Phaser.Scene {
       this.#bootError = error instanceof Error ? error.message : String(error);
     }
 
-    this.#buildBackdrop();
+    this.#buildBackdrop(this.#state);
     if (this.#state !== null) {
       this.#buildSideView(this.#state);
     } else {
@@ -125,14 +125,17 @@ export class Region extends Phaser.Scene {
 
   /**
    * Tile the programmatic side-view backdrop (sky over ground, split by a horizon)
-   * across the whole 384×216 view — the region's deterministic backdrop texture
-   * generated in the Preloader (zero binary assets, the per-region pipeline
-   * precedent).
+   * across the whole 384×216 view. The texture key is the booted session's OWN
+   * `state.backdrop` (resolved by the harness via `regionBackdrop()`) — so the scene
+   * renders exactly the asset the run state claims, and a future per-region texture
+   * flows through with no scene-code edit. Falls back to the shared
+   * {@link TextureKeys.RegionBackdrop} when boot threw (no session to read).
+   * @param state - The booted session, or null when boot threw.
    * @returns void
    */
-  #buildBackdrop(): void {
+  #buildBackdrop(state: RegionRunState | null): void {
     this.add
-      .image(0, 0, TextureKeys.RegionBackdrop)
+      .image(0, 0, state?.backdrop ?? TextureKeys.RegionBackdrop)
       .setOrigin(0, 0)
       .setDisplaySize(GameView.width, GameView.height);
   }
@@ -155,17 +158,34 @@ export class Region extends Phaser.Scene {
         ...RegionTextStyles.caption,
       })
       .setOrigin(0.5, 0);
-    const count = this.#region.states[state.worldState].encounters.length;
-    this.#markers = Array.from({ length: count }, (_unused, index) =>
-      this.add.rectangle(
-        RegionLayout.markerX + index * RegionLayout.markerGap,
-        RegionLayout.markerY,
-        RegionLayout.markerSize,
-        RegionLayout.markerSize,
-        RegionColors.markerPending
-      )
-    );
     this.#render(state);
+  }
+
+  /**
+   * Reconcile the ground-marker strip to the CURRENT session's resolved variant —
+   * one marker per encounter in `state`'s live playlist. The Reckoning
+   * (`actRegion(...reckon)`) can switch `state.worldState` to a variant whose
+   * encounter table differs in length, so the strip must be rebuilt from the live
+   * state on every render, not derived once at boot — otherwise it shows the wrong
+   * total and stale markers. Destroys the old rects and rebuilds (the count is tiny;
+   * a fresh strip is simpler and leak-free than a resize). Pure render-state.
+   * @param state - The booted session to size the strip against.
+   * @returns void
+   */
+  #syncMarkers(state: RegionRunState): void {
+    const count = this.#region.states[state.worldState].encounters.length;
+    if (this.#markers.length !== count) {
+      this.#markers.forEach(marker => marker.destroy());
+      this.#markers = Array.from({ length: count }, (_unused, index) =>
+        this.add.rectangle(
+          RegionLayout.markerX + index * RegionLayout.markerGap,
+          RegionLayout.markerY,
+          RegionLayout.markerSize,
+          RegionLayout.markerSize,
+          RegionColors.markerPending
+        )
+      );
+    }
   }
 
   /**
@@ -202,6 +222,9 @@ export class Region extends Phaser.Scene {
    * @returns void
    */
   #render(state: RegionRunState): void {
+    // Rebuild the strip to the CURRENT variant first (the Reckoning may have switched
+    // to a playlist of a different length), then recolor + caption against it.
+    this.#syncMarkers(state);
     this.#markers.forEach((marker, index) =>
       marker.setFillStyle(
         index < state.cursor
@@ -268,9 +291,12 @@ export class Region extends Phaser.Scene {
 
 /**
  * Resolve which region to boot from the `?region=` query: the deliberately-broken
- * region when `?region=broken` (the boot-throw path), else the canonical example
- * `marrow` authored against the template. Guarded for non-browser (test) contexts
- * where `window` is absent.
+ * region when `?region=broken` (the boot-throw path), else the authored region whose
+ * id matches the query value, resolved against the {@link REGIONS} registry so EVERY
+ * registered region boots through the harness — not just `marrow`. Falls back to the
+ * canonical `marrow` when the query is absent or names no registered region (the
+ * default), keeping the harness genuinely reusable for later RegionDefs with no
+ * code edit. Guarded for non-browser (test) contexts where `window` is absent.
  * @returns The region to boot.
  */
 function requestedRegion(): RegionDef {
@@ -280,7 +306,13 @@ function requestedRegion(): RegionDef {
   const requested = new URLSearchParams(window.location.search)
     .get("region")
     ?.toLowerCase();
-  return requested === "broken" ? brokenRegion() : REGIONS[RegionIds.marrow];
+  if (requested === "broken") {
+    return brokenRegion();
+  }
+  const matched = Object.values(REGIONS).find(
+    region => region.id.toLowerCase() === requested
+  );
+  return matched ?? REGIONS[RegionIds.marrow];
 }
 
 /**

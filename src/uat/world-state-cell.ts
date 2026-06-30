@@ -48,6 +48,16 @@ export class WorldStateCell {
   }
 
   /**
+   * Clear the held world-state back to its pre-adoption (`null`) state — the seam the
+   * persistence path uses on a `clearSave` so the in-memory flag does not survive a
+   * reset and disagree with storage. Pure: drops the held value.
+   * @returns void
+   */
+  reset(): void {
+    this.#worldState = null;
+  }
+
+  /**
    * The held world-state, or null before one has been adopted.
    * @returns The held world-state, or null.
    */

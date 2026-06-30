@@ -77,6 +77,16 @@ export class RunStateCell {
   }
 
   /**
+   * Clear the held save back to its pre-adoption (`null`) state — the seam the
+   * persistence path uses on a `clearSave` so the in-memory run-state does not
+   * survive a reset and disagree with storage. Pure: drops the held reference.
+   * @returns void
+   */
+  reset(): void {
+    this.#save = null;
+  }
+
+  /**
    * The bundled {@link VerifyRunState} snapshot (choice + moralLedger + learning +
    * grist wallet) from the adopted save, or null before one has been adopted.
    * @returns The run-state snapshot, or null.

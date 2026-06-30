@@ -113,15 +113,25 @@ export function regionScene(regionId: string): string {
 }
 
 /**
- * The deterministic backdrop asset key a region boots against — `"backdrop:<id>"`.
- * The asset side of the per-region pipeline: a scene preloads this key (generated
- * programmatically, zero binary assets) so a new region supplies its own backdrop
- * by authoring data, not by editing the loader. Pure.
- * @param regionId - The region's stable id.
- * @returns The backdrop asset key for the region.
+ * The deterministic backdrop **texture key** a region boots against. The asset side
+ * of the per-region pipeline: the Region scene renders exactly this key, so the run
+ * state never claims an asset identity the loader can't resolve.
+ *
+ * Until per-region art exists (per-region content is authored as each increment is
+ * built — living docs, decision 0003), every region resolves to the single shared
+ * placeholder texture the Preloader generates programmatically (`"region-backdrop"`,
+ * kept in lock-step with `TextureKeys.RegionBackdrop` — a pure string const, so
+ * `logic/region` stays free of any Phaser/asset import). When real per-region art
+ * lands, the pipeline generates a distinct texture per region and this returns its
+ * key — and because the scene renders `state.backdrop`, that flows through with **no
+ * scene-code edit** (the "added by authoring data, not code" thesis). Pure.
+ * @param _regionId - The region's stable id (unused until per-region art exists).
+ * @returns The backdrop texture key the scene preloads + renders.
  */
-function regionBackdrop(regionId: string): string {
-  return `backdrop:${regionId}`;
+function regionBackdrop(_regionId: string): string {
+  // Mirror of `TextureKeys.RegionBackdrop` (assets.ts). A literal — not an import —
+  // so the pure logic layer never depends on the asset/Phaser module graph.
+  return "region-backdrop";
 }
 
 /**

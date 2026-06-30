@@ -47,23 +47,60 @@ const regionCell = new RegionCell();
 const enemyCell = new EnemyCell();
 
 /**
+ * Adopt a {@link CurrentSave} into the bridge-held world-state + run-state cells so
+ * the in-memory read paths (`worldState` / `reckon` / `regionTone` / `runState`)
+ * reflect it — the single sync point shared by a successful persist and a reload.
+ * @param save - The save whose sub-shapes the cells adopt.
+ * @returns void
+ */
+function adoptIntoCells(save: CurrentSave): void {
+  worldStateCell.adopt(save.worldState);
+  runStateCell.adopt(save);
+}
+
+/**
  * Persist a {@link CurrentSave} through the real shared {@link saveService} (the
- * `__VERIFY__.save` driver). Adopts the payload's world-state and run-state into the
- * held cells first so the in-memory read paths (worldState / reckon / regionTone /
- * runState) stay consistent with what was written, then commits to IndexedDB.
- * Resolves false if persistence is unavailable.
- * @param save - The save payload to adopt and persist.
+ * `__VERIFY__.save` driver). The cells are adopted **only after** the IndexedDB write
+ * commits, so a failed save never leaves the in-memory read paths claiming a state
+ * that storage does not hold (the cells stay synchronized with the storage
+ * lifecycle). Resolves false if persistence is unavailable.
+ * @param save - The save payload to persist (and adopt on success).
  * @returns True once the write commits, false on failure.
  */
 async function persistSave(save: CurrentSave): Promise<boolean> {
-  worldStateCell.adopt(save.worldState);
-  runStateCell.adopt(save);
   try {
     await saveService.save(save);
+    adoptIntoCells(save);
     return true;
   } catch {
     return false;
   }
+}
+
+/**
+ * Restore the persisted save from IndexedDB (the post-reload read) AND rehydrate the
+ * bridge-held cells from it, so `worldState()` / `runState()` agree with what
+ * `loadSave()` returns after a reload (no stale verification state leaks across the
+ * document boundary). Returns the restored save (a fresh save when nothing is stored).
+ * @returns The restored {@link CurrentSave}.
+ */
+async function loadAndRehydrate(): Promise<CurrentSave> {
+  const save = await saveService.load();
+  adoptIntoCells(save);
+  return save;
+}
+
+/**
+ * Delete the persisted save from IndexedDB AND clear the bridge-held cells, so a
+ * reset leaves the in-memory read paths null (matching `hasSave()` → false) rather
+ * than holding the just-cleared state. Keeps the cells synchronized with the storage
+ * lifecycle on the clear path.
+ * @returns void
+ */
+async function clearAndReset(): Promise<void> {
+  await saveService.clear();
+  worldStateCell.reset();
+  runStateCell.reset();
 }
 
 /** The data-cell slice of the verification API spread into `window.__VERIFY__`. */
@@ -106,9 +143,9 @@ export interface DataCellApi {
 export function dataCellApi(): DataCellApi {
   return {
     save: (save: CurrentSave) => persistSave(save),
-    loadSave: () => saveService.load(),
+    loadSave: () => loadAndRehydrate(),
     hasSave: () => saveService.has(),
-    clearSave: () => saveService.clear(),
+    clearSave: () => clearAndReset(),
     worldState: () => worldStateCell.read(),
     reckon: () => worldStateCell.reckon(),
     regionTone: () => worldStateCell.regionTone(),

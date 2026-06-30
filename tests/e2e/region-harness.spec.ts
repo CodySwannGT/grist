@@ -37,7 +37,10 @@ interface Resolution {
 
 /** The booted-region-scene snapshot the harness bridge exposes via `regionRun()`. */
 interface RegionRun {
+  /** The Phaser scene key (`"Region"`) — same as `__VERIFY__.scene()`. */
   readonly scene: string;
+  /** The region-scoped harness key the session declares (e.g. `"region:marrow"`). */
+  readonly runtimeScene: string;
   readonly regionId: string;
   readonly worldState: string;
   readonly backdrop: string;
@@ -135,15 +138,24 @@ test.describe("GRIST — region-harness verification (UAT, #137)", () => {
     await bootRegion(page);
     await expect(page.locator("canvas")).toBeVisible();
 
-    // The harness booted the template-authored region cleanly: a region-scoped
-    // scene key, no caught boot error, and an 8-hex determinism digest.
+    // The harness booted the template-authored region cleanly. Assert BOTH scene
+    // contracts at their correct level: the Phaser scene key (`"Region"`, the same
+    // value `__VERIFY__.scene()` reports) AND the region-scoped harness key the
+    // booted session declares (`region:marrow`) — they are distinct, and the snapshot
+    // surfaces each so neither contract is asserted against the wrong key.
     const run = await regionRun(page);
     expect(run).not.toBeNull();
     expect(run!.scene).toBe("Region");
+    expect(run!.runtimeScene).toBe("region:marrow");
+    expect(await page.evaluate(() => window.__VERIFY__!.scene())).toBe(
+      "Region"
+    );
     expect(run!.regionId).toBe("marrow");
     expect(run!.booted).toBe(true);
     expect(run!.error).toBeNull();
-    expect(run!.backdrop).toBe("backdrop:marrow");
+    // The scene renders exactly the backdrop key the run state declares (the shared
+    // placeholder until per-region art exists) — never an asset Phaser can't load.
+    expect(run!.backdrop).toBe("region-backdrop");
     expect(run!.hash).toMatch(/^[0-9a-f]{8}$/);
     // `__VERIFY__.hash()` dispatches to the booted region session, matching the
     // snapshot's digest — the determinism gate samples this same entry point.
