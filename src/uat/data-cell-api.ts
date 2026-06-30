@@ -137,6 +137,11 @@ function adoptIntoCells(save: CurrentSave): void {
   // run-state read and the travel spend both observe the save's grist (and any later
   // draw-down) — one shared wallet, seeded in one place.
   runStateCell.adopt(save);
+  // defectionCell.adopt rebuilds its held roster from save.party, so a reload's
+  // loadSave() rehydrates the defection read to the *restored* roster (Halcyon with her
+  // live stats + kit), not the fresh starting party — the hydration path the e2e
+  // asserts after reload (#146).
+  defectionCell.adopt(save);
 }
 
 /**
@@ -182,6 +187,9 @@ async function clearAndReset(): Promise<void> {
   await saveService.clear();
   worldStateCell.reset();
   runStateCell.reset();
+  // Reset the defection cell back to the fresh starting party alongside the others so
+  // a clearSave leaves defection() reading [wren, tobi], not a stale recruited roster.
+  defectionCell.reset();
   travelCell.reset();
   // Reset the shared wallet to the slice default alongside the travel cell so both
   // halves of the run return to a known origin together.

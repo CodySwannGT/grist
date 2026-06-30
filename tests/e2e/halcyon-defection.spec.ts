@@ -179,14 +179,35 @@ test.describe("GRIST — Halcyon's defection + party expansion (UAT, #146)", () 
     // on-disk IndexedDB database.
     await bootWithBridge(page);
 
+    // Layer 1 — the raw persisted DTO. loadSave() also triggers the bridge's cell
+    // rehydration (loadAndRehydrate → adoptIntoCells), so call it before reading the
+    // hydrated snapshot below. The DTO carries only id + level (no live stats/kit), so
+    // this proves the *save record itself* survived IndexedDB across the reload.
     const party = await page.evaluate(
       async () =>
         (await window.__VERIFY__!.loadSave()).party as readonly SaveMember[]
     );
-    const halcyon = party.find(member => member.id === "halcyon");
-    expect(halcyon).toBeDefined();
-    expect(halcyon!.level).toBeGreaterThan(0);
+    const savedHalcyon = party.find(member => member.id === "halcyon");
+    expect(savedHalcyon).toBeDefined();
+    expect(savedHalcyon!.level).toBeGreaterThan(0);
     expect(party.map(member => member.id)).toEqual(EXPECTED_ROSTER);
+
+    // Layer 2 — the HYDRATED roster. After loadSave() rehydrated the defection cell,
+    // defection() must surface the *restored* roster (the ids resolved back into the
+    // live PARTY entries), proving the hydration path — not merely the raw DTO —
+    // restored Halcyon WITH her stats + kit (exactly what AC2 requires). A regression
+    // in id→roster hydration would leave this reading the fresh [wren, tobi] and fail
+    // here, where the DTO-only assertion above would still pass.
+    const restored = await defection(page);
+    expect(restored.halcyonJoined).toBe(true);
+    expect(restored.roster.map(member => member.id)).toEqual(EXPECTED_ROSTER);
+    const halcyon = restored.roster.find(member => member.id === "halcyon")!;
+    expect(halcyon.signatureKit).toEqual(["Frame-Lance"]);
+    expect(halcyon.level).toBeGreaterThan(0);
+    // The anvil-shaped stat block came back intact (HP/DEF/POW high, SPD lowest).
+    const wren = restored.roster.find(member => member.id === "wren")!;
+    expect(halcyon.baseStats["hp"]).toBeGreaterThan(wren.baseStats["hp"]!);
+    expect(halcyon.baseStats["spd"]).toBeLessThan(wren.baseStats["spd"]!);
 
     expect(errors).toEqual([]);
   });

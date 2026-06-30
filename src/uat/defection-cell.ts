@@ -22,7 +22,14 @@
  * so the bridge stays under its line budget. Zero Phaser, no I/O, no RNG of its own.
  * @module uat/defection-cell
  */
-import { PARTY, REGIONS, RegionIds, type RegionId } from "../content";
+import {
+  PARTY,
+  PartyMemberIds,
+  REGIONS,
+  RegionIds,
+  type PartyMemberId,
+  type RegionId,
+} from "../content";
 import { newMoralLedger } from "../logic/free-vs-wield";
 import {
   applyHalcyonDefection,
@@ -106,6 +113,21 @@ function defectionRun(withVelith: boolean, mode: ShardMode): RunState {
 }
 
 /**
+ * Resolve a saved party-member id (the raw `string` a persisted {@link CurrentSave}
+ * carries) back to a typed {@link PartyMemberId}, or null when the id is not a known
+ * member. A known-id guard over {@link PartyMemberIds} so rehydration can drop unknown
+ * ids defensively (a corrupt / forward-dated save never crashes the bridge) rather
+ * than trusting an arbitrary string into the typed roster.
+ * @param id - The saved member id to resolve.
+ * @returns The typed party-member id, or null when unknown.
+ */
+function resolvePartyMemberId(id: string): PartyMemberId | null {
+  return (Object.values(PartyMemberIds) as readonly string[]).includes(id)
+    ? (id as PartyMemberId)
+    : null;
+}
+
+/**
  * The bridge-held defection cell: open the Roots requiem-hall (Ch.4-ready or gated),
  * play it to the truth beat, fire Halcyon's defection, then read the active party
  * roster as one scene-agnostic {@link VerifyDefectionState} snapshot. Holds the live
@@ -170,6 +192,41 @@ export class DefectionCell {
    */
   toSave(): CurrentSave {
     return { ...freshSave(), party: rosterToSavedParty(this.#run.roster) };
+  }
+
+  /**
+   * Rehydrate the held run's roster from a persisted {@link CurrentSave} — the seam
+   * the bridge's reload path uses so `snapshot()` reflects the *restored* roster after
+   * a genuine reload, not the fresh starting party. Resolves each
+   * {@link import("../logic/save/types").SavedPartyMember} id back to a typed
+   * {@link PartyMemberId} (dropping unknown ids defensively), preserving join order,
+   * and replaces the held run's roster with that list — keeping the rest of the held
+   * run as the {@link newRunState} baseline (only the roster is load-bearing for the
+   * snapshot). Without this, a reload would surface `[wren, tobi]` and a hydration
+   * regression (failing to resolve `save.party` ids back into the live roster with
+   * full stat blocks) would slip through. Pure: rebuilds the held run, no I/O.
+   * @param save - The persisted save whose party rehydrates the held roster.
+   * @returns void
+   */
+  adopt(save: CurrentSave): void {
+    const roster = save.party
+      .map(member => resolvePartyMemberId(member.id))
+      .filter((id): id is PartyMemberId => id !== null);
+    this.#run = { ...newRunState(), roster };
+    this.#requiem = null;
+  }
+
+  /**
+   * Restore the cell to its fresh initial state — a {@link newRunState} run (the
+   * `[wren, tobi]` starting roster) with no requiem session held. The seam the
+   * bridge's `clearSave` path uses so a reset leaves the defection read showing the
+   * starting party (matching a cleared save) rather than a stale post-defection
+   * roster. Pure: drops the held state.
+   * @returns void
+   */
+  reset(): void {
+    this.#run = newRunState();
+    this.#requiem = null;
   }
 
   /**
