@@ -129,15 +129,15 @@ describe("the Roots / the Deep region (#143)", () => {
     );
     expect(rootsFamilies.length).toBeGreaterThan(0);
 
-    const anyGloom = rootsFamilies.some(family =>
+    const familyWithGloom = rootsFamilies.find(family =>
       hasGloomAttack(resolveFamilyStatBlock(family, "roots", "ashfall"))
     );
-    expect(anyGloom).toBe(true);
+    expect(familyWithGloom).toBeDefined();
 
     // The Reach read of the SAME family carries no Gloom attack (it is the base
     // stat block, not an Ashfall variant) — the variant is observably different.
     const reachBlock = resolveFamilyStatBlock(
-      rootsFamilies[0]!,
+      familyWithGloom!,
       "roots",
       "reach"
     );
