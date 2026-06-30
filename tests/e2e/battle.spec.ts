@@ -404,4 +404,60 @@ test.describe("GRIST — battle scene verification (UAT)", () => {
 
     expect(errors).toEqual([]);
   });
+
+  test("the polished HUD surfaces the grist-cost flag, battle log, and telegraph (PD-3.8)", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await bootBattle(page);
+    await waitForMenu(page);
+
+    // Pre-commit grist-cost flag: every grist-costed command exposes its price
+    // before the player commits, and the HUD's affordability gate matches the pool.
+    const bindBefore = await page.evaluate(() => {
+      const hud = window.__VERIFY__?.hud();
+      const bind = hud?.commands.find(c => c.id === "bind");
+      return bind
+        ? { gristCost: bind.gristCost, affordable: bind.affordable }
+        : null;
+    });
+    expect(bindBefore?.gristCost).toBeGreaterThan(0);
+    expect(bindBefore?.affordable).toBe(false); // shared pool starts empty
+
+    // The battle log is empty before any action resolves, then records the strike.
+    const logBefore = await page.evaluate(
+      () => window.__VERIFY__?.hud()?.log ?? null
+    );
+    expect(logBefore).toEqual([]);
+
+    await page.keyboard.press("Enter"); // confirm the default Strike
+
+    await expect
+      .poll(() =>
+        page.evaluate(() => window.__VERIFY__?.hud()?.log.length ?? 0)
+      )
+      .toBeGreaterThan(0);
+    const logAfter = await page.evaluate(
+      () => window.__VERIFY__?.hud()?.log ?? []
+    );
+    expect(logAfter.some(line => line.includes("Strike"))).toBe(true);
+
+    // The enemy telegraph eventually warns of a pending enemy turn as gauges fill.
+    const telegraphed = await page.evaluate(async () => {
+      const v = window.__VERIFY__;
+      for (let guard = 0; guard < 200; guard += 1) {
+        const tele = v?.hud()?.telegraph ?? null;
+        if (tele && tele.charge >= 0 && tele.kind === "strike") {
+          return true;
+        }
+        v?.advanceTurn();
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      return false;
+    });
+    expect(telegraphed).toBe(true);
+
+    expect(errors).toEqual([]);
+  });
 });
