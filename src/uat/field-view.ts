@@ -29,6 +29,13 @@ export interface VerifyFieldState {
   readonly shards: readonly string[];
   /** The shard whose free-vs-wield choice is pending, or null. */
   readonly pendingChoiceShard: string | null;
+  /**
+   * The field-HUD context prompt currently shown on an in-range interactable, or
+   * null when none is in range (PD-3.3 / #107).
+   */
+  readonly contextPrompt: string | null;
+  /** Whether the summonable mini-map overlay is currently open (#107). */
+  readonly miniMapOpen: boolean;
 }
 
 /**
@@ -52,6 +59,12 @@ export interface FieldView {
   readonly shards: () => readonly string[];
   /** The shard whose free-vs-wield choice is pending, or null. */
   readonly pendingChoiceShard: () => string | null;
+  /** The HUD context prompt on the in-range interactable, or null (#107). */
+  readonly contextPrompt: () => string | null;
+  /** Whether the summonable mini-map overlay is open (#107). */
+  readonly miniMapOpen: () => boolean;
+  /** Summon or dismiss the mini-map overlay (the "agent toggled the map" action). */
+  readonly toggleMiniMap: () => void;
   /** Examine the nearest examinable prop now (the canonical "agent examined it"). */
   readonly examineNearest: () => void;
   /** Engage the current room's encounter, launching its battle. */
@@ -79,5 +92,7 @@ export function toVerifyFieldState(
     grist: view.grist(),
     shards: view.shards(),
     pendingChoiceShard: view.pendingChoiceShard(),
+    contextPrompt: view.contextPrompt(),
+    miniMapOpen: view.miniMapOpen(),
   };
 }

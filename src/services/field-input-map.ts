@@ -39,15 +39,19 @@ export const FieldMoveDirections = {
  * A device-agnostic field intent. `move` carries a cardinal direction the player
  * holds (keyboard); `move-to` carries a logical (384×216) destination the player
  * tapped (touch/pointer); `examine` asks the scene to inspect the prop nearest
- * Wren (the rendering-notice sign in Room A). The scene is the sole interpreter —
- * it maps directional/destination intents to delta-driven position updates and
- * `examine` to a field `examine` action through the pure sim selector. Keyboard
- * produces `move` + `examine`; touch produces `move-to` + `examine`.
+ * Wren (the rendering-notice sign in Room A); `toggle-map` summons or dismisses
+ * the summonable mini-map (PD-3.3 / #107 — not always-on, per
+ * ui-ux-and-controls). The scene is the sole interpreter — it maps
+ * directional/destination intents to delta-driven position updates, `examine` to
+ * a field `examine` action through the pure sim selector, and `toggle-map` to the
+ * pure mini-map toggle. Keyboard produces `move` + `examine` + `toggle-map`;
+ * touch produces `move-to` + `examine` (the mini-map is summoned from its HUD button).
  */
 export type FieldIntent =
   | { readonly kind: "move"; readonly dir: FieldMoveDir }
   | { readonly kind: "move-to"; readonly x: number; readonly y: number }
-  | { readonly kind: "examine" };
+  | { readonly kind: "examine" }
+  | { readonly kind: "toggle-map" };
 
 const MOVE_UP: FieldIntent = { kind: "move", dir: FieldMoveDirections.up };
 const MOVE_DOWN: FieldIntent = { kind: "move", dir: FieldMoveDirections.down };
@@ -57,12 +61,13 @@ const MOVE_RIGHT: FieldIntent = {
   dir: FieldMoveDirections.right,
 };
 const EXAMINE: FieldIntent = { kind: "examine" };
+const TOGGLE_MAP: FieldIntent = { kind: "toggle-map" };
 
 /**
  * The field keyboard map, keyed by physical `KeyboardEvent.code` so it is
- * layout-stable: W/S/A/D and the arrow keys step the four cardinals, and
- * Enter/Space/E examine the nearest prop (ui-ux-and-controls control table —
- * remappable, change it here).
+ * layout-stable: W/S/A/D and the arrow keys step the four cardinals,
+ * Enter/Space/E examine the nearest prop, and M/Tab summon or dismiss the
+ * mini-map (ui-ux-and-controls control table — remappable, change it here).
  */
 const FIELD_KEY_INTENTS: Readonly<Record<string, FieldIntent>> = {
   KeyW: MOVE_UP,
@@ -76,6 +81,8 @@ const FIELD_KEY_INTENTS: Readonly<Record<string, FieldIntent>> = {
   Enter: EXAMINE,
   Space: EXAMINE,
   KeyE: EXAMINE,
+  KeyM: TOGGLE_MAP,
+  Tab: TOGGLE_MAP,
 };
 
 /**

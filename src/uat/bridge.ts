@@ -115,6 +115,8 @@ interface VerifyApi extends DialogueApi, DataCellApi {
   readonly autoWin: (maxTurns?: number) => string;
   readonly field: () => VerifyFieldState | null;
   readonly examine: () => void;
+  /** Summon or dismiss the field mini-map overlay (#107). No-op outside Field. */
+  readonly toggleMiniMap: () => void;
   /** Engage the current room's encounter, launching its battle. */
   readonly engage: () => void;
   /** Traverse to the next room, firing its trigger and launching the next battle. */
@@ -321,6 +323,16 @@ class VerifyController {
   }
 
   /**
+   * Summon or dismiss the field mini-map overlay via the active field view — the
+   * "an agent summoned the mini-map" verification action (#107). No-op outside
+   * the Field scene.
+   * @returns void
+   */
+  toggleMiniMap(): void {
+    this.#fieldView?.toggleMiniMap();
+  }
+
+  /**
    * Engage the current room's encounter via the active field view — fires its
    * trigger and launches the battle (the "agent engaged the encounter"
    * verification action). No-op outside the Field scene.
@@ -493,6 +505,7 @@ export function installVerifyBridge(): void {
     autoWin: (maxTurns?: number) => verifyBridge.autoWin(maxTurns),
     field: () => verifyBridge.field(),
     examine: () => verifyBridge.examine(),
+    toggleMiniMap: () => verifyBridge.toggleMiniMap(),
     engage: () => verifyBridge.engage(),
     traverse: () => verifyBridge.traverse(),
     bench: () => verifyBridge.bench().snapshot(verifyBridge.scene()),

@@ -32,3 +32,13 @@ export {
   loreForProp,
   canTraverse,
 } from "./engine";
+export {
+  MARROW_ROOM_ORDER,
+  RoomVisitStates,
+  type RoomVisitState,
+  type MiniMapNode,
+  miniMapModel,
+  contextPromptFor,
+  gristReadoutLabel,
+  toggleMiniMap,
+} from "./hud";
