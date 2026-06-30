@@ -28,3 +28,13 @@ export {
   openBoundSite,
   type BoundSiteSession,
 } from "./bound-site";
+export {
+  hashRequiemHall,
+  isRequiemHallComplete,
+  isRequiemHallReachable,
+  openRequiemHall,
+  playRequiemHall,
+  playRequiemHallToCompletion,
+  RequiemHallPhases,
+  type RequiemHallSession,
+} from "./requiem-hall";

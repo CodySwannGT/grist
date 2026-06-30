@@ -17,6 +17,11 @@ import { saveService } from "../services/save-service";
 import { BoundSiteCell, type VerifyBoundSiteState } from "./bound-site-cell";
 import { EnemyCell, type VerifyEnemyState } from "./enemy-cell";
 import { RegionCell, type VerifyRegionState } from "./region-cell";
+import {
+  RequiemHallCell,
+  type OpenRequiemHallOptions,
+  type VerifyRequiemHallState,
+} from "./requiem-hall-cell";
 import { RunStateCell, type VerifyRunState } from "./run-state-cell";
 import { TravelCell, type VerifyTravelState } from "./travel-cell";
 import { WalletCell } from "./wallet-cell";
@@ -69,6 +74,15 @@ const enemyCell = new EnemyCell();
  * rides the existing save path (the e2e persists the settled choice + reloads).
  */
 const boundSiteCell = new BoundSiteCell();
+
+/**
+ * The bridge-held requiem-hall cell (#145): the Sidhe requiem-hall Ch.4 set-piece,
+ * gated by the Roots Bound (Velith) attunement and played through the pure set-piece
+ * logic in `logic/region`, so the Ch.4 e2e can reach + play the requiem-hall to
+ * completion (and observe the soft-gate when the prerequisites are unmet)
+ * scene-agnostically, without a live scene attached.
+ */
+const requiemHallCell = new RequiemHallCell();
 
 /**
  * The bridge-held travel cell (#136): the earned-freedom mobility chain (foot →
@@ -182,6 +196,22 @@ export interface DataCellApi {
   readonly chooseBound: (mode: ShardMode) => void;
   /** The opened/settled Bound-site snapshot (shard + variant + karma + corruption), or null. */
   readonly boundSite: () => VerifyBoundSiteState | null;
+  /**
+   * Open the Sidhe requiem-hall Ch.4 set-piece (#145). Defaults to the Roots region
+   * with the Ch.4 prerequisites met (Velith freed) in Act I `reach`; pass
+   * `{ withVelith: false }` to open the soft-gated (unreachable) hall, or
+   * `mode`/`worldState`/`seed` to vary the fork.
+   */
+  readonly openRequiemHall: (
+    regionId?: string,
+    options?: OpenRequiemHallOptions
+  ) => void;
+  /** Advance the requiem-hall set-piece one authored beat (no-op when gated/complete). */
+  readonly playRequiemHall: () => void;
+  /** Drive the requiem-hall set-piece to its terminal phase (no-op when gated). */
+  readonly playRequiemHallToCompletion: () => void;
+  /** The requiem-hall snapshot (reachability + beat + phase + completion + hash), or null. */
+  readonly requiemHall: () => VerifyRequiemHallState | null;
   /** Earn the skiff (foot → skiff), opening regional travel (#136). */
   readonly earnSkiff: () => void;
   /** Earn the airship (skiff → airship), opening the full Reach and fast-travel (#136). */
@@ -220,6 +250,11 @@ export function dataCellApi(): DataCellApi {
     openBoundSite: (regionId?: string) => boundSiteCell.open(regionId),
     chooseBound: (mode: ShardMode) => boundSiteCell.choose(mode),
     boundSite: () => boundSiteCell.snapshot(),
+    openRequiemHall: (regionId?: string, options?: OpenRequiemHallOptions) =>
+      requiemHallCell.open(regionId, options),
+    playRequiemHall: () => requiemHallCell.play(),
+    playRequiemHallToCompletion: () => requiemHallCell.playToCompletion(),
+    requiemHall: () => requiemHallCell.snapshot(),
     earnSkiff: () => travelCell.earnSkiff(),
     earnAirship: () => travelCell.earnAirship(),
     discoverSafehouse: (safehouse: string) => travelCell.discover(safehouse),
