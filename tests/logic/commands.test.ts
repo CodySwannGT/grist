@@ -8,6 +8,7 @@ import {
   commandCost,
   commandCostLabel,
   commandLabel,
+  commandOrderFor,
 } from "../../src/ui/commands";
 import {
   ActionKinds,
@@ -19,19 +20,25 @@ const ACTOR: CombatantRef = { side: BattleSides.party, index: 0 };
 const TARGET: CombatantRef = { side: BattleSides.enemies, index: 1 };
 
 describe("battle command catalog", () => {
-  it("lists the five commands in menu order", () => {
+  it("lists the full catalog in canonical menu order (incl. Augment, #110)", () => {
     expect(COMMAND_ORDER).toEqual([
       Commands.strike,
       Commands.craft,
       Commands.bind,
+      Commands.augment,
       Commands.item,
       Commands.defend,
     ]);
   });
 
-  it("labels each command", () => {
+  it("labels each command (incl. the gadgeteer Augment slot)", () => {
     expect(commandLabel(Commands.strike)).toBe("Strike");
+    expect(commandLabel(Commands.augment)).toBe("Augment");
     expect(commandLabel(Commands.defend)).toBe("Defend");
+  });
+
+  it("prices Augment free (a tool/buff, no spell cost)", () => {
+    expect(commandCost(Commands.augment)).toEqual({ ap: 0, grist: 0 });
   });
 
   it("prices Strike/Item/Defend free, Craft in AP, Bind in grist", () => {
@@ -75,5 +82,33 @@ describe("battle command catalog", () => {
     const bind = buildAction(Commands.bind, ACTOR, TARGET);
     expect(bind.kind).toBe(ActionKinds.bind);
     expect(bind.id).toBeDefined();
+  });
+
+  it("builds a free Augment action (no spell id) — the reducer spends the turn", () => {
+    const augment = buildAction(Commands.augment, ACTOR, TARGET);
+    expect(augment.kind).toBe(ActionKinds.augment);
+    expect(augment.id).toBeUndefined();
+  });
+});
+
+describe("per-member command order (commandOrderFor, #110)", () => {
+  it("returns the full catalog when no kit is given (no member ready)", () => {
+    expect(commandOrderFor(undefined)).toEqual(COMMAND_ORDER);
+    expect(commandOrderFor([])).toEqual(COMMAND_ORDER);
+  });
+
+  it("returns the member's own kit order (Tobi's gadgeteer menu)", () => {
+    const tobiKit = [
+      Commands.strike,
+      Commands.augment,
+      Commands.item,
+      Commands.defend,
+    ] as const;
+    expect(commandOrderFor(tobiKit)).toEqual(tobiKit);
+  });
+
+  it("filters out any id not in the catalog (defensive)", () => {
+    const dirty = [Commands.strike, "ghost" as never, Commands.defend];
+    expect(commandOrderFor(dirty)).toEqual([Commands.strike, Commands.defend]);
   });
 });

@@ -334,4 +334,74 @@ test.describe("GRIST — battle scene verification (UAT)", () => {
     );
     expect(normalEnd).toBeGreaterThan(normalStart);
   });
+
+  test("Wren and Tobi present visibly different command kits in one battle (#110)", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await bootBattle(page);
+    await waitForMenu(page);
+
+    // Wren (SPD 14) is ready first: her tempo/caster menu carries Craft + Bind.
+    const wrenMenu = await page.evaluate(() => {
+      const hud = window.__VERIFY__?.hud();
+      return {
+        actor: hud?.party[hud.activeActor ?? -1]?.ref ?? null,
+        commands: hud?.commands.map(c => c.id) ?? [],
+      };
+    });
+    expect(wrenMenu.actor).toBe("wren");
+    expect(wrenMenu.commands).toContain("craft");
+    expect(wrenMenu.commands).toContain("bind");
+
+    // Drive turns until Tobi (index 1) is the active actor in the SAME battle.
+    // Resolve whoever is ready (a free Strike at the live target) and advance the
+    // ATB, until the menu opens for Tobi — proving both members act together.
+    const tobiMenu = await page.evaluate(async () => {
+      const v = window.__VERIFY__;
+      const readActiveRef = (): string | null => {
+        const hud = v?.hud();
+        return hud?.activeActor === null || hud?.activeActor === undefined
+          ? null
+          : (hud.party[hud.activeActor]?.ref ?? null);
+      };
+      for (let guard = 0; guard < 80; guard += 1) {
+        const ref = readActiveRef();
+        if (ref === "tobi") {
+          const hud = v?.hud();
+          return { commands: hud?.commands.map(c => c.id) ?? [] };
+        }
+        const state = v?.state();
+        const actor = v?.hud()?.activeActor;
+        const target = state?.enemies.findIndex(e => e.hp > 0) ?? -1;
+        if (
+          ref !== null &&
+          actor !== null &&
+          actor !== undefined &&
+          target >= 0
+        ) {
+          // Spend the ready member's turn with a free Strike, then advance.
+          v?.act({
+            kind: "strike",
+            actor: { side: "party", index: actor },
+            target: { side: "enemies", index: target },
+          });
+        }
+        v?.advanceTurn();
+        await new Promise(resolve => setTimeout(resolve, 0));
+      }
+      return { commands: [] as string[] };
+    });
+
+    // Tobi's gadgeteer/support menu is VISIBLY DIFFERENT: it surfaces Augment and
+    // does NOT carry Wren's Craft/Bind caster commands.
+    expect(tobiMenu.commands).toContain("augment");
+    expect(tobiMenu.commands).not.toContain("craft");
+    expect(tobiMenu.commands).not.toContain("bind");
+    // And the two menus genuinely differ as sets.
+    expect(tobiMenu.commands).not.toEqual(wrenMenu.commands);
+
+    expect(errors).toEqual([]);
+  });
 });

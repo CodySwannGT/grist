@@ -19,6 +19,7 @@ import {
   speedTickMs,
   type BattleSpeed,
 } from "../game/speed";
+import { PARTY, type PartyMemberId } from "../content";
 import { AtbTuning, BattleSides, type BattleState } from "../logic/combat";
 import { type InputDevice, type InputIntent } from "../services/input-map";
 import { eventsCenter } from "../services/events";
@@ -27,7 +28,7 @@ import {
   commandAffordable,
   commandCost,
   commandLabel,
-  COMMAND_ORDER,
+  commandOrderFor,
   type CommandId,
 } from "./commands";
 import { commandRect, type Rect } from "./layout";
@@ -113,6 +114,34 @@ function firstReadyParty(state: BattleState): number | null {
     member => member.hp > 0 && member.atb >= AtbTuning.ready
   );
   return index < 0 ? null : index;
+}
+
+/**
+ * Whether a string is a defined {@link PartyMemberId} (a key of the PARTY table).
+ * @param ref - The combatant ref to test.
+ * @returns True when `ref` names a defined party member.
+ */
+function isPartyMemberId(ref: string): ref is PartyMemberId {
+  return ref in PARTY;
+}
+
+/**
+ * The command order to render for the ready party member — that member's own
+ * authored {@link import("../content").PartyMemberDef.kit} (Wren's tempo menu vs
+ * Tobi's gadgeteer/support menu) — so two controllable members surface *visibly
+ * different command kits* through the same reducer (#110). Falls back to the full
+ * catalog when no member is ready (closed menu) or the ready combatant is not a
+ * defined party member.
+ * @param state - The battle state.
+ * @returns The active member's command order.
+ */
+function activeKitOrder(state: BattleState): readonly CommandId[] {
+  const actor = firstReadyParty(state);
+  const member = actor === null ? undefined : state.party[actor];
+  const ref = member?.ref;
+  const kit =
+    ref !== undefined && isPartyMemberId(ref) ? PARTY[ref].kit : undefined;
+  return commandOrderFor(kit);
 }
 
 /**
@@ -216,6 +245,18 @@ export class BattleController {
   }
 
   /**
+   * The command order the ready party member surfaces — that member's authored
+   * kit (Wren's tempo menu vs Tobi's gadgeteer/support menu), so the HUD draws
+   * *visibly different command kits* per controllable member (#110). The full
+   * catalog when no member is ready.
+   * @param state - The battle state.
+   * @returns The active member's command ids, in menu order.
+   */
+  commandOrder(state: BattleState): readonly CommandId[] {
+    return activeKitOrder(state);
+  }
+
+  /**
    * Handle one device-tagged semantic intent: record it, then route by kind.
    * A stable arrow field so it can be unsubscribed by reference in {@link dispose}.
    * @param intent - The semantic intent.
@@ -232,7 +273,10 @@ export class BattleController {
         this.#cycleTarget(intent.delta);
         break;
       case "confirm":
-        this.#confirm(COMMAND_ORDER[this.#highlight], device);
+        this.#confirm(
+          activeKitOrder(this.#runner.state())[this.#highlight],
+          device
+        );
         break;
       case "cancel":
         this.#highlight = 0;
@@ -255,7 +299,7 @@ export class BattleController {
    * @returns void
    */
   #navigate(delta: number): void {
-    const count = COMMAND_ORDER.length;
+    const count = activeKitOrder(this.#runner.state()).length;
     this.#highlight = (this.#highlight + delta + count) % count;
   }
 
@@ -288,8 +332,9 @@ export class BattleController {
    * @returns void
    */
   #selectCommand(command: string, device: InputDevice): void {
-    const index = COMMAND_ORDER.findIndex(id => id === command);
-    const resolved = COMMAND_ORDER[index];
+    const order = activeKitOrder(this.#runner.state());
+    const index = order.findIndex(id => id === command);
+    const resolved = order[index];
     if (resolved === undefined) {
       return;
     }
@@ -382,7 +427,7 @@ export class BattleController {
         ready: seat.hp > 0 && seat.atb >= AtbTuning.ready,
         active: index === actor,
       })),
-      commands: COMMAND_ORDER.map((id, index) =>
+      commands: activeKitOrder(state).map((id, index) =>
         this.#commandModel(id, index, member?.ap ?? 0, grist)
       ),
       enemies: state.enemies.map((enemy, index) => ({
