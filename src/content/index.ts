@@ -75,3 +75,10 @@ export {
   type RegionTone,
   type RegionVariant,
 } from "./regions";
+export {
+  CH1_SCRIPT,
+  CH1_OPENING_SCENE_ID,
+  CH1_REVEAL_NODE_ID,
+  CH1_AMBUSH_ENCOUNTER,
+  SABLE_REVEALED_FLAG,
+} from "./scenes/ch1";
