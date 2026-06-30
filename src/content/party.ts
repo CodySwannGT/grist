@@ -25,6 +25,7 @@ export interface PartyMemberDef {
 export const PartyMemberIds = {
   wren: "wren",
   tobi: "tobi",
+  halcyon: "halcyon",
 } as const;
 
 /** A party-member id (the literal-union of every defined party key). */
@@ -72,5 +73,36 @@ export const PARTY: {
       lck: 6,
     },
     signatureKit: ["Stun-Dart"],
+  },
+  // Halcyon Mourne, the fallen knight — the FRAME SPECIALIST who defects in the
+  // Roots / the Deep "after the requiem reveals the truth" (#146;
+  // `wiki/narrative/main-quest.md` Ch.4). Design intent (numbers authored here, the
+  // wiki gives identity only): the wiki paints her as "high POW, grist-linked, frame
+  // synergy" (`wiki/design/catalog.md`), "heavy grist-hungry power, defense, the
+  // party's anvil" (`wiki/narrative/characters.md` / `character-bios.md`), with a
+  // hand-authored "frame affinity / frame actives" signature
+  // (`wiki/design/progression-and-economy.md`). So her block reads as the ANVIL: the
+  // HIGHEST hp + def + pow of the level-3 party and the LOWEST spd (the heavy frame
+  // unit), grist-hungry (a healthy ap pool to fund frame actives), low foc (she is no
+  // caster) and low lck (cold, grief-locked, not a lucky striker). She is pinned to
+  // level 3 to read at the current party tier (matching Wren + Tobi), and — like Tobi
+  // — defects shard-less (no starting `shard`); her identity rides her signature
+  // frame active, not a Bound. The signature `Frame-Lance` is the frame-lance / heavy
+  // arms active her class wields (`wiki/design/catalog.md`).
+  halcyon: {
+    id: PartyMemberIds.halcyon,
+    name: "Halcyon",
+    level: 3,
+    baseStats: {
+      hp: 160,
+      ap: 22,
+      pow: 22,
+      foc: 8,
+      def: 16,
+      wrd: 11,
+      spd: 7,
+      lck: 5,
+    },
+    signatureKit: ["Frame-Lance"],
   },
 };

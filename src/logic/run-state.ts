@@ -23,6 +23,7 @@
  */
 import { type BoundId } from "../content/bounds";
 import { BENCH_SINKS, type BenchSinkId } from "../content/bench";
+import { PartyMemberIds, type PartyMemberId } from "../content/party";
 import { type Stats } from "./combat/types";
 import { BattleOutcomes, type BattleResult } from "./battle-result";
 import {
@@ -78,7 +79,26 @@ export interface RunState {
    * applied on top of base stats; only the bonused axes are present.
    */
   readonly statBonuses: Partial<Stats>;
+  /**
+   * The **active party roster** — the {@link PartyMemberId}s in the party, in *join
+   * order* (#146). A fresh run starts with the Phase-1 starting party
+   * (`[wren, tobi]`); a recruit (Halcyon's Ch.4 defection) appends to the tail.
+   * This is the live in-run roster the persistence layer projects into
+   * `SaveDataV2.party`; it is **distinct** from the shard lists above (a member is a
+   * person, a shard is a carried power). Append-only this slice — no member leaves.
+   */
+  readonly roster: readonly PartyMemberId[];
 }
+
+/**
+ * The Phase-1 starting party (#146): Wren + Tobi, in join order. A fresh run seeds
+ * {@link RunState.roster} with this; a Ch.4 defection (Halcyon) appends to it. A
+ * module constant (not re-built per call) so the starting roster is authored once.
+ */
+const STARTING_ROSTER: readonly PartyMemberId[] = [
+  PartyMemberIds.wren,
+  PartyMemberIds.tobi,
+];
 
 /**
  * The outcome of a bench-sink purchase. `ok` is false on a rejected spend (the
@@ -95,7 +115,8 @@ export interface BenchSinkResult {
 
 /**
  * Build a fresh run at the slice starting grist: no shards, no pending choice, an
- * empty learning state, and no stat bonuses. Pure — reads nothing ambient.
+ * empty learning state, no stat bonuses, and the Phase-1 starting party
+ * (`[wren, tobi]`) as the active roster (#146). Pure — reads nothing ambient.
  * @returns The initial run state.
  */
 export function newRunState(): RunState {
@@ -106,6 +127,7 @@ export function newRunState(): RunState {
     equippedShards: [],
     learning: newLearningState(),
     statBonuses: {},
+    roster: STARTING_ROSTER,
   };
 }
 
