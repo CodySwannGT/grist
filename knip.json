@@ -8,9 +8,13 @@
     "src/logic/field/index.ts",
     "src/logic/narrative/index.ts",
     "src/logic/save/index.ts",
-    "src/logic/world/index.ts"
+    "src/logic/world/index.ts",
+    "src/logic/travel/index.ts"
   ],
-  "project": ["src/**/*.ts", "tests/**/*.ts"],
+  "project": [
+    "src/**/*.ts",
+    "tests/**/*.ts"
+  ],
   "ignore": [
     "**/*.test.ts",
     "**/dist/**",
@@ -18,8 +22,18 @@
     "**/node_modules/**",
     "public/assets/**"
   ],
-  "ignoreDependencies": ["@types/node", "@vitest/coverage-v8", "phaser"],
-  "ignoreBinaries": ["audit", "knip", "playwright", "tsx", "vite"],
+  "ignoreDependencies": [
+    "@types/node",
+    "@vitest/coverage-v8",
+    "phaser"
+  ],
+  "ignoreBinaries": [
+    "audit",
+    "knip",
+    "playwright",
+    "tsx",
+    "vite"
+  ],
   "rules": {
     "devDependencies": "off"
   }

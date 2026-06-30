@@ -18,6 +18,8 @@ import { BoundSiteCell, type VerifyBoundSiteState } from "./bound-site-cell";
 import { EnemyCell, type VerifyEnemyState } from "./enemy-cell";
 import { RegionCell, type VerifyRegionState } from "./region-cell";
 import { RunStateCell, type VerifyRunState } from "./run-state-cell";
+import { TravelCell, type VerifyTravelState } from "./travel-cell";
+import { WalletCell } from "./wallet-cell";
 import { WorldStateCell } from "./world-state-cell";
 
 /**
@@ -29,11 +31,21 @@ import { WorldStateCell } from "./world-state-cell";
 const worldStateCell = new WorldStateCell();
 
 /**
- * The bridge-held run-state cell (#88): the resolved free-vs-wield choice, the moral
- * ledger, the learning progression, and the shared grist wallet adopted from the
- * persisted save, so the slice e2e can read them scene-agnostically.
+ * The bridge's single shared grist wallet (#136 contract): the one live balance both
+ * the run-state read (`runState().grist`, #88) and the travel cell's fast-travel
+ * spend draw on, so a hop visibly decreases the same wallet the run-state reports.
+ * Seeded from a persisted save's grist on adopt; reset to the slice default on
+ * `clearSave`.
  */
-const runStateCell = new RunStateCell();
+const walletCell = new WalletCell();
+
+/**
+ * The bridge-held run-state cell (#88): the resolved free-vs-wield choice, the moral
+ * ledger, the learning progression, and the shared grist wallet (read live from the
+ * shared {@link walletCell}, not a private copy), so the slice e2e can read them
+ * scene-agnostically.
+ */
+const runStateCell = new RunStateCell(walletCell);
 
 /**
  * The bridge-held region cell (#133): a region authored against the `RegionDef`
@@ -59,6 +71,18 @@ const enemyCell = new EnemyCell();
 const boundSiteCell = new BoundSiteCell();
 
 /**
+ * The bridge-held travel cell (#136): the earned-freedom mobility chain (foot →
+ * skiff → airship → fast-travel) and its capability/knowledge soft-gate live here in
+ * memory (tier / gate / fast-travel semantics delegated to `logic/travel`), so the
+ * traversal e2e can earn tiers, discover safehouses, and fast-travel — observing the
+ * grist deduction from the shared wallet and the determinism digest —
+ * scene-agnostically, without a live scene attached. Spends grist through the shared
+ * {@link walletCell} (never a private wallet), so a hop draws down the same balance
+ * `runState().grist` reports.
+ */
+const travelCell = new TravelCell(walletCell);
+
+/**
  * Adopt a {@link CurrentSave} into the bridge-held world-state + run-state cells so
  * the in-memory read paths (`worldState` / `reckon` / `regionTone` / `runState`)
  * reflect it — the single sync point shared by a successful persist and a reload.
@@ -67,6 +91,9 @@ const boundSiteCell = new BoundSiteCell();
  */
 function adoptIntoCells(save: CurrentSave): void {
   worldStateCell.adopt(save.worldState);
+  // runStateCell.adopt seeds the single shared wallet from save.grist, so the
+  // run-state read and the travel spend both observe the save's grist (and any later
+  // draw-down) — one shared wallet, seeded in one place.
   runStateCell.adopt(save);
 }
 
@@ -113,6 +140,10 @@ async function clearAndReset(): Promise<void> {
   await saveService.clear();
   worldStateCell.reset();
   runStateCell.reset();
+  travelCell.reset();
+  // Reset the shared wallet to the slice default alongside the travel cell so both
+  // halves of the run return to a known origin together.
+  walletCell.reset();
 }
 
 /** The data-cell slice of the verification API spread into `window.__VERIFY__`. */
@@ -147,6 +178,16 @@ export interface DataCellApi {
   readonly chooseBound: (mode: ShardMode) => void;
   /** The opened/settled Bound-site snapshot (shard + variant + karma + corruption), or null. */
   readonly boundSite: () => VerifyBoundSiteState | null;
+  /** Earn the skiff (foot → skiff), opening regional travel (#136). */
+  readonly earnSkiff: () => void;
+  /** Earn the airship (skiff → airship), opening the full Reach and fast-travel (#136). */
+  readonly earnAirship: () => void;
+  /** Record a discovered safehouse (knowledge) for fast-travel (#136). */
+  readonly discoverSafehouse: (safehouse: string) => void;
+  /** Fast-travel between two discovered safehouses; returns the grist spent (0 if refused). */
+  readonly fastTravel: (from: string, to: string) => number;
+  /** The travel snapshot (tier + soft-gate + knowledge + grist + determinism hash). */
+  readonly travel: () => VerifyTravelState;
 }
 
 /**
@@ -175,5 +216,10 @@ export function dataCellApi(): DataCellApi {
     openBoundSite: () => boundSiteCell.open(),
     chooseBound: (mode: ShardMode) => boundSiteCell.choose(mode),
     boundSite: () => boundSiteCell.snapshot(),
+    earnSkiff: () => travelCell.earnSkiff(),
+    earnAirship: () => travelCell.earnAirship(),
+    discoverSafehouse: (safehouse: string) => travelCell.discover(safehouse),
+    fastTravel: (from: string, to: string) => travelCell.fastTravel(from, to),
+    travel: () => travelCell.snapshot(),
   };
 }
