@@ -16,7 +16,6 @@ import {
   FieldColors,
   FieldEvents,
   FieldLayout,
-  FieldTextStyles,
   GameView,
   SceneKeys,
   type FieldResumeData,
@@ -27,6 +26,7 @@ import {
   examinablePropForRoom,
   loreForProp,
   stepField,
+  toggleMiniMap,
   type FieldState,
 } from "../logic/field";
 import { newRunState, type RunState } from "../logic/run-state";
@@ -37,7 +37,9 @@ import {
   type FieldMoveDir,
 } from "../services/field-input-map";
 import { getRunState } from "../services/run-store";
-import { drawFieldBackdrop } from "./field-chrome";
+import { drawFieldBackdrop, drawFieldChrome } from "./field-chrome";
+import { FieldHud } from "./field-hud";
+import { makeFieldView } from "./field-bridge-view";
 import {
   advanceToNextRoom,
   beginFieldSession,
@@ -49,12 +51,6 @@ import { verifyBridge, type FieldView } from "../uat/bridge";
 
 /** Fallback seed when none is supplied via the verification bridge / `?seed=`. */
 const DEFAULT_SEED = 0x9e3779b1;
-
-const {
-  roomName: ROOM_NAME_STYLE,
-  prompt: PROMPT_STYLE,
-  lore: LORE_STYLE,
-} = FieldTextStyles;
 
 /** Renders a {@link FieldState} and emits field actions; holds no field rules. */
 export class Field extends Phaser.Scene {
@@ -78,6 +74,10 @@ export class Field extends Phaser.Scene {
   #sign: Phaser.GameObjects.Rectangle | null = null;
   #loreBox!: Phaser.GameObjects.Rectangle;
   #loreText!: Phaser.GameObjects.Text;
+  /** The field HUD (persistent grist readout, context prompt, mini-map). */
+  #hud!: FieldHud;
+  /** Whether the summonable mini-map overlay is currently open (#107). */
+  #miniMapOpen = false;
 
   /** Register the scene key. */
   constructor() {
@@ -100,6 +100,7 @@ export class Field extends Phaser.Scene {
     this.#wrenX = FieldLayout.wrenSpawnX;
     this.#wrenY = FieldLayout.wrenSpawnY;
     this.#moveTo = null;
+    this.#miniMapOpen = false;
     this.#input = new FieldInputService(this);
 
     const session = data?.resumed
@@ -111,10 +112,12 @@ export class Field extends Phaser.Scene {
     drawFieldBackdrop(this);
     this.#buildProps();
     this.#buildHud();
+    this.#hud = new FieldHud(this, this.#toggleMiniMap);
     this.#wirePointer();
 
     eventsCenter.on(FieldEvents.Input, this.#onIntent);
     this.#syncWren();
+    this.#syncHud();
 
     verifyBridge.attach(SceneKeys.Field, this.#bridgeView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
@@ -148,6 +151,9 @@ export class Field extends Phaser.Scene {
       this.#clampWren();
       this.#syncWren();
     }
+    // The HUD reflects live state every frame; its grist readout and context
+    // prompt repaint only on change (guarded text), so a still frame is free.
+    this.#syncHud();
   }
 
   /**
@@ -204,6 +210,10 @@ export class Field extends Phaser.Scene {
     if (intent.kind === "examine") {
       // If out of range now, defer until Wren arrives at the pending destination.
       this.#pendingExamine = !this.#examineNearest();
+      return;
+    }
+    if (intent.kind === "toggle-map") {
+      this.#toggleMiniMap();
     }
   };
 
@@ -218,15 +228,7 @@ export class Field extends Phaser.Scene {
    */
   #examineNearest(): boolean {
     const propId = this.#examinablePropId();
-    if (!propId) {
-      return false;
-    }
-    const within =
-      Math.hypot(
-        this.#wrenX - FieldLayout.signX,
-        this.#wrenY - FieldLayout.signY
-      ) <= FieldLayout.examineRadius;
-    if (!within) {
+    if (!propId || !this.#withinExamineRange()) {
       return false;
     }
     this.#state = stepField(this.#state, {
@@ -250,6 +252,54 @@ export class Field extends Phaser.Scene {
   #examinablePropId(): string | null {
     return examinablePropForRoom(this.#state.currentRoom);
   }
+
+  /**
+   * Whether Wren is currently within the examine radius of the current room's
+   * examinable prop. Drives the context prompt's visibility (the "context" in
+   * context prompt) — the same range gate {@link #examineNearest} uses to decide
+   * whether an examine lands, so the prompt and the affordance agree.
+   * @returns True when Wren is in range of an examinable prop.
+   */
+  #withinExamineRange(): boolean {
+    if (this.#examinablePropId() === null) {
+      return false;
+    }
+    return (
+      Math.hypot(
+        this.#wrenX - FieldLayout.signX,
+        this.#wrenY - FieldLayout.signY
+      ) <= FieldLayout.examineRadius
+    );
+  }
+
+  /**
+   * Refresh the field HUD from live state: the persistent grist readout, the
+   * context prompt for the in-range interactable, and (when open) the mini-map.
+   * The pure HUD model decides what each surface shows; the scene only supplies
+   * the live inputs. Called once on create and every frame from {@link update}.
+   * @returns void
+   */
+  #syncHud(): void {
+    this.#hud.sync(
+      this.#state,
+      this.#run.wallet.grist,
+      this.#state.currentRoom,
+      this.#examinablePropId(),
+      this.#withinExamineRange()
+    );
+  }
+
+  /**
+   * Summon or dismiss the mini-map overlay through the pure {@link toggleMiniMap}
+   * transition, then mirror the resulting flag onto the HUD. A stable arrow field
+   * so it can be passed as the HUD's touch-summon callback and called from the
+   * `toggle-map` intent without rebinding `this`.
+   * @returns void
+   */
+  readonly #toggleMiniMap = (): void => {
+    this.#miniMapOpen = toggleMiniMap(this.#miniMapOpen);
+    this.#hud.setMiniMapOpen(this.#miniMapOpen);
+  };
 
   /**
    * Place the room props: Wren's placeholder body, and — when the current room
@@ -291,46 +341,19 @@ export class Field extends Phaser.Scene {
   }
 
   /**
-   * Build the static chrome (current room name +, when the room has an
-   * examinable prop, its examine prompt) and the initially-hidden lore banner the
-   * examine surfaces. The examine prompt is omitted in rooms with no lore prop so
-   * the affordance only appears where there is something to read.
+   * Build the static chrome (room name + examine affordance) and the hidden lore
+   * banner via the extracted {@link drawFieldChrome} helper, keeping the lore
+   * box/text refs the examine surfaces. Pulled out so the scene stays thin.
    * @returns void
    */
   #buildHud(): void {
-    this.add
-      .text(
-        GameView.width / 2,
-        6,
-        MARROW_MAP[this.#state.currentRoom].name,
-        ROOM_NAME_STYLE
-      )
-      .setOrigin(0.5, 0);
-    if (this.#examinablePropId() !== null) {
-      this.add
-        .text(
-          FieldLayout.signX,
-          FieldLayout.signY - FieldLayout.signHeight,
-          "[E] examine",
-          PROMPT_STYLE
-        )
-        .setOrigin(0.5, 1);
-    }
-    this.#loreBox = this.add
-      .rectangle(
-        FieldLayout.loreBoxX,
-        FieldLayout.loreBoxY,
-        FieldLayout.loreBoxWidth,
-        FieldLayout.loreBoxHeight,
-        FieldColors.loreBoxFill
-      )
-      .setOrigin(0, 0)
-      .setStrokeStyle(1, FieldColors.loreBoxStroke)
-      .setVisible(false);
-    this.#loreText = this.add
-      .text(FieldLayout.loreBoxX + 4, FieldLayout.loreBoxY + 4, "", LORE_STYLE)
-      .setOrigin(0, 0)
-      .setVisible(false);
+    const chrome = drawFieldChrome(
+      this,
+      MARROW_MAP[this.#state.currentRoom],
+      this.#examinablePropId() !== null
+    );
+    this.#loreBox = chrome.loreBox;
+    this.#loreText = chrome.loreText;
   }
 
   /**
@@ -401,40 +424,27 @@ export class Field extends Phaser.Scene {
   }
 
   /**
-   * The live link handed to the verification bridge: render scale, room / phase,
-   * Wren's position, surfaced lore, the run-state (grist / shards / pending
-   * choice — so an e2e can assert AC2/AC4 outcomes), and a deterministic examine.
+   * The live link handed to the verification bridge — render scale, room / phase,
+   * Wren's position, surfaced lore, run-state (grist / shards / pending choice),
+   * the field-HUD context prompt + mini-map state, and the deterministic
+   * examine / engage / traverse / toggle-map actions. Assembled by the extracted
+   * {@link makeFieldView} factory from this scene's accessor seam, so the scene
+   * body stays a thin renderer under its line budget.
    * @returns The field view.
    */
   #bridgeView(): FieldView {
-    return {
-      resolution: () => {
-        const { gameSize, displaySize } = this.scale;
-        return {
-          width: gameSize.width,
-          height: gameSize.height,
-          zoom: displaySize.width / gameSize.width,
-        };
-      },
-      room: () => this.#state.currentRoom,
-      phase: () => this.#state.phase,
+    return makeFieldView({
+      scene: this,
+      state: () => this.#state,
       wren: () => ({ x: this.#wrenX, y: this.#wrenY }),
-      lore: () => {
-        const propId = this.#examinablePropId();
-        return propId ? loreForProp(this.#state, propId) : null;
-      },
+      examinableProp: () => this.#examinablePropId(),
+      inExamineRange: () => this.#withinExamineRange(),
       grist: () => this.#run.wallet.grist,
       shards: () => this.#run.shards,
       pendingChoiceShard: () => this.#run.pendingChoiceShard,
-      examineNearest: () => {
-        // Teleport Wren onto the sign so the range gate passes, then examine.
-        this.#wrenX = FieldLayout.signX;
-        this.#wrenY = FieldLayout.signY;
-        this.#moveTo = null;
-        this.#pendingExamine = false;
-        this.#syncWren();
-        this.#examineNearest();
-      },
+      miniMapOpen: () => this.#miniMapOpen,
+      toggleMiniMap: () => this.#toggleMiniMap(),
+      examineNearest: () => this.#bridgeExamine(),
       engage: () => {
         // Fire the current room's encounter, launching its battle (the
         // deterministic "agent engaged the encounter in this room" path).
@@ -445,7 +455,21 @@ export class Field extends Phaser.Scene {
         // battle (the deterministic "agent walked to the next encounter" path).
         this.#state = advanceToNextRoom(this, this.registry, this.#state);
       },
-    };
+    });
+  }
+
+  /**
+   * The bridge's deterministic examine: teleport Wren onto the sign so the range
+   * gate passes, clear any pending move/examine, then examine the nearest prop.
+   * @returns void
+   */
+  #bridgeExamine(): void {
+    this.#wrenX = FieldLayout.signX;
+    this.#wrenY = FieldLayout.signY;
+    this.#moveTo = null;
+    this.#pendingExamine = false;
+    this.#syncWren();
+    this.#examineNearest();
   }
 
   /**

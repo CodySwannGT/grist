@@ -11,6 +11,14 @@
  * - [field-rendering-house-lore] reaching the rendering-house space (Room B) and
  *   examining its `render-vat` prop surfaces environmental lore about what the
  *   city eats — the #106 acceptance criterion, proven end-to-end on the canvas.
+ * - [field-hud-grist] the persistent grist readout is always visible in the field
+ *   and tracks the shared wallet — the PD-3.3 / #107 "grist count is always
+ *   visible" criterion.
+ * - [field-hud-context-prompt] a context prompt appears on an interactable when
+ *   Wren is in range and is absent when she is not — the #107 "context prompts
+ *   appear on interactables" criterion.
+ * - [field-hud-minimap] the mini-map can be summoned and dismissed — the #107
+ *   "a mini-map can be summoned and dismissed" criterion.
  *
  * Movement and examine are routed through the semantic field input layer (the
  * scene reads no raw keys/pointers), so a position change after a real key/pointer
@@ -77,6 +85,22 @@ async function wrenPos(page: Page): Promise<FieldPos> {
 async function focusCanvas(page: Page): Promise<void> {
   const canvas = page.locator("canvas");
   await canvas.click({ position: { x: 5, y: 5 } });
+}
+
+/**
+ * Toggle the mini-map with a single, unambiguous M keystroke: keydown, a short
+ * dwell, then a keyup that fully releases the key. The dwell + release ensure a
+ * following toggle registers as a distinct non-repeat keydown rather than being
+ * coalesced into an auto-repeat sequence of the same key (which the field input
+ * layer drops, like every discrete intent, to ignore OS key-repeat).
+ * @param page - The Playwright page.
+ */
+async function pressMap(page: Page): Promise<void> {
+  await page.keyboard.up("KeyM");
+  await page.keyboard.down("KeyM");
+  await page.waitForTimeout(50);
+  await page.keyboard.up("KeyM");
+  await page.waitForTimeout(50);
 }
 
 /**
@@ -265,6 +289,110 @@ test.describe("GRIST — field scene verification (UAT)", () => {
     // "What the city eats": the Marrow runs on rendered people / black grist.
     expect(lore!.toLowerCase()).toContain("grist");
     expect(lore!).toMatch(/render|dead|black grist/i);
+    expect(errors).toEqual([]);
+  });
+
+  test("[field-hud-grist] the grist count is always visible in the field", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("console", message => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
+    page.on("pageerror", error => errors.push(error.message));
+
+    await bootField(page);
+
+    // The persistent grist readout is present on the very first field frame —
+    // before any battle — so the player always feels the wallet. It reflects the
+    // run's shared grist pool (a fresh run starts at the slice's starting grist).
+    const grist = await page.evaluate(() => window.__VERIFY__?.field()?.grist);
+    expect(typeof grist).toBe("number");
+    expect(grist).toBeGreaterThanOrEqual(0);
+    expect(errors).toEqual([]);
+  });
+
+  test("[field-hud-context-prompt] a context prompt appears on an interactable", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("console", message => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
+    page.on("pageerror", error => errors.push(error.message));
+
+    await bootField(page);
+    await focusCanvas(page);
+
+    // At spawn Wren is far from Room A's examinable sign, so no prompt shows.
+    expect(
+      await page.evaluate(() => window.__VERIFY__?.field()?.contextPrompt)
+    ).toBeNull();
+
+    // Walk right toward the rendering-notice sign with a real held key until the
+    // context prompt surfaces — proof the prompt is contextual (range-gated) and
+    // driven by the real input path, not always-on.
+    await page.keyboard.down("ArrowRight");
+    await expect
+      .poll(
+        () => page.evaluate(() => window.__VERIFY__?.field()?.contextPrompt),
+        { timeout: SEEN_TIMEOUT }
+      )
+      .not.toBeNull();
+    await page.keyboard.up("ArrowRight");
+
+    const prompt = await page.evaluate(
+      () => window.__VERIFY__?.field()?.contextPrompt
+    );
+    expect(prompt).toContain("examine");
+    expect(errors).toEqual([]);
+  });
+
+  test("[field-hud-minimap] the mini-map can be summoned and dismissed", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("console", message => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
+    page.on("pageerror", error => errors.push(error.message));
+
+    await bootField(page);
+    await focusCanvas(page);
+
+    // Closed at boot — the mini-map is summonable, not always-on.
+    expect(
+      await page.evaluate(() => window.__VERIFY__?.field()?.miniMapOpen)
+    ).toBe(false);
+
+    // Summon it via a real keyboard keystroke (the M binding routes through the
+    // semantic field-input layer to the pure toggle). Explicit down/up — with the
+    // key fully released before the dismiss — so each toggle is an unambiguous,
+    // non-repeat keydown (a rapid double `press` of the same key can be coalesced
+    // into a single auto-repeat sequence by the browser).
+    await pressMap(page);
+    await expect
+      .poll(
+        () => page.evaluate(() => window.__VERIFY__?.field()?.miniMapOpen),
+        { timeout: SEEN_TIMEOUT }
+      )
+      .toBe(true);
+
+    // Dismiss it with the same binding — the summon is a toggle.
+    await pressMap(page);
+    await expect
+      .poll(
+        () => page.evaluate(() => window.__VERIFY__?.field()?.miniMapOpen),
+        { timeout: SEEN_TIMEOUT }
+      )
+      .toBe(false);
+
     expect(errors).toEqual([]);
   });
 });

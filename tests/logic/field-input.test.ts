@@ -59,6 +59,11 @@ describe("field key -> intent map", () => {
     expect(keyToFieldIntent("KeyE")).toEqual({ kind: "examine" });
   });
 
+  it("maps the summonable mini-map toggle to M/Tab", () => {
+    expect(keyToFieldIntent("KeyM")).toEqual({ kind: "toggle-map" });
+    expect(keyToFieldIntent("Tab")).toEqual({ kind: "toggle-map" });
+  });
+
   it("returns null for unbound keys", () => {
     expect(keyToFieldIntent("KeyZ")).toBeNull();
     expect(keyToFieldIntent("F5")).toBeNull();
