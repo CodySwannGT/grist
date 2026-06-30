@@ -43,10 +43,12 @@ export const MarrowRoomIds = {
 export type MarrowRoomId = (typeof MarrowRoomIds)[keyof typeof MarrowRoomIds];
 
 /**
- * The three slice rooms: A Warren Street (the lone scrapper), B The Drip (the
- * scrapper + Vesper, with the salvage cache), C The Cage (the Ashling). The
- * mapped type binds each entry's `id` to its table key, so the key and the `id`
- * can never drift.
+ * The three connected Marrow spaces: A Warren Street — the runner-warrens (the
+ * lone scrapper, with the rendering-notice sign); B The Drip — the
+ * rendering-house pass (the scrapper + Vesper render-construct, with the salvage
+ * cache and the examinable rendering vat); C The Cage — the descent (the
+ * Ashling). The mapped type binds each entry's `id` to its table key, so the key
+ * and the `id` can never drift.
  */
 export const MARROW_MAP: {
   readonly [K in MarrowRoomId]: MarrowRoomDef & { readonly id: K };
@@ -70,6 +72,9 @@ export const MARROW_MAP: {
     props: [
       { id: "drip-leak", name: "Dripping conduit", interactable: false },
       { id: "drip-salvage-cache", name: "Salvage cache", interactable: true },
+      // The rendering-house lore prop (#106): the rendering vat whose
+      // examine surfaces "what the city eats" — the Marrow runs on the dead.
+      { id: "render-vat", name: "Rendering vat", interactable: true },
     ],
     encounter: EncounterIds.theDrip,
   },

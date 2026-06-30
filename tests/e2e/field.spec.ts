@@ -8,6 +8,9 @@
  * - [field-move-keyboard] Wren moves in Room A via the real keyboard (arrows/WASD).
  * - [field-move-touch] Wren moves via a real tap-to-move pointer event.
  * - [field-examine-lore] examining `warren-sign` surfaces the authored lore beat.
+ * - [field-rendering-house-lore] reaching the rendering-house space (Room B) and
+ *   examining its `render-vat` prop surfaces environmental lore about what the
+ *   city eats — the #106 acceptance criterion, proven end-to-end on the canvas.
  *
  * Movement and examine are routed through the semantic field input layer (the
  * scene reads no raw keys/pointers), so a position change after a real key/pointer
@@ -74,6 +77,34 @@ async function wrenPos(page: Page): Promise<FieldPos> {
 async function focusCanvas(page: Page): Promise<void> {
   const canvas = page.locator("canvas");
   await canvas.click({ position: { x: 5, y: 5 } });
+}
+
+/**
+ * Engage the current room's encounter (→ Battle), deterministically win it via
+ * the bridge's `autoWin`, and wait for control to return to the visible Field.
+ * The descent does not auto-chain, so after this the Field is `exploring` again.
+ * @param page - The Playwright page.
+ */
+async function clearCurrentRoom(page: Page): Promise<void> {
+  await page.evaluate(() => window.__VERIFY__?.engage());
+  await waitForScene(page, "Battle");
+  const phase = await page.evaluate(() => window.__VERIFY__?.autoWin() ?? "");
+  expect(phase).toBe("won");
+  await waitForScene(page, "Field");
+}
+
+/**
+ * From the cleared, visible Field, traverse to the next room (→ its trigger →
+ * Battle), win that fight, and wait for control to return to the Field — now
+ * exploring in the next room.
+ * @param page - The Playwright page.
+ */
+async function traverseAndWin(page: Page): Promise<void> {
+  await page.evaluate(() => window.__VERIFY__?.traverse());
+  await waitForScene(page, "Battle");
+  const phase = await page.evaluate(() => window.__VERIFY__?.autoWin() ?? "");
+  expect(phase).toBe("won");
+  await waitForScene(page, "Field");
 }
 
 test.describe("GRIST — field scene verification (UAT)", () => {
@@ -195,6 +226,45 @@ test.describe("GRIST — field scene verification (UAT)", () => {
     expect(typeof lore).toBe("string");
     // The authored beat is the in-fiction rendering notice on Warren St.
     expect(lore).toContain("RENDERING IN PROGRESS");
+    expect(errors).toEqual([]);
+  });
+
+  test("[field-rendering-house-lore] the rendering-house space (Room B) render-vat surfaces lore about what the city eats", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("console", message => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
+    page.on("pageerror", error => errors.push(error.message));
+
+    await bootField(page);
+
+    // Walk the descent into the rendering-house space: clear the runner-warrens
+    // (Room A), then traverse into and clear Room B — the rendering-house pass.
+    await clearCurrentRoom(page);
+    await traverseAndWin(page);
+
+    // We are now exploring the rendering-house space; nothing examined yet there.
+    const room = await page.evaluate(() => window.__VERIFY__?.field()?.room);
+    expect(room).toBe("room-b");
+    expect(
+      await page.evaluate(() => window.__VERIFY__?.field()?.lore)
+    ).toBeNull();
+
+    // Examine the room's examinable prop (the rendering vat) via the bridge — it
+    // resolves the *current room's* lore prop (no longer pinned to Room A) and
+    // threads an `examine` through the pure field sim.
+    await page.evaluate(() => window.__VERIFY__?.examine());
+
+    const lore = await page.evaluate(() => window.__VERIFY__?.field()?.lore);
+    expect(lore).toBeTruthy();
+    expect(typeof lore).toBe("string");
+    // "What the city eats": the Marrow runs on rendered people / black grist.
+    expect(lore!.toLowerCase()).toContain("grist");
+    expect(lore!).toMatch(/render|dead|black grist/i);
     expect(errors).toEqual([]);
   });
 });

@@ -28,6 +28,7 @@ export {
   traverseToNext,
   pendingLaunch,
   encounterForRoom,
+  examinablePropForRoom,
   loreForProp,
   canTraverse,
 } from "./engine";

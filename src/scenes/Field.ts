@@ -24,6 +24,7 @@ import {
 import { MARROW_MAP } from "../content";
 import {
   FieldActionKinds,
+  examinablePropForRoom,
   loreForProp,
   stepField,
   type FieldState,
@@ -48,8 +49,6 @@ import { verifyBridge, type FieldView } from "../uat/bridge";
 
 /** Fallback seed when none is supplied via the verification bridge / `?seed=`. */
 const DEFAULT_SEED = 0x9e3779b1;
-/** The examinable rendering-notice prop placed in Room A. */
-const SIGN_PROP_ID = "warren-sign";
 
 const {
   roomName: ROOM_NAME_STYLE,
@@ -75,7 +74,8 @@ export class Field extends Phaser.Scene {
    */
   #pendingExamine = false;
   #wren!: Phaser.GameObjects.Rectangle;
-  #sign!: Phaser.GameObjects.Rectangle;
+  /** The examinable-prop marker for the current room, or null when it has none. */
+  #sign: Phaser.GameObjects.Rectangle | null = null;
   #loreBox!: Phaser.GameObjects.Rectangle;
   #loreText!: Phaser.GameObjects.Text;
 
@@ -238,40 +238,49 @@ export class Field extends Phaser.Scene {
   }
 
   /**
-   * The examinable prop placed at the sign marker in the current room — the prop
-   * the scene renders as the examinable marker and `examineNearest` inspects. The
-   * Room-A rendering notice is the slice's lore prop; other rooms may have none
-   * (the sim ignores examine for props without an authored beat). Derived from the
-   * current room so the scene is not pinned to Room A.
+   * The examinable prop placed at the marker in the current room — the prop the
+   * scene renders as the examinable marker and `examineNearest` inspects.
+   * Resolved purely from the *current room's* content via
+   * {@link examinablePropForRoom}: the runner-warrens surface the rendering
+   * notice, the rendering-house pass the rendering vat ("what the city eats"),
+   * the descent none (the sim ignores examine for props without an authored
+   * beat). The scene is never pinned to a single room or prop id.
    * @returns The examinable prop id for the current room, or null when none.
    */
   #examinablePropId(): string | null {
-    const room = MARROW_MAP[this.#state.currentRoom];
-    return room.props.some(prop => prop.id === SIGN_PROP_ID)
-      ? SIGN_PROP_ID
-      : null;
+    return examinablePropForRoom(this.#state.currentRoom);
   }
 
   /**
-   * Place the room props: Wren's placeholder body and the rendering-notice sign
-   * (a tappable, labelled marker the player examines).
+   * Place the room props: Wren's placeholder body, and — when the current room
+   * has an examinable lore prop — its tappable, glyphed marker. Rooms with no
+   * authored lore prop (the descent) render no marker at all, so the scene never
+   * shows an examine affordance with nothing behind it. Wren is always placed.
    * @returns void
    */
   #buildProps(): void {
-    this.#sign = this.add.rectangle(
-      FieldLayout.signX,
-      FieldLayout.signY,
-      FieldLayout.signWidth,
-      FieldLayout.signHeight,
-      FieldColors.sign
-    );
-    this.add
-      .text(FieldLayout.signX, FieldLayout.signY, "!", {
-        fontFamily: "monospace",
-        fontSize: "10px",
-        color: "#141821",
-      })
-      .setOrigin(0.5);
+    // Reset the marker reference first: the Field scene instance is reused across
+    // room re-creates (Field→Battle→Field), so a stale reference to the previous
+    // room's now-destroyed marker must be cleared before a prop-less room (the
+    // descent) skips rebuilding it — otherwise #wirePointer would touch a
+    // destroyed object.
+    this.#sign = null;
+    if (this.#examinablePropId() !== null) {
+      this.#sign = this.add.rectangle(
+        FieldLayout.signX,
+        FieldLayout.signY,
+        FieldLayout.signWidth,
+        FieldLayout.signHeight,
+        FieldColors.sign
+      );
+      this.add
+        .text(FieldLayout.signX, FieldLayout.signY, "!", {
+          fontFamily: "monospace",
+          fontSize: "10px",
+          color: "#141821",
+        })
+        .setOrigin(0.5);
+    }
     this.#wren = this.add.rectangle(
       this.#wrenX,
       this.#wrenY,
@@ -282,8 +291,10 @@ export class Field extends Phaser.Scene {
   }
 
   /**
-   * Build the static chrome (room name + examine prompt) and the initially-hidden
-   * lore banner the examine surfaces.
+   * Build the static chrome (current room name +, when the room has an
+   * examinable prop, its examine prompt) and the initially-hidden lore banner the
+   * examine surfaces. The examine prompt is omitted in rooms with no lore prop so
+   * the affordance only appears where there is something to read.
    * @returns void
    */
   #buildHud(): void {
@@ -295,14 +306,16 @@ export class Field extends Phaser.Scene {
         ROOM_NAME_STYLE
       )
       .setOrigin(0.5, 0);
-    this.add
-      .text(
-        FieldLayout.signX,
-        FieldLayout.signY - FieldLayout.signHeight,
-        "[E] examine",
-        PROMPT_STYLE
-      )
-      .setOrigin(0.5, 1);
+    if (this.#examinablePropId() !== null) {
+      this.add
+        .text(
+          FieldLayout.signX,
+          FieldLayout.signY - FieldLayout.signHeight,
+          "[E] examine",
+          PROMPT_STYLE
+        )
+        .setOrigin(0.5, 1);
+    }
     this.#loreBox = this.add
       .rectangle(
         FieldLayout.loreBoxX,
@@ -322,16 +335,16 @@ export class Field extends Phaser.Scene {
 
   /**
    * Wire the pointer: tapping the floor sets a tap-to-move destination (mapped
-   * from the pointer's logical coords) and tapping the sign examines it — both
-   * routed through the semantic {@link FieldInputService}, so no raw pointer math
-   * leaks past it.
+   * from the pointer's logical coords) and — when the current room has an
+   * examinable prop marker — tapping that marker examines it. Both routed through
+   * the semantic {@link FieldInputService}, so no raw pointer math leaks past it.
    * @returns void
    */
   #wirePointer(): void {
     this.#sign
-      .setInteractive({ useHandCursor: true })
+      ?.setInteractive({ useHandCursor: true })
       .on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
-        // Tapping the sign first walks to it, then examines — the tap is a
+        // Tapping the marker first walks to it, then examines — the tap is a
         // semantic move-to + examine, never a raw coordinate read in gameplay.
         this.#input.tapMoveTo(FieldLayout.signX, FieldLayout.signY);
         this.#input.tapExamine();
