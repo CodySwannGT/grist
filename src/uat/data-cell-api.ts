@@ -18,6 +18,7 @@ import { BoundSiteCell, type VerifyBoundSiteState } from "./bound-site-cell";
 import { EnemyCell, type VerifyEnemyState } from "./enemy-cell";
 import { RegionCell, type VerifyRegionState } from "./region-cell";
 import { RunStateCell, type VerifyRunState } from "./run-state-cell";
+import { TravelCell, type VerifyTravelState } from "./travel-cell";
 import { WorldStateCell } from "./world-state-cell";
 
 /**
@@ -57,6 +58,16 @@ const enemyCell = new EnemyCell();
  * rides the existing save path (the e2e persists the settled choice + reloads).
  */
 const boundSiteCell = new BoundSiteCell();
+
+/**
+ * The bridge-held travel cell (#136): the earned-freedom mobility chain (foot →
+ * skiff → airship → fast-travel) and its capability/knowledge soft-gate live here in
+ * memory (tier / gate / fast-travel semantics delegated to `logic/travel`), so the
+ * traversal e2e can earn tiers, discover safehouses, and fast-travel — observing the
+ * grist deduction from the shared wallet and the determinism digest —
+ * scene-agnostically, without a live scene attached.
+ */
+const travelCell = new TravelCell();
 
 /**
  * Adopt a {@link CurrentSave} into the bridge-held world-state + run-state cells so
@@ -113,6 +124,7 @@ async function clearAndReset(): Promise<void> {
   await saveService.clear();
   worldStateCell.reset();
   runStateCell.reset();
+  travelCell.reset();
 }
 
 /** The data-cell slice of the verification API spread into `window.__VERIFY__`. */
@@ -147,6 +159,16 @@ export interface DataCellApi {
   readonly chooseBound: (mode: ShardMode) => void;
   /** The opened/settled Bound-site snapshot (shard + variant + karma + corruption), or null. */
   readonly boundSite: () => VerifyBoundSiteState | null;
+  /** Earn the skiff (foot → skiff), opening regional travel (#136). */
+  readonly earnSkiff: () => void;
+  /** Earn the airship (skiff → airship), opening the full Reach and fast-travel (#136). */
+  readonly earnAirship: () => void;
+  /** Record a discovered safehouse (knowledge) for fast-travel (#136). */
+  readonly discoverSafehouse: (safehouse: string) => void;
+  /** Fast-travel between two discovered safehouses; returns the grist spent (0 if refused). */
+  readonly fastTravel: (from: string, to: string) => number;
+  /** The travel snapshot (tier + soft-gate + knowledge + grist + determinism hash). */
+  readonly travel: () => VerifyTravelState;
 }
 
 /**
@@ -175,5 +197,10 @@ export function dataCellApi(): DataCellApi {
     openBoundSite: () => boundSiteCell.open(),
     chooseBound: (mode: ShardMode) => boundSiteCell.choose(mode),
     boundSite: () => boundSiteCell.snapshot(),
+    earnSkiff: () => travelCell.earnSkiff(),
+    earnAirship: () => travelCell.earnAirship(),
+    discoverSafehouse: (safehouse: string) => travelCell.discover(safehouse),
+    fastTravel: (from: string, to: string) => travelCell.fastTravel(from, to),
+    travel: () => travelCell.snapshot(),
   };
 }
