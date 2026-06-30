@@ -142,10 +142,9 @@ test.describe("GRIST — the Halcyon frame-knight boss verification (UAT, #109)"
     await bootWithBridge(page);
     const second = await readLadder(page);
 
-    expect(second.hash).toBe(first.hash);
-    expect(second.count).toBe(first.count);
-    expect(second.rungs.map(rung => rung.id)).toEqual(
-      first.rungs.map(rung => rung.id)
-    );
+    // The whole snapshot — hash, count, distinct/escalates/enemiesResolved flags,
+    // and every rung's id + lineup + score — must be byte-identical across the
+    // reload, not merely the digest and ids.
+    expect(second).toEqual(first);
   });
 });

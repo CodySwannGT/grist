@@ -123,8 +123,11 @@ describe("Halcyon boss — Break-gated beat is triggerable on the existing sim (
     const nudged = addPressure(boss, CombatTuning.breakThreshold - 1);
     expect(nudged.broken).toBe(false);
     expect(severanceAvailable(nudged)).toBe(false);
-    // At threshold: the Break beat fires, the boss is Broken, Severance opens.
-    const broken = addPressure(boss, CombatTuning.breakThreshold);
+    // One more hit on the already-pressured boss crosses the threshold: this
+    // advances `nudged` (not the pristine boss) by 1, proving Pressure ACCUMULATES
+    // across hits rather than being overwritten — the Break beat fires, the boss
+    // is Broken, Severance opens.
+    const broken = addPressure(nudged, 1);
     expect(broken.broken).toBe(true);
     expect(severanceAvailable(broken)).toBe(true);
   });
