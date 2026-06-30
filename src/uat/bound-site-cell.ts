@@ -15,7 +15,7 @@
  * the in-memory choice surface, not storage. Zero Phaser, no I/O, no RNG.
  * @module uat/bound-site-cell
  */
-import { REGIONS, RegionIds } from "../content";
+import { REGIONS, RegionIds, type RegionId } from "../content";
 import { newMoralLedger } from "../logic/free-vs-wield";
 import {
   type BoundSiteSession,
@@ -25,6 +25,21 @@ import {
   openBoundSite,
 } from "../logic/region";
 import type { ShardMode } from "../logic/save/types";
+
+/**
+ * Resolve a requested region id to a registered {@link RegionId}, defaulting to the
+ * canonical `marrow` example when none (or an unknown one) is requested. Lets a
+ * caller open a specific region's Bound site — the Roots / the Deep site that sites
+ * Velith (#144) — without the cell hard-coding a single region, while a stray /
+ * unknown id can never fabricate a phantom region (it falls back to the default).
+ * @param regionId - The requested region id, when a specific site is wanted.
+ * @returns A registered region id (`marrow` by default).
+ */
+function resolveRegionId(regionId?: string): RegionId {
+  return regionId !== undefined && regionId in REGIONS
+    ? (regionId as RegionId)
+    : RegionIds.marrow;
+}
 
 /**
  * A read-only, scene-agnostic snapshot of a region's opened Bound site — the shape
@@ -59,15 +74,22 @@ export class BoundSiteCell {
   #session: BoundSiteSession | null = null;
 
   /**
-   * Open the canonical example region's (`marrow`) single Bound site into an
-   * unsettled free-vs-wield choice — the "an agent reached a region's Bound site
-   * through the template" verification action. Siting is pure (no engine edit, no
-   * Phaser): the region is the data shipped in {@link REGIONS}, and the template
-   * reads its `boundSite` + variants from the content table. Pure.
+   * Open a region's single Bound site into an unsettled free-vs-wield choice — the
+   * "an agent reached a region's Bound site through the template" verification
+   * action. Defaults to the canonical `marrow` example (so the #135 e2e is
+   * unchanged); pass `regionId: "roots"` to anchor Velith the Deep-bound's site
+   * (#144). An unknown id falls back to `marrow` rather than fabricating a phantom
+   * region. Siting is pure (no engine edit, no Phaser): the region is the data
+   * shipped in {@link REGIONS}, and the template reads its `boundSite` + variants
+   * from the content table. Pure.
+   * @param regionId - The region whose single Bound site to open (defaults to `marrow`).
    * @returns void
    */
-  open(): void {
-    this.#session = openBoundSite(REGIONS[RegionIds.marrow], newMoralLedger());
+  open(regionId?: string): void {
+    this.#session = openBoundSite(
+      REGIONS[resolveRegionId(regionId)],
+      newMoralLedger()
+    );
   }
 
   /**
