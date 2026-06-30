@@ -43,7 +43,7 @@ export {
 } from "./outcome";
 export { combatantAt } from "./select";
 export { readyActors, nextActor, advanceToNextTurn } from "./turn-order";
-export { resolveEnemyTurns, runToNextDecision } from "./ai";
+export { resolveEnemyTurns, runToNextDecision, enemyIntentKind } from "./ai";
 export { hashState } from "./hash";
 export {
   CombatTuning,
@@ -58,7 +58,9 @@ export {
   tickStatuses,
   addPressure,
   severanceAvailable,
+  pressureMeter,
   lootGristFor,
+  type PressureMeter,
 } from "./effects";
 export {
   ResourceTuning,
@@ -67,3 +69,8 @@ export {
   canAfford,
   type ActionCost,
 } from "./resource";
+export {
+  TelegraphTuning,
+  enemyTelegraph,
+  type EnemyTelegraph,
+} from "./telegraph";

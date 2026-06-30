@@ -7,10 +7,13 @@
  * and the active member's command menu — drawn from that member's authored kit
  * (#110), so Wren's tempo menu (Strike / Craft / Bind / Defend) and Tobi's
  * gadgeteer/support menu (Strike / Augment / Item / Defend) are visibly different
- * (costs shown, unaffordable commands greyed). It owns no combat rules and reads no raw input:
- * its interactive widgets feed the semantic {@link InputService}, and its render
- * is steady-state allocation-free (pooled objects, {@link GuardedText}). Free with
- * {@link destroy} on scene shutdown.
+ * (costs shown, unaffordable commands greyed). The PD-3.8 status widgets — the
+ * target Pressure meter, the enemy telegraph, and the battle log — are composed
+ * from {@link BattleStatusPanel}, keeping this class focused on the wallet, party
+ * rows, target caret, and command menu. It owns no combat rules and reads no raw
+ * input: its interactive widgets feed the semantic {@link InputService}, and its
+ * render is steady-state allocation-free (pooled objects, {@link GuardedText}).
+ * Free with {@link destroy} on scene shutdown.
  * @module ui/battle-hud
  */
 import Phaser from "phaser";
@@ -25,6 +28,7 @@ import {
 } from "../logic/combat";
 import { type InputService } from "../services/input";
 import { type BattleController } from "./battle-controller";
+import { BattleStatusPanel } from "./battle-status-panel";
 import {
   COMMAND_ORDER,
   commandAffordable,
@@ -67,6 +71,7 @@ export class BattleHud {
   readonly #speed: GuardedText;
   readonly #targetLabel: GuardedText;
   readonly #marker: Phaser.GameObjects.Triangle;
+  readonly #status: BattleStatusPanel;
   readonly #rows: readonly PartyRow[];
   readonly #buttons: readonly CommandButton[];
 
@@ -91,6 +96,7 @@ export class BattleHud {
       0.5
     );
     this.#marker = this.#buildMarker();
+    this.#status = new BattleStatusPanel(scene);
     this.#rows = party.map((_member, index) => this.#buildRow(index));
     this.#buttons = COMMAND_ORDER.map(id => this.#buildButton(id));
   }
@@ -244,6 +250,7 @@ export class BattleHud {
     this.#grist.set(`GRIST ${state.grist}`, HudColors.grist);
     this.#speed.set(`SPD ${speedLabel(controller.speed)}`, HudColors.grist);
     this.#renderTarget(state, target);
+    this.#status.render(state, target);
     this.#renderParty(state, actor);
     this.#renderMenu(
       state,
@@ -255,7 +262,9 @@ export class BattleHud {
   }
 
   /**
-   * Render the target caret + label (name and Pressure → Break state).
+   * Render the target caret + label (name and Pressure → Break state); the
+   * accompanying Pressure meter is drawn by {@link BattleStatusPanel}. Hidden when
+   * no living target exists.
    * @param state - The battle state.
    * @param target - The resolved target enemy index.
    * @returns void
@@ -371,10 +380,12 @@ export class BattleHud {
   }
 
   /**
-   * Destroy every HUD object (removing its input listeners with it).
+   * Destroy every HUD object (removing its input listeners with it) and the
+   * composed status panel.
    * @returns void
    */
   destroy(): void {
+    this.#status.destroy();
     this.#objects.forEach(object => object.destroy());
     this.#objects.length = 0;
   }

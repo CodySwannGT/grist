@@ -20,7 +20,15 @@ import {
   type BattleSpeed,
 } from "../game/speed";
 import { PARTY, type PartyMemberId } from "../content";
-import { AtbTuning, BattleSides, type BattleState } from "../logic/combat";
+import {
+  AtbTuning,
+  BattleSides,
+  enemyTelegraph,
+  pressureMeter,
+  type BattleState,
+  type EnemyTelegraph,
+} from "../logic/combat";
+import { battleLogLines } from "../logic/battle-log";
 import { type InputDevice, type InputIntent } from "../services/input-map";
 import { eventsCenter } from "../services/events";
 import {
@@ -49,6 +57,8 @@ export interface HudEnemyModel {
   readonly index: number;
   readonly broken: boolean;
   readonly pressure: number;
+  /** Pressure as a 0→1 ratio of the Break threshold, for the Pressure meter fill. */
+  readonly pressureRatio: number;
   readonly targeted: boolean;
 }
 
@@ -88,6 +98,10 @@ export interface HudModel {
   readonly party: readonly HudPartyModel[];
   readonly commands: readonly HudCommandModel[];
   readonly enemies: readonly HudEnemyModel[];
+  /** The recent battle-log lines (oldest first), the play-by-play the HUD draws. */
+  readonly log: readonly string[];
+  /** The pending enemy intent to telegraph, or null when none is charged. */
+  readonly telegraph: EnemyTelegraph | null;
   readonly lastInput: HudInputModel | null;
   readonly lastAction: HudActionModel | null;
 }
@@ -434,8 +448,11 @@ export class BattleController {
         index,
         broken: enemy.broken,
         pressure: enemy.pressure,
+        pressureRatio: pressureMeter(enemy).fill,
         targeted: index === target,
       })),
+      log: battleLogLines(state),
+      telegraph: enemyTelegraph(state),
       lastInput: this.#lastInput,
       lastAction: this.#lastAction,
     };

@@ -250,3 +250,4 @@ expo-env.d.ts
 
 # Playwright MCP scratch artifacts
 .playwright-mcp/
+evidence/

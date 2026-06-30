@@ -17,7 +17,26 @@
 import { step } from "./engine";
 import { isResolved } from "./outcome";
 import { nextActor } from "./turn-order";
-import { ActionKinds, BattleSides, type BattleState } from "./types";
+import {
+  ActionKinds,
+  BattleSides,
+  type ActionKind,
+  type BattleState,
+} from "./types";
+
+/**
+ * The action kind a ready enemy will spend its turn on — the single source of
+ * truth for enemy behavior, shared by {@link resolveEnemyTurns} (which actually
+ * applies it) and the HUD telegraph (which warns of it). The minimal,
+ * deterministic prototype AI always Strikes; a richer per-profile AI replaces
+ * this one helper, and both the turn it takes and the telegraph the player sees
+ * update together — they can never drift.
+ * @param _state - The battle state (unused today; the seam for profile-aware AI).
+ * @returns The action kind the next enemy turn will issue.
+ */
+export function enemyIntentKind(_state: BattleState): ActionKind {
+  return ActionKinds.strike;
+}
 
 /** Safety bound on consecutive enemy turns resolved in one pass (loop guard). */
 const MAX_ENEMY_TURNS = 64;
@@ -62,7 +81,7 @@ export function resolveEnemyTurns(
   }
   return resolveEnemyTurns(
     step(state, {
-      kind: ActionKinds.strike,
+      kind: enemyIntentKind(state),
       actor,
       target: { side: BattleSides.party, index: targetIndex },
     }),
