@@ -5,7 +5,7 @@
  * compile error. Pure data — no Phaser.
  * @module content/encounters
  */
-import { EnemyIds, type EnemyId } from "./enemies";
+import { ENEMIES, EnemyIds, type EnemyId } from "./enemies";
 
 /** Battle backdrop ids (one per authored battle scene). */
 export const Backdrops = {
@@ -93,3 +93,110 @@ export const ENCOUNTERS: {
     backdrop: Backdrops.marrow,
   },
 };
+
+// ───────────────────────────────────────────────────────────────────────────
+// Phase-3 escalation ladder (#108)
+// ───────────────────────────────────────────────────────────────────────────
+//
+// The Phase-3 run reuses the Phase-2 ATB sim verbatim — there is NO new combat
+// engine and NO combat-math change here. "Escalation" is a CONTENT-side ordering
+// derived purely from each encounter's existing enemy stat blocks: a total
+// function over the static {@link ENEMIES} table. The ladder is just an ordered
+// list of existing {@link EncounterId}s; the sim plays each one unchanged.
+
+/**
+ * A pure difficulty score for an encounter, derived from its lineup's EXISTING
+ * stat blocks. Sums, over every enemy, the offensive+survivability aggregate
+ * `hp + pow + foc + def + wrd` (HP and DEF/WRD = how long the enemy survives the
+ * party's output; POW/FOC = how hard it hits back). SPD/LCK/AP are deliberately
+ * excluded: SPD only reorders ATB turns (not lethality), LCK is variance, and AP
+ * is the enemy's own resource pool — none change how *dangerous* a lineup is to
+ * grind down. A bigger lineup or heavier blocks ⇒ a strictly higher score, which
+ * is exactly the ordering the run escalates along.
+ *
+ * This is a content-ordering metric, not combat math: it reads static data and
+ * changes no formula the sim uses. Pure and total — no RNG, no Phaser, no I/O;
+ * the same `def` always yields the identical number.
+ * @param def - The encounter to score (its `enemies` are read against {@link ENEMIES}).
+ * @returns The summed difficulty score (0 for an empty lineup).
+ */
+export function encounterDifficulty(def: EncounterDef): number {
+  return def.enemies.reduce((total, enemyId) => {
+    const { stats } = ENEMIES[enemyId];
+    return total + stats.hp + stats.pow + stats.foc + stats.def + stats.wrd;
+  }, 0);
+}
+
+/**
+ * The Phase-3 run's escalating ATB encounters, in strictly-increasing
+ * {@link encounterDifficulty} order (#108 AC: ">=4 distinct ATB encounters are
+ * playable across the run" and "difficulty escalates"). Composed entirely from
+ * the existing {@link ENCOUNTERS} — every entry plays on the reused Phase-2 sim,
+ * so the ladder adds escalation without touching combat math. The ascent reads,
+ * by score: tutorial-ambush (33) → warren-street (54) → drowned-kingdom (71) →
+ * the-drip (154) → requiem-hall (167) → deep-audit (232) → the-cage (280). The
+ * strict-increase invariant is asserted in the test suite via
+ * {@link isStrictlyEscalating}.
+ */
+export const ESCALATION_LADDER: readonly EncounterId[] = [
+  EncounterIds.tutorialAmbush,
+  EncounterIds.warrenStreet,
+  EncounterIds.drownedKingdom,
+  EncounterIds.theDrip,
+  EncounterIds.requiemHall,
+  EncounterIds.deepAudit,
+  EncounterIds.theCage,
+];
+
+/**
+ * Whether a ladder's {@link encounterDifficulty} strictly increases at every
+ * step — each encounter strictly harder than the one before it (#108). A ladder
+ * with a flat or descending step is not escalating. A 0- or 1-entry ladder is
+ * vacuously escalating (no adjacent pair can violate the order). Pure — reads
+ * only the static stat blocks via {@link encounterDifficulty}; no RNG, no Phaser.
+ * @param ladder - The ordered encounter ids to check.
+ * @returns True iff difficulty strictly increases across the whole ladder.
+ */
+export function isStrictlyEscalating(ladder: readonly EncounterId[]): boolean {
+  return ladderScores(ladder).every(
+    (score, index, scores) => index === 0 || score > scores[index - 1]!
+  );
+}
+
+/**
+ * The {@link encounterDifficulty} score for each ladder entry, in order. The
+ * shared read both {@link isStrictlyEscalating} and {@link escalationErrors}
+ * compute adjacent steps against, so the difficulty is derived once per id. Pure.
+ * @param ladder - The ordered encounter ids to score.
+ * @returns The per-entry difficulty scores, positionally aligned to `ladder`.
+ */
+function ladderScores(ladder: readonly EncounterId[]): readonly number[] {
+  return ladder.map(id => encounterDifficulty(ENCOUNTERS[id]));
+}
+
+/**
+ * The named errors for any non-increasing step in a ladder — the error-list
+ * counterpart of {@link isStrictlyEscalating}, mirroring the `validateEnemyFamily`
+ * idiom in `enemies.ts`. Each adjacent pair whose difficulty does not strictly
+ * increase yields one error naming the offending step and its scores. An empty
+ * list means the ladder strictly escalates. Pure — no RNG, no Phaser, no I/O.
+ * @param ladder - The ordered encounter ids to check.
+ * @returns One error string per non-increasing step ([] when strictly escalating).
+ */
+export function escalationErrors(
+  ladder: readonly EncounterId[]
+): readonly string[] {
+  const scores = ladderScores(ladder);
+  return ladder.flatMap((id, index) => {
+    if (index === 0) {
+      return [];
+    }
+    const prev = scores[index - 1]!;
+    const here = scores[index]!;
+    return here > prev
+      ? []
+      : [
+          `step ${index} '${ladder[index - 1]!}' (${prev}) -> '${id}' (${here}) does not strictly increase`,
+        ];
+  });
+}

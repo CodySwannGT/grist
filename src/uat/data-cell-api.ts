@@ -15,6 +15,10 @@ import { type CurrentSave } from "../logic/save";
 import { type WorldState } from "../logic/world";
 import { saveService } from "../services/save-service";
 import { BoundSiteCell, type VerifyBoundSiteState } from "./bound-site-cell";
+import {
+  EncounterLadderCell,
+  type VerifyEncounterLadderState,
+} from "./encounter-ladder-cell";
 import { EnemyCell, type VerifyEnemyState } from "./enemy-cell";
 import { RegionCell, type VerifyRegionState } from "./region-cell";
 import {
@@ -65,6 +69,15 @@ const regionCell = new RegionCell();
  * enemy-family e2e can load a family and observe its Reach block warp to Ashfall.
  */
 const enemyCell = new EnemyCell();
+
+/**
+ * The bridge-held encounter-ladder cell (#108): the Phase-3 escalating ATB encounter
+ * ladder authored against the existing {@link import("../content").EncounterDef}
+ * schema, read straight from the shipped content tables, so the escalation e2e can
+ * confirm ≥4 distinct encounters and strictly-increasing difficulty scene-agnostically
+ * on the live built game — running entirely on the reused Phase-2 sim's data.
+ */
+const encounterLadderCell = new EncounterLadderCell();
 
 /**
  * The bridge-held Bound-site cell (#135): a region's single Bound site anchored
@@ -184,6 +197,13 @@ export interface DataCellApi {
   readonly loadEnemy: () => void;
   /** The loaded family's region block resolved through the live world-state, or null. */
   readonly enemy: () => VerifyEnemyState | null;
+  /**
+   * A snapshot of the Phase-3 escalating ATB encounter ladder (#108): the run's
+   * ≥4 distinct encounters, their per-rung difficulty scores, and the
+   * strictly-escalating verdict — read straight from the shipped content tables, so
+   * the escalation e2e can prove the AC on the live built game with no scene live.
+   */
+  readonly encounterLadder: () => VerifyEncounterLadderState;
   /** The bundled run-state snapshot (choice + karma + learning + wallet), or null. */
   readonly runState: () => VerifyRunState | null;
   /**
@@ -246,6 +266,7 @@ export function dataCellApi(): DataCellApi {
     region: () => regionCell.snapshot(worldStateCell.read() ?? "reach"),
     loadEnemy: () => enemyCell.load(),
     enemy: () => enemyCell.snapshot(worldStateCell.read() ?? "reach"),
+    encounterLadder: () => encounterLadderCell.snapshot(),
     runState: () => runStateCell.snapshot(),
     openBoundSite: (regionId?: string) => boundSiteCell.open(regionId),
     chooseBound: (mode: ShardMode) => boundSiteCell.choose(mode),
