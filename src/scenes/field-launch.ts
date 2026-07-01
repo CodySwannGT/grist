@@ -29,6 +29,7 @@ import {
   setRunState,
   takeLastBattleResult,
 } from "../services/run-store";
+import { transitionToScene } from "./scene-transition";
 
 /** The session + run a (re)entry resolves to, ready for the scene to render. */
 interface FieldSession {
@@ -139,9 +140,14 @@ export function launchPendingBattle(
     seed: pending.seed,
   };
   // Stash the live session so the Field restores byte-for-byte on return, then
-  // hand the launch payload to the existing Phase-1 Battle scene.
+  // hand the launch payload to the existing Phase-1 Battle scene — behind a
+  // readable fade cut (#114 AC2) rather than an instant snap. The stash happens
+  // synchronously (resume state is intact the moment we return `true`); only the
+  // visual `scene.start` is deferred behind the fade-out + hold, so the launch is
+  // still "initiated" for the caller's fire-once latch and the byte-identical
+  // resume path is unchanged.
   setFieldState(registry, state);
-  scene.scene.start(SceneKeys.Battle, launch);
+  transitionToScene(scene, SceneKeys.Battle, launch);
   return true;
 }
 

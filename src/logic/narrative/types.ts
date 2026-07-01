@@ -69,6 +69,14 @@ export interface DialogueNode {
   readonly choices?: readonly DialogueChoice[];
   /** The portrait-slot content id, or absent to default to {@link speaker}. */
   readonly portrait?: string;
+  /**
+   * An optional **quiet beat**: a deliberate hold in milliseconds the presenter
+   * surfaces on this node so the adapter pauses before the line can be advanced —
+   * used to let a heavy narrative moment land (the Sable reveal, PD-3.9 / #114).
+   * Absent on ordinary lines, which advance immediately. Plain serializable data;
+   * the *timing* lives here, the *pause* is the scene adapter's one-shot behavior.
+   */
+  readonly beatMs?: number;
 }
 
 /**

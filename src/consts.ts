@@ -3,8 +3,19 @@
  * and the side-view battle layout / timing tunables. Never inline these as magic
  * strings/numbers in game code — import from here so a rename is a single edit and
  * a typo is a compile error.
+ *
+ * The Marrow's structural tones and the grist-gold highlight derive from the
+ * canonical {@link GristPalette} / {@link GRIST_GOLD} (`logic/render/palette`, the
+ * PD-3.9 / #114 desaturation + grist-gold pass) so the demo grade is coherent across
+ * the field and region surfaces and the gold can never drift between a shape fill
+ * and its label.
  * @module consts
  */
+import {
+  GRIST_GOLD,
+  GRIST_GOLD_CSS,
+  GristPalette,
+} from "./logic/render/palette";
 
 /**
  * Scene registry keys. The boot flow is Boot → Preloader → Battle: the game boots
@@ -187,18 +198,24 @@ export const FieldLayout = {
   loreBoxHeight: 32,
 } as const;
 
-/** Field placeholder-art and chrome colors (programmatic art only — no assets). */
+/**
+ * Field (Marrow) placeholder-art and chrome colors (programmatic art only — no
+ * assets). The structural tones (floor / wall / wall-line) come from the canonical
+ * desaturated {@link GristPalette}, and the interactable/room-name highlights from
+ * the one warm {@link GRIST_GOLD} — this is the "the Marrow uses the desaturation +
+ * grist-gold palette" pass (#114). Wren and the prompt keep their readable accents.
+ */
 export const FieldColors = {
-  floor: 0x1b2230,
-  wall: 0x10141d,
-  wallLine: 0x39455c,
+  floor: GristPalette.floor,
+  wall: GristPalette.wall,
+  wallLine: GristPalette.line,
   wren: 0x6fd08c,
-  sign: 0xffd166,
-  signGlyph: 0x141821,
+  sign: GRIST_GOLD,
+  signGlyph: GristPalette.base,
   loreBoxFill: 0x0d111a,
-  loreBoxStroke: 0x39455c,
+  loreBoxStroke: GristPalette.line,
   loreText: "#e8e8ea",
-  roomName: "#ffd166",
+  roomName: GRIST_GOLD_CSS,
   prompt: "#9be7c4",
 } as const;
 
@@ -457,11 +474,11 @@ export const RegionColors = {
   horizon: 0x4a3a2a,
   /** An uncleared encounter marker. */
   markerPending: 0x4a4f5a,
-  /** A cleared encounter marker. */
-  markerCleared: 0xffd166,
+  /** A cleared encounter marker (the grist-gold signal). */
+  markerCleared: GRIST_GOLD,
   /** The boot-failure overlay (a region that threw on boot). */
   bootError: 0xd0706f,
-  title: "#ffd166",
+  title: GRIST_GOLD_CSS,
   caption: "#9be7c4",
   errorText: "#ffd1d1",
 } as const;

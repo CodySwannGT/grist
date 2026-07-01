@@ -41,6 +41,7 @@ import {
 import { extractBattleResult } from "../logic/battle-result";
 import { eventsCenter } from "../services/events";
 import { InputService } from "../services/input";
+import { fadeSceneIn, transitionToScene } from "./scene-transition";
 import { setLastBattleResult } from "../services/run-store";
 import { BattleController } from "../ui/battle-controller";
 import { BattleHud } from "../ui/battle-hud";
@@ -139,6 +140,12 @@ export class Battle extends Phaser.Scene {
 
     const state = this.#runner.state();
     this.#drawBackdrop();
+    // A field-launched battle enters behind a readable fade cut (#114 AC2): reveal
+    // it from black, the incoming half of the Field→Battle transition. A standalone
+    // boot (the default battle e2e) shows instantly — its framing is unchanged.
+    if (this.#fromField) {
+      fadeSceneIn(this);
+    }
     this.add.text(GameView.width / 2, 6, TITLE, TITLE_STYLE).setOrigin(0.5, 0);
     this.#partyViews = this.#buildSide(
       BattleSides.party,
@@ -192,12 +199,14 @@ export class Battle extends Phaser.Scene {
    * Once a field-launched battle resolves, hand control back to the Field exactly
    * once: extract the win/lose + grist + shard + choice from the terminal state and
    * stash the **raw** {@link import("../logic/battle-result").BattleResult} on the
-   * registry, then start the Field. The Field's resume path is the *single owner*
-   * of folding that result into the run-state (`resumeFieldSession` →
-   * {@link applyBattleResult}); this scene deliberately does NOT fold it too, so a
-   * win's grist/shard is credited exactly once across the Battle→Field transition.
-   * A no-op for a standalone boot (the existing battle tests stay on the resolved
-   * battle) and after the first resolution (the `#resolutionHandled` latch).
+   * registry, then return to the Field behind a readable fade cut (#114 AC2) rather
+   * than snapping — the camera fades out + holds, then the Field starts and fades
+   * itself in. The Field's resume path is the *single owner* of folding that result
+   * into the run-state (`resumeFieldSession` → {@link applyBattleResult}); this scene
+   * deliberately does NOT fold it too, so a win's grist/shard is credited exactly once
+   * across the Battle→Field transition. A no-op for a standalone boot (the existing
+   * battle tests stay on the resolved battle) and after the first resolution (the
+   * `#resolutionHandled` latch).
    * @returns void
    */
   #maybeReturnToField(): void {
@@ -216,7 +225,7 @@ export class Battle extends Phaser.Scene {
     // Record the raw result only — the Field folds it into the run exactly once.
     setLastBattleResult(this.registry, result);
     const resume: FieldResumeData = { resumed: true };
-    this.scene.start(SceneKeys.Field, resume);
+    transitionToScene(this, SceneKeys.Field, resume);
   }
 
   /**

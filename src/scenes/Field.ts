@@ -47,6 +47,7 @@ import {
   launchPendingBattle,
   resumeFieldSession,
 } from "./field-launch";
+import { fadeSceneIn } from "./scene-transition";
 import { verifyBridge, type FieldView } from "../uat/bridge";
 
 /** Fallback seed when none is supplied via the verification bridge / `?seed=`. */
@@ -108,6 +109,14 @@ export class Field extends Phaser.Scene {
       : beginFieldSession(run, seed);
     this.#state = session.state;
     this.#run = session.run;
+
+    // A post-battle resume enters behind the incoming half of the readable return
+    // cut (#114 AC2): fade the Field in from black so it reveals rather than snaps. A
+    // fresh boot shows instantly — its framing (and the existing field e2e) is
+    // unchanged.
+    if (data?.resumed) {
+      fadeSceneIn(this);
+    }
 
     drawFieldBackdrop(this);
     this.#buildProps();

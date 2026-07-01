@@ -8,6 +8,11 @@
  * @module scenes/field-hud-layout
  */
 import { GameView } from "../consts";
+import {
+  GRIST_GOLD,
+  GRIST_GOLD_CSS,
+  GristPalette,
+} from "../logic/render/palette";
 
 /**
  * Field-HUD layout in logical (384×216) pixels: the persistent grist readout
@@ -44,25 +49,30 @@ export const FieldHudLayout = {
   mapDepth: 150,
 } as const;
 
-/** Field-HUD palette: light text, grist-gold highlight, dim for unvisited nodes. */
+/**
+ * Field-HUD (Marrow) palette: light text, the one warm {@link GRIST_GOLD} highlight,
+ * dim for unvisited nodes. The grist readout / mini-map current-room / cleared-node
+ * highlights all draw the canonical grist-gold, and the panel stroke the desaturated
+ * {@link GristPalette} line — the "palette pass on the Marrow HUD" half of #114.
+ */
 export const FieldHudColors = {
   /** The persistent grist readout — grist-gold, "always feel the wallet". */
-  grist: "#ffd166",
+  grist: GRIST_GOLD_CSS,
   /** The mini-map summon hint and floating context prompt. */
   prompt: "#9be7c4",
   /** The mini-map overlay panel fill + stroke. */
   mapPanelFill: 0x0d111a,
-  mapPanelStroke: 0x39455c,
+  mapPanelStroke: GristPalette.line,
   /** The mini-map title text. */
-  mapTitle: "#ffd166",
+  mapTitle: GRIST_GOLD_CSS,
   /** Room-node label colors by visit state. */
-  nodeCurrentText: "#ffd166",
+  nodeCurrentText: GRIST_GOLD_CSS,
   nodeVisitedText: "#e8e8ea",
   nodeUnvisitedText: "#737a86",
   /** Room-node marker fill by visit state. */
-  nodeCurrentFill: 0xffd166,
+  nodeCurrentFill: GRIST_GOLD,
   nodeVisitedFill: 0x9be7c4,
-  nodeUnvisitedFill: 0x39455c,
+  nodeUnvisitedFill: GristPalette.line,
 } as const;
 
 /**

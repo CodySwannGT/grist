@@ -20,8 +20,10 @@
  * `?scene=field` / `?scene=bench` starts: reached via `?scene=dialogue`, it plays a
  * tiny UAT-only demo script (NOT authored game content — PD-3.2 / PD-3.6 author the
  * real opening/recruitment scenes). When real scenes wire the presenter into the
- * Field/opening flow, they mount the same {@link DialoguePresenter} the same way. No
- * allocations in `update()` — the scene is event-driven, so it has none.
+ * Field/opening flow, they mount the same {@link DialoguePresenter} the same way.
+ * Input is event-driven; the one per-frame task is folding the Sable-reveal quiet
+ * beat (#114 AC3) in `update()`, which swaps one small immutable state and allocates
+ * nothing.
  * @module scenes/Dialogue
  */
 import Phaser from "phaser";
@@ -35,6 +37,12 @@ import {
   SIDE_MILL_SCRIPT,
 } from "../content";
 import type { DialoguePresenterInput, SceneDef } from "../logic/narrative";
+import {
+  beginRevealBeat,
+  canAdvancePastReveal,
+  stepRevealBeat,
+  type RevealBeatState,
+} from "../logic/narrative";
 import { DialogueInputService } from "../services/dialogue-input";
 import type { DialogueIntent } from "../services/dialogue-input-map";
 import { eventsCenter } from "../services/events";
@@ -82,6 +90,14 @@ export class Dialogue extends Phaser.Scene {
   #revealed = false;
   /** Latches the reveal→ambush handoff so the Battle is launched exactly once. */
   #launchedAmbush = false;
+  /**
+   * The Sable-reveal quiet beat (#114 AC3), or null while the cursor is not parked at
+   * the reveal node. Seeded the instant the cursor lands on {@link CH1_REVEAL_NODE_ID}
+   * and folded each frame in {@link update}; a null beat means "no beat is holding"
+   * (every non-reveal node). It gates the *next* advance so the reveal reads as a
+   * deliberate, held moment before the ambush, rather than being clicked through.
+   */
+  #revealBeat: RevealBeatState | null = null;
 
   /** Register the scene key. */
   constructor() {
@@ -101,6 +117,7 @@ export class Dialogue extends Phaser.Scene {
     this.#ch1 = mount.ch1;
     this.#revealed = false;
     this.#launchedAmbush = false;
+    this.#revealBeat = null;
     this.#presenter = new DialoguePresenter(this, mount.table, mount.opening);
     this.#input = new DialogueInputService(this);
 
@@ -113,6 +130,23 @@ export class Dialogue extends Phaser.Scene {
 
     verifyBridge.attach(SceneKeys.Dialogue, this.#bridgeView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
+  }
+
+  /**
+   * Per-frame: fold the frame delta into the Sable-reveal quiet beat (#114 AC3) while
+   * one is holding, so the deliberate hold elapses in real time and the gated advance
+   * releases. A no-op whenever no beat is active (every node but the reveal, and the
+   * demo/mill scripts). Timing is injected as `delta` — the pure {@link stepRevealBeat}
+   * fold owns the countdown; this scene reads nothing ambient and allocates nothing
+   * per frame (it swaps one small immutable state object).
+   * @param _time - Absolute time (unused; the beat is delta-driven).
+   * @param delta - Milliseconds since the last frame (the injected dt).
+   * @returns void
+   */
+  override update(_time: number, delta: number): void {
+    if (this.#revealBeat !== null) {
+      this.#revealBeat = stepRevealBeat(this.#revealBeat, delta);
+    }
   }
 
   /**
@@ -164,6 +198,17 @@ export class Dialogue extends Phaser.Scene {
   readonly #onIntent = (intent: DialogueIntent): void => {
     switch (intent.kind) {
       case "advance":
+        // The Sable-reveal quiet beat (#114 AC3): while the cursor is held at the
+        // reveal node and the deliberate beat has not yet elapsed, an advance is
+        // DEFERRED (dropped) so the moment lands before the ambush. Every other node
+        // — and the reveal node once the beat elapses — advances freely. skip/branch
+        // are never gated (a skip must always be able to dismiss the dialogue).
+        if (
+          this.#revealBeat !== null &&
+          !canAdvancePastReveal(this.#presenter.nodeId, this.#revealBeat)
+        ) {
+          break;
+        }
         this.#emit({ kind: "advance" });
         break;
       case "skip":
@@ -212,6 +257,13 @@ export class Dialogue extends Phaser.Scene {
     if (!this.#revealed && this.#presenter.nodeId === CH1_REVEAL_NODE_ID) {
       this.#revealed = true;
       this.#presenter.writeFlag(SABLE_REVEALED_FLAG, true);
+      // Seed the quiet beat the instant the reveal lands (#114 AC3): the next advance
+      // is gated by canAdvancePastReveal until update() has folded the full beat.
+      this.#revealBeat = beginRevealBeat();
+    } else if (this.#presenter.nodeId !== CH1_REVEAL_NODE_ID) {
+      // Left the reveal node (the beat elapsed and the player advanced): retire the
+      // beat so it never gates a later node.
+      this.#revealBeat = null;
     }
     if (!this.#launchedAmbush && this.#presenter.done) {
       // Run the ambush under the URL/bridge seed (so `?seed=` makes it
