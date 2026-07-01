@@ -35,6 +35,7 @@ import {
   type FieldView,
   type VerifyFieldState,
 } from "./field-view";
+import { RenderCell, renderApi, type RenderApi } from "./render-cell";
 import {
   RegionSceneCell,
   type RegionView,
@@ -92,7 +93,7 @@ export interface BattleView {
 export type { FieldView };
 
 /** The shape installed on `window.__VERIFY__`. */
-interface VerifyApi extends DialogueApi, DataCellApi {
+interface VerifyApi extends DialogueApi, DataCellApi, RenderApi {
   readonly scene: () => string;
   readonly state: () => VerifyBattleState | null;
   readonly resolution: () => VerifyResolution | null;
@@ -517,6 +518,10 @@ export function installVerifyBridge(): void {
     // from the bridge-held data cells, the `dialogueApi` way; null outside the
     // scene/state each reads (PRD #41 AC5/AC7).
     ...dataCellApi(),
+    // The palette + transition render seams (#114 AC1/AC2) — scene-agnostic pure
+    // reads over `logic/render`, the `dialogueApi` way, so the demo-polish e2e proves
+    // the grade + readable fade against the SAME modules the scenes consume.
+    ...renderApi(new RenderCell()),
     // The BOOTED Region scene snapshot (#137) — read for the active scene, the same
     // way `bench` reads its cell; null outside the Region scene.
     regionRun: () => verifyBridge.region.snapshot(verifyBridge.scene()),

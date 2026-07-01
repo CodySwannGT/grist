@@ -49,6 +49,16 @@ export const SABLE_REVEALED_FLAG = "sable-revealed";
  */
 export const CH1_AMBUSH_ENCOUNTER: EncounterId = EncounterIds.tutorialAmbush;
 
+/**
+ * The deliberate **quiet beat** on the Sable reveal (PD-3.9 / #114): the hold in
+ * milliseconds the {@link CH1_REVEAL_NODE_ID reveal node} carries so the moment the
+ * cargo opens to a sleeping person lands before the player can advance. Data, not
+ * behavior — the Dialogue adapter reads it off the node's view-model and pauses
+ * once; the sim is never forked. Sized as a real, felt hold (not a single frame),
+ * and audio-independent so it does not overlap sibling sub-task #115 (temp audio).
+ */
+export const SABLE_REVEAL_BEAT_MS = 900;
+
 // Speaker content-ids (hoisted so the repeated literals don't trip the
 // no-duplicate-string lint, mirroring the demo-script fixture's id hoisting).
 const WREN = "wren";
@@ -96,6 +106,9 @@ export const CH1_SCRIPT: Readonly<Record<string, SceneDef>> = {
         speaker: WREN,
         text: "...It's a girl. A sleeping girl, in a stasis-coffin. The cargo is a person. The lid's etched with one word: SABLE.",
         portrait: SABLE,
+        // The deliberate quiet beat (#114): the reveal holds before it can be
+        // advanced, so the "the cargo is a person" moment lands.
+        beatMs: SABLE_REVEAL_BEAT_MS,
         next: N_SABLE_WAKES,
       },
       {

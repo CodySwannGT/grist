@@ -81,6 +81,12 @@ export interface DialogueModel {
    * bridge can assert "the hook landed" without a separate bridge surface (#105).
    */
   readonly flags: NarrativeLedger;
+  /**
+   * The current node's declared **quiet beat** in milliseconds, or 0 when the line
+   * carries none (#114 AC3). Surfaced on the model so the reveal-beat e2e can assert
+   * the Sable-reveal node holds a deliberate, non-trivial beat on the live canvas.
+   */
+  readonly beatMs: number;
 }
 
 /**
@@ -374,6 +380,9 @@ export class DialoguePresenter {
         rect: dialogueChoiceRect(index),
       })),
       flags: this.#state.narrative.flags,
+      // The node's declared quiet beat (#114 AC3), or 0 on a line that carries none —
+      // under exactOptionalPropertyTypes the pure view omits `beatMs` on ordinary lines.
+      beatMs: view.beatMs ?? 0,
     };
   }
 

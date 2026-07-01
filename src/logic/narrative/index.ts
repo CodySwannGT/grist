@@ -46,3 +46,11 @@ export {
   isDialogueDone,
   presentDialogue,
 } from "./presenter";
+export type { RevealBeatState } from "./reveal-beat";
+export {
+  REVEAL_BEAT_MS,
+  beginRevealBeat,
+  canAdvancePastReveal,
+  isRevealBeatElapsed,
+  stepRevealBeat,
+} from "./reveal-beat";

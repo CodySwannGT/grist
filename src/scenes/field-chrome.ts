@@ -8,18 +8,26 @@
  */
 import type Phaser from "phaser";
 import { FieldColors, FieldLayout, FieldTextStyles, GameView } from "../consts";
+import { GristPalette } from "../logic/render";
 import { type MarrowRoomDef } from "../content/map";
 
 /**
  * Paint the top-down room backdrop: a dark back wall, the lit floor band below
  * the wall line, and the dividing wall line. Fixed decoration only — drawn once.
+ *
+ * The Marrow's structural tones come from the centralized {@link GristPalette}
+ * (#114 AC1): the floor and wall are its desaturated, near-grey base — the world
+ * reads drained — so the grist-gold HUD accents glow against them. Routing these
+ * through the palette (not the raw `FieldColors`) is what makes the desaturation +
+ * grist-gold grade real and coherent across every surface rather than per-scene ad
+ * hoc hues.
  * @param scene - The Field scene to add the backdrop rectangles to.
  * @returns void
  */
 export function drawFieldBackdrop(scene: Phaser.Scene): void {
   const { width, height } = GameView;
   scene.add
-    .rectangle(0, 0, width, FieldLayout.wallY, FieldColors.wall)
+    .rectangle(0, 0, width, FieldLayout.wallY, GristPalette.wall)
     .setOrigin(0, 0);
   scene.add
     .rectangle(
@@ -27,7 +35,7 @@ export function drawFieldBackdrop(scene: Phaser.Scene): void {
       FieldLayout.wallY,
       width,
       height - FieldLayout.wallY,
-      FieldColors.floor
+      GristPalette.floor
     )
     .setOrigin(0, 0);
   scene.add

@@ -96,6 +96,13 @@ export interface DialogueView {
   readonly branching: boolean;
   /** True when the narrative has ended (skipped or off its final node). */
   readonly done: boolean;
+  /**
+   * The node's deliberate **quiet beat** in milliseconds, or absent when the line
+   * carries none. The adapter honors it as a one-shot hold before the line can be
+   * advanced (the Sable reveal, PD-3.9 / #114); a linear line omits it and advances
+   * immediately.
+   */
+  readonly beatMs?: number;
 }
 
 /**
@@ -324,5 +331,9 @@ export function dialogueView(
     choices: choices.map(choice => ({ id: choice.id, label: choice.label })),
     branching: choices.length > 0,
     done: isDialogueDone(state, table),
+    // Only surface the beat when the node declares one — under
+    // exactOptionalPropertyTypes an absent beat is a missing key, not `undefined`,
+    // so an ordinary line's view has no `beatMs`.
+    ...(node.beatMs === undefined ? {} : { beatMs: node.beatMs }),
   };
 }
