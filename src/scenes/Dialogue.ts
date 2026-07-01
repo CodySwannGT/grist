@@ -198,18 +198,7 @@ export class Dialogue extends Phaser.Scene {
   readonly #onIntent = (intent: DialogueIntent): void => {
     switch (intent.kind) {
       case "advance":
-        // The Sable-reveal quiet beat (#114 AC3): while the cursor is held at the
-        // reveal node and the deliberate beat has not yet elapsed, an advance is
-        // DEFERRED (dropped) so the moment lands before the ambush. Every other node
-        // — and the reveal node once the beat elapses — advances freely. skip/branch
-        // are never gated (a skip must always be able to dismiss the dialogue).
-        if (
-          this.#revealBeat !== null &&
-          !canAdvancePastReveal(this.#presenter.nodeId, this.#revealBeat)
-        ) {
-          break;
-        }
-        this.#emit({ kind: "advance" });
+        this.#advanceLive();
         break;
       case "skip":
         this.#emit({ kind: "skip" });
@@ -223,6 +212,36 @@ export class Dialogue extends Phaser.Scene {
       }
     }
   };
+
+  /**
+   * Advance through the **gated** live-input path — the exact behavior a real key
+   * press / tap produces. The Sable-reveal quiet beat (#114 AC3) defers (drops) an
+   * advance while the cursor is held at the reveal node and the deliberate beat has
+   * not yet elapsed, so the moment lands before the ambush; every other node — and the
+   * reveal node once the beat elapses — advances freely. Exposed to the verification
+   * bridge so the e2e can prove the block-then-release on the live canvas (the raw
+   * `advance()` bridge entry stays ungated for the callers that walk straight through).
+   * @returns void
+   */
+  #advanceLive(): void {
+    if (!this.#canAdvanceLive()) {
+      return;
+    }
+    this.#emit({ kind: "advance" });
+  }
+
+  /**
+   * Whether a live advance is permitted right now: false only while the quiet beat is
+   * holding at the reveal node (#114 AC3), true everywhere else. The gate the live
+   * input consults and the bridge surfaces as `revealBeatGating`.
+   * @returns True when a live advance may proceed.
+   */
+  #canAdvanceLive(): boolean {
+    return (
+      this.#revealBeat === null ||
+      canAdvancePastReveal(this.#presenter.nodeId, this.#revealBeat)
+    );
+  }
 
   /**
    * Publish one resolved presenter input on the bus — the presenter (subscribed in
@@ -291,7 +310,27 @@ export class Dialogue extends Phaser.Scene {
       advance: () => this.#emit({ kind: "advance" }),
       branch: (choiceId: string) => this.#emit({ kind: "branch", choiceId }),
       skip: () => this.#emit({ kind: "skip" }),
+      // The #114 AC3 reveal-beat seam: whether a live advance is currently deferred by
+      // the quiet beat, the gated live-advance path, and a deterministic dt-fold so the
+      // e2e can elapse the beat without depending on wall-clock frame pacing.
+      advanceLive: () => this.#advanceLive(),
+      revealBeatGating: () => !this.#canAdvanceLive(),
+      tickRevealBeat: (ms: number) => this.#tickRevealBeat(ms),
     };
+  }
+
+  /**
+   * Deterministically fold `ms` of elapsed time into the live quiet beat (#114 AC3) —
+   * the verification-driven counterpart of the per-frame fold in {@link update}, so an
+   * e2e can elapse the beat exactly (no wall-clock frame-pacing dependence) and then
+   * observe the gated advance release. A no-op when no beat is holding.
+   * @param ms - The milliseconds of beat time to elapse.
+   * @returns void
+   */
+  #tickRevealBeat(ms: number): void {
+    if (this.#revealBeat !== null) {
+      this.#revealBeat = stepRevealBeat(this.#revealBeat, ms);
+    }
   }
 
   /**

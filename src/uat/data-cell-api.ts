@@ -29,6 +29,11 @@ import { EnemyCell, type VerifyEnemyState } from "./enemy-cell";
 import { MillBeatCell, type VerifyMillBeatState } from "./mill-beat-cell";
 import { RegionCell, type VerifyRegionState } from "./region-cell";
 import {
+  RenderCell,
+  type VerifyPaletteState,
+  type VerifyTransitionState,
+} from "./render-cell";
+import {
   RequiemHallCell,
   type OpenRequiemHallOptions,
   type VerifyRequiemHallState,
@@ -144,6 +149,15 @@ const travelCell = new TravelCell(walletCell);
  * hydrated from `save.build` on adopt, not merely round-tripped through IndexedDB.
  */
 const buildCell = new BuildCell();
+
+/**
+ * The bridge-held render cell (#114): a stateless reader over the pure `logic/render`
+ * modules, so the palette + transition e2e can read the resolved desaturated
+ * grist-gold palette (AC1) and a deterministic fade-out→hold→fade-in trajectory (AC2)
+ * scene-agnostically — the same typed grade and timing machine the scenes consume, not
+ * a re-derived copy.
+ */
+const renderCell = new RenderCell();
 
 /**
  * Adopt a {@link CurrentSave} into the bridge-held world-state + run-state cells so
@@ -322,6 +336,20 @@ export interface DataCellApi {
   readonly fastTravel: (from: string, to: string) => number;
   /** The travel snapshot (tier + soft-gate + knowledge + grist + determinism hash). */
   readonly travel: () => VerifyTravelState;
+  /**
+   * The resolved Marrow palette (#114 AC1): the SAME desaturated {@link GristPalette}
+   * the field / region / HUD surfaces consume — near-grey base/floor/wall/line + the
+   * one warm grist-gold highlight — so the palette e2e proves the grade is real and
+   * centralized, scene-agnostically.
+   */
+  readonly palette: () => VerifyPaletteState;
+  /**
+   * A deterministic sample of the scene-transition state machine (#114 AC2): the total
+   * readable-cut duration and the per-frame fade-out→hold→fade-in opacity trajectory,
+   * so the transition e2e proves a cut runs a bounded, phased fade rather than snapping.
+   * @param steps - How many uniform dt steps to sample across the cut (default 24).
+   */
+  readonly transition: (steps?: number) => VerifyTransitionState;
 }
 
 /**
@@ -372,5 +400,7 @@ export function dataCellApi(): DataCellApi {
     discoverSafehouse: (safehouse: string) => travelCell.discover(safehouse),
     fastTravel: (from: string, to: string) => travelCell.fastTravel(from, to),
     travel: () => travelCell.snapshot(),
+    palette: () => renderCell.palette(),
+    transition: (steps?: number) => renderCell.transition(steps),
   };
 }

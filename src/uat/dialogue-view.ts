@@ -45,6 +45,19 @@ export interface VerifyDialogueState {
    * a separate bridge surface (#105). Empty on the demo script (no reveal node).
    */
   readonly flags: NarrativeLedger;
+  /**
+   * The current node's declared **quiet beat** in milliseconds, or 0 when the line
+   * carries none (#114 AC3). Non-zero at the Sable-reveal node so the reveal-beat e2e
+   * can assert the reveal holds a deliberate beat on the live canvas.
+   */
+  readonly revealBeatMs: number;
+  /**
+   * Whether a live advance is currently **deferred** by the quiet beat (#114 AC3):
+   * true while the beat holds at the reveal node, false once it elapses (and at every
+   * other node). The block-then-release the reveal-beat e2e drives via
+   * `advanceDialogueLive` + `tickRevealBeat`.
+   */
+  readonly revealBeatGating: boolean;
 }
 
 /**
@@ -67,6 +80,16 @@ export interface DialogueView {
   readonly branch: (choiceId: string) => void;
   /** Skip the rest of the narrative (jump to done). */
   readonly skip: () => void;
+  /**
+   * Advance through the **gated** live-input path — the exact behavior a real key
+   * press produces, including the Sable-reveal quiet-beat deferral (#114 AC3). Lets
+   * the reveal-beat e2e prove the block-then-release without the ungated `advance`.
+   */
+  readonly advanceLive: () => void;
+  /** Whether a live advance is currently deferred by the quiet beat (#114 AC3). */
+  readonly revealBeatGating: () => boolean;
+  /** Deterministically elapse the quiet beat by `ms` (the e2e's dt-fold, #114 AC3). */
+  readonly tickRevealBeat: (ms: number) => void;
 }
 
 /**
@@ -93,6 +116,8 @@ function toVerifyDialogueState(
       label: choice.label,
     })),
     flags: model.flags,
+    revealBeatMs: model.beatMs,
+    revealBeatGating: view.revealBeatGating(),
   };
 }
 
@@ -173,6 +198,18 @@ export interface DialogueApi {
    * the Ch.1 hook landed at the reveal node (#105).
    */
   readonly ledgerFlag: (name: string) => SceneFlag | null;
+  /**
+   * Advance through the **gated** live-input path — the real key-press behavior,
+   * including the Sable-reveal quiet-beat deferral (#114 AC3). Unlike
+   * {@link advanceDialogue} (ungated), this is a no-op while the beat holds at the
+   * reveal node, so the reveal-beat e2e can prove the advance is blocked.
+   */
+  readonly advanceDialogueLive: () => void;
+  /**
+   * Deterministically elapse the Sable-reveal quiet beat by `ms` (#114 AC3) — the
+   * e2e's dt-fold, so it can release the gated advance without wall-clock frame pacing.
+   */
+  readonly tickRevealBeat: (ms: number) => void;
 }
 
 /**
@@ -194,6 +231,8 @@ export function dialogueApi(
     branchDialogue: (choiceId: string) => cell.view()?.branch(choiceId),
     skipDialogue: () => cell.view()?.skip(),
     ledgerFlag: (name: string) => cell.ledgerFlag(name),
+    advanceDialogueLive: () => cell.view()?.advanceLive(),
+    tickRevealBeat: (ms: number) => cell.view()?.tickRevealBeat(ms),
   };
 }
 
