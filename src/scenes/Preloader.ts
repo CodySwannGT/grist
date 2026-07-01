@@ -141,5 +141,11 @@ function startScene(): string {
   if (requested === "region") {
     return SceneKeys.Region;
   }
+  if (requested === "pausemenu" || requested === "menu") {
+    // The pause/main menu (#113) — a verification entry point (its Builds entry
+    // opens the existing Bench growth screen, reused not re-spec'd), the bench
+    // counterpart of the `?scene=bench` start.
+    return SceneKeys.PauseMenu;
+  }
   return SceneKeys.Battle;
 }

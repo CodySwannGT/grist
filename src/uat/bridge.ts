@@ -40,6 +40,11 @@ import {
   type RegionView,
   type VerifyRegionSceneState,
 } from "./region-scene-view";
+import {
+  PauseMenuCell,
+  type PauseMenuView,
+  type VerifyPauseMenuState,
+} from "./pause-menu-view";
 
 /** A read-only snapshot of one combatant for assertions. */
 interface VerifyCombatant {
@@ -144,6 +149,19 @@ interface VerifyApi extends DialogueApi, DataCellApi {
    * `error`) when the region threw on boot — the harness-failure state the e2e asserts.
    */
   readonly regionRun: () => VerifyRegionSceneState | null;
+  /**
+   * A snapshot of the pause/main menu (#113), or null outside the PauseMenu
+   * scene — the six rendered entries, the highlighted index, and the last opened
+   * route. Lets the menu e2e assert AC1 (exactly the six entries) and AC2
+   * (selecting Builds opened the existing growth screen).
+   */
+  readonly pauseMenu: () => VerifyPauseMenuState | null;
+  /** Highlight the pause-menu entry by id (a no-op outside the PauseMenu scene). */
+  readonly highlightMenuEntry: (entry: string) => void;
+  /** Move the pause-menu highlight one step (-1 up / +1 down), wrapping around. */
+  readonly navigateMenu: (delta: -1 | 1) => void;
+  /** Confirm the highlighted pause-menu entry — opens its route (Builds → growth). */
+  readonly confirmMenuEntry: () => void;
 }
 
 declare global {
@@ -196,7 +214,13 @@ function toVerifyState(scene: string, state: BattleState): VerifyBattleState {
  * @returns True when the view is a field view.
  */
 function isFieldView(
-  view: BattleView | FieldView | BenchView | DialogueView | RegionView
+  view:
+    | BattleView
+    | FieldView
+    | BenchView
+    | DialogueView
+    | RegionView
+    | PauseMenuView
 ): view is FieldView {
   return "room" in view;
 }
@@ -215,6 +239,7 @@ class VerifyController {
   readonly region = new RegionSceneCell();
   readonly #bench = new BenchCell();
   readonly dialogue = new DialogueCell();
+  readonly #pauseMenu = new PauseMenuCell();
   #pendingSeed: number | null = null;
 
   /**
@@ -231,7 +256,14 @@ class VerifyController {
    */
   attach(
     sceneKey: string,
-    view: BattleView | FieldView | BenchView | DialogueView | RegionView | null
+    view:
+      | BattleView
+      | FieldView
+      | BenchView
+      | DialogueView
+      | RegionView
+      | PauseMenuView
+      | null
   ): void {
     this.#sceneKey = sceneKey;
     this.#view = null;
@@ -239,6 +271,7 @@ class VerifyController {
     this.region.attach(null);
     this.#bench.attach(null);
     this.dialogue.attach(null);
+    this.#pauseMenu.attach(null);
     if (view === null) {
       return;
     }
@@ -250,6 +283,8 @@ class VerifyController {
       this.#bench.attach(view);
     } else if (DialogueCell.claims(view)) {
       this.dialogue.attach(view);
+    } else if (PauseMenuCell.claims(view)) {
+      this.#pauseMenu.attach(view);
     } else {
       this.#view = view;
     }
@@ -295,8 +330,20 @@ class VerifyController {
       this.#fieldView ??
       this.region.view() ??
       this.#bench.view() ??
-      this.dialogue.view();
+      this.dialogue.view() ??
+      this.#pauseMenu.view();
     return view?.resolution() ?? null;
+  }
+
+  /**
+   * The composed pause/main-menu seam (#113): the bridge reads its snapshot for
+   * the active scene (`pauseMenu.snapshot(scene())`) and drives menu actions
+   * through its view (`pauseMenu.view()?.confirm()` …), each a no-op outside the
+   * PauseMenu scene.
+   * @returns The pause-menu cell.
+   */
+  pauseMenu(): PauseMenuCell {
+    return this.#pauseMenu;
   }
 
   /**
@@ -520,5 +567,13 @@ export function installVerifyBridge(): void {
     // The BOOTED Region scene snapshot (#137) — read for the active scene, the same
     // way `bench` reads its cell; null outside the Region scene.
     regionRun: () => verifyBridge.region.snapshot(verifyBridge.scene()),
+    // The pause/main-menu snapshot + drive entries (#113) — read/driven for the
+    // active scene the same way `bench` is; each a no-op outside the PauseMenu scene.
+    pauseMenu: () => verifyBridge.pauseMenu().snapshot(verifyBridge.scene()),
+    highlightMenuEntry: (entry: string) =>
+      verifyBridge.pauseMenu().view()?.highlight(entry),
+    navigateMenu: (delta: -1 | 1) =>
+      verifyBridge.pauseMenu().view()?.navigate(delta),
+    confirmMenuEntry: () => verifyBridge.pauseMenu().view()?.confirm(),
   };
 }

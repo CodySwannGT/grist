@@ -22,7 +22,15 @@ export const SceneKeys = {
   Bench: "Bench",
   Dialogue: "Dialogue",
   Region: "Region",
+  PauseMenu: "PauseMenu",
 } as const;
+
+/**
+ * A scene-registry key (the literal-union of every {@link SceneKeys} value). Lets
+ * pure code (e.g. the pause/main-menu route table in `logic/pause-menu`, #113)
+ * type a scene destination without importing Phaser.
+ */
+export type SceneKey = (typeof SceneKeys)[keyof typeof SceneKeys];
 
 /**
  * Cross-cutting battle event names emitted on the EventsCenter bus (never on
@@ -488,5 +496,84 @@ export const RegionTextStyles = {
     fontFamily: "monospace",
     fontSize: "9px",
     color: RegionColors.errorText,
+  },
+} as const;
+
+/**
+ * Cross-cutting pause/main-menu event names emitted on the EventsCenter bus
+ * (never on `game.events`, #113). The semantic {@link
+ * import("./services/pause-menu-input").PauseMenuInputService} publishes a
+ * device-tagged {@link import("./services/pause-menu-input-map").MenuIntent}
+ * (navigate / confirm / cancel, plus a pointer-only select-entry) as `Input`;
+ * the PauseMenu scene subscribes and drives the highlight / selection. Raw
+ * keys/pointers never leave the input service — only these named intents do (the
+ * menu counterpart of {@link BattleEvents.Input}).
+ */
+export const PauseMenuEvents = {
+  Input: "pause-menu-input",
+} as const;
+
+/** Render depth of the pause/main-menu overlay, above every gameplay scene. */
+export const PAUSE_MENU_DEPTH = 300;
+
+/**
+ * Pause/main-menu layout in logical (384×216) pixels (#113): a centered title
+ * banner over a vertically-stacked list of the six entries, with a hint line at
+ * the bottom. The *shape* (a titled vertical list of selectable entries) is the
+ * contract, not the exact constants.
+ */
+export const PauseMenuLayout = {
+  /** Centered title banner Y. */
+  titleY: 16,
+  /** The first entry row's center Y; subsequent entries stack down by `rowGap`. */
+  firstEntryY: 56,
+  /** Vertical distance between stacked entry rows. */
+  rowGap: 22,
+  /** Entry row box size (centered on `GameView.width / 2`). */
+  entryWidth: 200,
+  entryHeight: 18,
+  /** The keyboard-hint line at the bottom of the overlay. */
+  hintY: 202,
+} as const;
+
+/** Pause/main-menu placeholder-art and chrome colors (programmatic art only). */
+export const PauseMenuColors = {
+  /** Semi-opaque scrim drawn over the paused scene beneath the menu. */
+  scrim: 0x0a0d14,
+  /** Fraction of opacity for the scrim (the paused scene shows through faintly). */
+  scrimAlpha: 0.72,
+  title: "#ffd166",
+  entryFill: 0x222a39,
+  entryFillSelected: 0x39455c,
+  entryStroke: 0x39455c,
+  entryStrokeSelected: 0xffd166,
+  entryText: "#e8e8ea",
+  entryTextSelected: "#ffd166",
+  hint: "#9be7c4",
+} as const;
+
+/**
+ * Pause/main-menu text styles (monospace chrome). Kept here with the other typed
+ * PauseMenu constants so the scene stays a thin renderer and a color/size change
+ * is a single edit. The shapes match Phaser's text-style object.
+ */
+export const PauseMenuTextStyles = {
+  /** The centered "Menu" title banner. */
+  title: {
+    fontFamily: "monospace",
+    fontSize: "12px",
+    color: PauseMenuColors.title,
+  },
+  /** An entry-row label. */
+  entry: {
+    fontFamily: "monospace",
+    fontSize: "9px",
+    color: PauseMenuColors.entryText,
+  },
+  /** The bottom keyboard-navigation hint line. */
+  hint: {
+    fontFamily: "monospace",
+    fontSize: "8px",
+    color: PauseMenuColors.hint,
   },
 } as const;
