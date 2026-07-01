@@ -234,11 +234,17 @@ export class Menu extends Phaser.Scene {
    * @returns A promise that resolves once the ledger has been read and rendered.
    */
   async #loadLedger(): Promise<void> {
-    const save = await saveService.load();
-    if (this.#openPanel !== PauseMenuEntryIds.ledger) {
-      return;
+    try {
+      const save = await saveService.load();
+      if (this.#openPanel !== PauseMenuEntryIds.ledger) {
+        return;
+      }
+      this.#showPanel("Ledger", formatMoralLedger(save.moralLedger));
+    } catch {
+      if (this.#openPanel === PauseMenuEntryIds.ledger) {
+        this.#showPanel("Ledger", ["Unable to load ledger."]);
+      }
     }
-    this.#showPanel("Ledger", formatMoralLedger(save.moralLedger));
   }
 
   /**
