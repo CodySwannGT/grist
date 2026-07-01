@@ -23,12 +23,27 @@
  * {@link WorldState} flag (#134), imported from `logic/world`. The edge is one-way
  * (`save → world`): the save layer reads the flag's *type*; `logic/world` never
  * imports from `logic/save`, so the import graph stays acyclic.
+ *
+ * **Build + scene progress (v3).** v3 adds the two axes #116 names that the
+ * earlier shapes left to the live registry: the persisted **character build**
+ * ({@link SavedBuild} — the bench-bought stat augments and the equipped shards,
+ * the "spend grist → change the build" growth the AC requires to survive into a
+ * later battle) and the persisted **scene progress** ({@link SavedScene} — the
+ * narrative scene/node cursor plus the serializable flag ledger). The build's
+ * stat axes mirror `combat/types`' {@link import("../combat/types").Stats} by
+ * *type* only (the save records a partial delta, never importing combat values);
+ * the scene cursor mirrors `narrative/types`' `SceneState` + `NarrativeLedger`
+ * shape so a `logic/narrative` state projects into it verbatim. Both edges stay
+ * one-way (`save → {combat,narrative}` type-only), so the import graph stays
+ * acyclic. A v2 save migrates forward by forward-filling an empty build and a
+ * null (not-yet-entered) scene.
  * @module logic/save/types
  */
+import type { Stats } from "../combat/types";
 import type { WorldState } from "../world";
 
 /** The current persisted-save schema version. Bump on any shape change. */
-export const SAVE_VERSION = 2 as const;
+export const SAVE_VERSION = 3 as const;
 
 /** The current schema version's literal type (the `version` discriminant). */
 export type SaveVersion = typeof SAVE_VERSION;
@@ -147,20 +162,92 @@ export interface SaveDataV1 {
 /**
  * Version 2 of the persisted save: {@link SaveDataV1} plus the persisted Act I
  * *reach* / Act II *ashfall* {@link WorldState} flag (#134), the deterministic
- * flag every region/encounter/economy value resolves through. A v1 save migrates
- * forward by forward-filling `worldState: "reach"` (the Act I start state).
+ * flag every region/encounter/economy value resolves through.
+ *
+ * **Retained as a migration source shape.** v2 is no longer the current version
+ * ({@link SaveDataV3} is), so its `version` is pinned to the literal `2` rather
+ * than {@link SAVE_VERSION}: the migration chain (`./migrate`) lifts a stored v2
+ * payload forward to v3, and this interface is the input shape that lift carries.
  */
 export interface SaveDataV2 extends Omit<SaveDataV1, "version"> {
-  /** The schema version discriminant (always {@link SAVE_VERSION}). */
-  readonly version: SaveVersion;
+  /** The schema version discriminant (the literal `2`). */
+  readonly version: 2;
   /** The persisted Act I/II world-state flag (the Reckoning flips it to `ashfall`). */
   readonly worldState: WorldState;
 }
 
 /**
+ * The persisted **character build** (#116): the cross-battle growth the bench
+ * grows and the AC requires to survive into a later battle. Two axes the live
+ * registry held but no prior save shape persisted:
+ *
+ * - `statBonuses` — the permanent stat augments bought at the bench ("spend grist
+ *   → change the build"; Runner's Reflex → +2 SPD). A partial {@link Stats}
+ *   delta: only the bonused axes are present, mirroring `RunState.statBonuses`.
+ * - `equippedShards` — the shards the bench has equipped, by id, in equip order.
+ *   Recorded by string id (a {@link import("../../content/bounds").BoundId} is a
+ *   string union) so the save embeds no live object, mirroring how the roster and
+ *   `learning` lists persist ids, not instances.
+ *
+ * Plain serializable data — no behavior, deep-equal-comparable — so it round-trips
+ * through `JSON.stringify` and restores exactly (the "growth persists" AC).
+ */
+export interface SavedBuild {
+  /** The permanent stat augments bought at the bench (a partial {@link Stats} delta). */
+  readonly statBonuses: Partial<Stats>;
+  /** The shards equipped at the bench, by id, in equip order. */
+  readonly equippedShards: readonly string[];
+}
+
+/**
+ * A single serializable scene flag — the moral-ledger flag the AC names and any
+ * other narrative flag a scene writes. A plain primitive (a boolean resolution, a
+ * string variant tag, or a numeric tally), never an object/function/class, so the
+ * flag ledger stays deep-equal-comparable and survives a save round-trip. Mirrors
+ * `narrative/types`' `SceneFlag` by structure (type-only) so a narrative state
+ * projects in verbatim without this layer importing `logic/narrative`.
+ */
+export type SavedSceneFlag = boolean | string | number;
+
+/**
+ * The persisted **scene progress** (#116): the narrative scene/node cursor plus
+ * the serializable flag ledger, so reopening the game restores *where in the
+ * story* the player was — not just their party and economy. Mirrors
+ * `narrative/types`' `SceneState` (the `sceneId` / `nodeId` cursor) and
+ * `NarrativeLedger` (the flag `Record`) by structure, so a live `NarrativeState`
+ * projects into it verbatim. A `Record` of primitives (not a `Map`, whose
+ * identity would not serialize) keeps the whole ledger JSON-round-trippable.
+ */
+export interface SavedScene {
+  /** The id of the scene the player is parked at. */
+  readonly sceneId: string;
+  /** The id of the dialogue node currently being shown. */
+  readonly nodeId: string;
+  /** The named, serializable scene flags written by the run so far. */
+  readonly flags: Readonly<Record<string, SavedSceneFlag>>;
+}
+
+/**
+ * Version 3 of the persisted save: {@link SaveDataV2} plus the persisted
+ * {@link SavedBuild character build} and {@link SavedScene scene progress} (#116).
+ * `scene` is `null` until the player has entered a narrative scene (a fresh run
+ * has not started the story), distinguishing "no scene yet" from an authored
+ * scene cursor. A v2 save migrates forward by forward-filling an empty build
+ * (no augments, no equipped shards) and a `null` scene.
+ */
+export interface SaveDataV3 extends Omit<SaveDataV2, "version"> {
+  /** The schema version discriminant (always {@link SAVE_VERSION}). */
+  readonly version: SaveVersion;
+  /** The persisted character build: bench stat augments + equipped shards. */
+  readonly build: SavedBuild;
+  /** The persisted scene/dialogue progress, or `null` before any scene is entered. */
+  readonly scene: SavedScene | null;
+}
+
+/**
  * The newest save shape the runtime understands. Aliased so call sites and the
  * `SaveService` depend on "the current save" rather than a version-pinned name;
- * when a `SaveDataV3` is introduced, this alias and {@link SAVE_VERSION} move
+ * when a `SaveDataV4` is introduced, this alias and {@link SAVE_VERSION} move
  * together.
  */
-export type CurrentSave = SaveDataV2;
+export type CurrentSave = SaveDataV3;

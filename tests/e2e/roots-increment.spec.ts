@@ -62,7 +62,7 @@ interface RegionRun {
  * (mirrors `velith-bound-site.spec.ts`).
  */
 interface SaveDataV2 {
-  readonly version: 2;
+  readonly version: 3;
   readonly party: readonly {
     readonly id: string;
     readonly level: number;
@@ -88,6 +88,15 @@ interface SaveDataV2 {
   };
   readonly rng: { readonly seed: number; readonly state: number };
   readonly worldState: "reach" | "ashfall";
+  readonly build: {
+    readonly statBonuses: Readonly<Record<string, number>>;
+    readonly equippedShards: readonly string[];
+  };
+  readonly scene: {
+    readonly sceneId: string;
+    readonly nodeId: string;
+    readonly flags: Readonly<Record<string, boolean | string | number>>;
+  } | null;
 }
 
 /**
@@ -100,7 +109,7 @@ interface SaveDataV2 {
 function settledSave(variant: "free" | "wield"): SaveDataV2 {
   const free = variant === "free";
   return {
-    version: 2,
+    version: 3,
     party: [{ id: "wren", level: 4, shard: VELITH, shardMode: variant }],
     grist: 12,
     inventory: [],
@@ -114,6 +123,8 @@ function settledSave(variant: "free" | "wield"): SaveDataV2 {
     },
     rng: { seed: 0x0dee9, state: 0x0dee9 },
     worldState: "reach",
+    build: { statBonuses: {}, equippedShards: [] },
+    scene: null,
   };
 }
 

@@ -37,6 +37,9 @@ const DB_NAME = "grist-save";
 /** The store-layout version `SaveService` opens at (must match its DB_VERSION). */
 const DB_VERSION = 1;
 
+/** The shard id the sample save resolves its choice on and equips at the bench. */
+const MARROW_BOUND = "marrow-bound";
+
 /** Reset to a pristine in-memory IndexedDB so each test starts from empty stores. */
 function installFreshIndexedDB(): void {
   Reflect.set(globalThis, "indexedDB", new IDBFactory());
@@ -45,7 +48,9 @@ function installFreshIndexedDB(): void {
 /**
  * A fully-populated payload covering every persisted axis: party (with a shard
  * choice), grist, inventory, learned/learning, the resolved free-vs-wield
- * choice, the moral ledger, and the rng lineage.
+ * choice, the moral ledger, the rng lineage, the world-state flag, and — added
+ * #116 — the character build (bench stat augments + equipped shards) and scene
+ * progress (narrative cursor + flag ledger).
  * @returns A fully-populated current-version save.
  */
 function sampleSave(): CurrentSave {
@@ -56,10 +61,16 @@ function sampleSave(): CurrentSave {
     inventory: [{ id: "ember-shard", qty: 3 }],
     learned: ["bind-wisp"],
     learning: [{ spell: "cinder", progress: 0.5 }],
-    choice: { resolved: true, shard: "marrow-bound", variant: "wield" },
+    choice: { resolved: true, shard: MARROW_BOUND, variant: "wield" },
     moralLedger: { karma: -2, freeChoices: 1, wieldChoices: 2 },
     rng: { seed: 1337, state: 987654321 },
     worldState: "ashfall",
+    build: { statBonuses: { spd: 2 }, equippedShards: [MARROW_BOUND] },
+    scene: {
+      sceneId: "ch1-marrow",
+      nodeId: "node-7",
+      flags: { metWren: true, shardChoice: "wield" },
+    },
   };
 }
 
@@ -86,7 +97,7 @@ describe("SaveService — IndexedDB round-trip (AC7)", () => {
     const restored = await new SaveService().load();
     expect(restored.choice).toEqual({
       resolved: true,
-      shard: "marrow-bound",
+      shard: MARROW_BOUND,
       variant: "wield",
     });
     expect(restored.moralLedger).toEqual({
@@ -148,8 +159,11 @@ describe("SaveService — migration on load", () => {
     expect(restored.grist).toBe(10);
     expect(restored.rng).toEqual({ seed: 7, state: 99 });
     expect(restored.choice.resolved).toBe(false);
-    // The full v0 → v1 → v2 chain forward-fills the world-state flag to reach.
+    // The full v0 → v1 → v2 → v3 chain forward-fills the world-state flag to
+    // reach (and the v3 build/scene axes to their empty/null baseline).
     expect(restored.worldState).toBe("reach");
+    expect(restored.build).toEqual({ statBonuses: {}, equippedShards: [] });
+    expect(restored.scene).toBeNull();
   });
 });
 

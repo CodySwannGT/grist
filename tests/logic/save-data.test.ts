@@ -14,10 +14,8 @@ import {
   SAVE_VERSION,
   deserialize,
   freshSave,
-  migrate,
   serialize,
-  type SaveDataV1,
-  type SaveDataV2,
+  type SaveDataV3,
 } from "../../src/logic/save";
 
 // Shared fixture ids, hoisted so the repeated literals across the corruption
@@ -25,20 +23,23 @@ import {
 const WREN = "wren";
 const MARROW_BOUND = "marrow-bound";
 const FREE = "free";
+const EMBERWISP = "emberwisp";
 
 /**
- * A fully-populated current-version (v2) payload covering every persisted axis
- * the Technical Approach enumerates: party, grist, inventory, learned/learning,
- * shard choice, moralLedger, the rng lineage, and the v2 world-state flag (#134).
- * Mirrors the cross-slice state the producers (#73/#74/#75) populate; this
- * sub-task adds the world-state shape.
+ * A fully-populated current-version (v3) payload covering every persisted axis
+ * the Technical Approach enumerates: party roster, grist, inventory,
+ * learned/learning, shard choice, moralLedger, the rng lineage, the v2
+ * world-state flag (#134), and — added this sub-task (#116) — the character
+ * `build` (bench stat augments + equipped shards) and `scene` progress
+ * (narrative cursor + flag ledger). Mirrors the cross-slice state the producers
+ * populate; this sub-task adds the build + scene shapes.
  * @returns A fully-populated current-version save.
  */
-function sampleSave(): SaveDataV2 {
+function sampleSave(): SaveDataV3 {
   return {
-    version: 2,
+    version: 3,
     party: [
-      { id: WREN, level: 3, shard: "emberwisp", shardMode: FREE },
+      { id: WREN, level: 3, shard: EMBERWISP, shardMode: FREE },
       // An unequipped member: no shard and (per the shard/shardMode unit rule)
       // no orphan shardMode either — covers the absent-optional axis.
       { id: "tobi", level: 3 },
@@ -54,30 +55,29 @@ function sampleSave(): SaveDataV2 {
     moralLedger: { karma: -2, freeChoices: 1, wieldChoices: 2 },
     rng: { seed: 1337, state: 987654321 },
     worldState: "ashfall",
+    // The character build (#116): a bench-bought stat augment and an equipped
+    // shard — the "spend grist → change the build" growth that must survive a
+    // reload and persist into a later battle.
+    build: { statBonuses: { spd: 2, pow: 1 }, equippedShards: [MARROW_BOUND] },
+    // Scene progress (#116): a non-trivial narrative cursor plus a serializable
+    // flag ledger (the moral-ledger flag the AC names rides here too).
+    scene: {
+      sceneId: "ch1-marrow",
+      nodeId: "node-7",
+      flags: { metWren: true, shardChoice: "wield", visits: 3 },
+    },
   };
 }
 
-/**
- * A v1 payload — the pre-world-state shape (no `worldState`, `version: 1`) — the
- * migration source the v1→v2 step lifts forward. Derived from {@link sampleSave}
- * by stripping the v2-only world-state axis and re-stamping the version, so the
- * two fixtures can never drift apart.
- * @returns A fully-populated legacy v1 save.
- */
-function sampleSaveV1(): SaveDataV1 {
-  const { worldState: _drop, ...rest } = sampleSave();
-  return { ...rest, version: 1 };
-}
-
-describe("SaveDataV2 — schema constants", () => {
-  it("pins the current schema version at 2", () => {
-    expect(SAVE_VERSION).toBe(2);
+describe("SaveDataV3 — schema constants", () => {
+  it("pins the current schema version at 3", () => {
+    expect(SAVE_VERSION).toBe(3);
   });
 
   it("a fresh save carries the current version, world-state reach, and empty cross-slice state", () => {
     const fresh = freshSave();
     expect(fresh.version).toBe(SAVE_VERSION);
-    expect(fresh.version).toBe(2);
+    expect(fresh.version).toBe(3);
     expect(fresh.party).toEqual([]);
     expect(fresh.inventory).toEqual([]);
     expect(fresh.learned).toEqual([]);
@@ -85,10 +85,13 @@ describe("SaveDataV2 — schema constants", () => {
     expect(fresh.choice.resolved).toBe(false);
     // A new game begins before the Reckoning: Act I reach.
     expect(fresh.worldState).toBe("reach");
+    // A new game has grown no build and entered no scene (#116).
+    expect(fresh.build).toEqual({ statBonuses: {}, equippedShards: [] });
+    expect(fresh.scene).toBeNull();
   });
 });
 
-describe("SaveDataV2 — round-trip persistence (AC7)", () => {
+describe("SaveDataV3 — round-trip persistence (AC7)", () => {
   it("serialize → deserialize restores an exact deep-equal payload", () => {
     const save = sampleSave();
     const restored = deserialize(serialize(save));
@@ -96,7 +99,7 @@ describe("SaveDataV2 — round-trip persistence (AC7)", () => {
   });
 
   it("the serialized form advertises the current version", () => {
-    expect(JSON.parse(serialize(sampleSave())).version).toBe(2);
+    expect(JSON.parse(serialize(sampleSave())).version).toBe(3);
   });
 
   it("round-trips the world-state flag exactly in either Act", () => {
@@ -122,7 +125,7 @@ describe("SaveDataV2 — round-trip persistence (AC7)", () => {
   });
 });
 
-describe("SaveDataV2 — the moral choice persists (AC5)", () => {
+describe("SaveDataV3 — the moral choice persists (AC5)", () => {
   it("the resolved shard variant + moralLedger survive a round-trip", () => {
     const save = sampleSave();
     const restored = deserialize(serialize(save));
@@ -139,9 +142,9 @@ describe("SaveDataV2 — the moral choice persists (AC5)", () => {
   });
 
   it("a free-mode resolution round-trips its karma flag intact", () => {
-    const save: SaveDataV2 = {
+    const save: SaveDataV3 = {
       ...sampleSave(),
-      choice: { resolved: true, shard: "emberwisp", variant: FREE },
+      choice: { resolved: true, shard: EMBERWISP, variant: FREE },
       moralLedger: { karma: 1, freeChoices: 3, wieldChoices: 0 },
     };
     const restored = deserialize(serialize(save));
@@ -167,7 +170,7 @@ describe("deserialize — corruption & guarding (never crash-load)", () => {
 
   it("returns null for a structurally-invalid payload at the current version", () => {
     expect(
-      deserialize(JSON.stringify({ version: 2, grist: "lots" }))
+      deserialize(JSON.stringify({ version: 3, grist: "lots" }))
     ).toBeNull();
   });
 
@@ -224,7 +227,7 @@ describe("deserialize — corruption & guarding (never crash-load)", () => {
   });
 
   it("round-trips a member with an absent optional shard (omitted, not undefined)", () => {
-    const save: SaveDataV2 = {
+    const save: SaveDataV3 = {
       ...sampleSave(),
       party: [{ id: "tobi", level: 3 }],
     };
@@ -315,66 +318,5 @@ describe("deserialize — corruption & guarding (never crash-load)", () => {
         })
       )
     ).toBeNull();
-  });
-});
-
-describe("migrate — versioned with a migration path", () => {
-  it("passes a current v2 payload through unchanged", () => {
-    const save = sampleSave();
-    expect(migrate(save)).toEqual(save);
-  });
-
-  it("migrates a v1 shape forward to v2, forward-filling world-state reach and carrying every field verbatim", () => {
-    const v1 = sampleSaveV1();
-    const migrated = migrate(v1);
-    expect(migrated?.version).toBe(SAVE_VERSION);
-    // The new world-state axis forward-fills to the Act I start state; every
-    // carried field survives the lift verbatim (the v2 save is the v1 + worldState).
-    expect(migrated).toEqual({ ...v1, version: 2, worldState: "reach" });
-  });
-
-  it("migrates a pre-v1 (v0) shape all the way forward (v0 → v1 → v2)", () => {
-    // v0 is the hypothetical legacy shape: a flat blob with no choice/ledger.
-    const v0 = {
-      version: 0,
-      party: [{ id: WREN, level: 3 }],
-      grist: 10,
-      seed: 7,
-      rngState: 7,
-    };
-    const migrated = migrate(v0);
-    expect(migrated?.version).toBe(SAVE_VERSION);
-    expect(migrated?.version).toBe(2);
-    // forward-fill: the new axes get safe defaults, the carried data survives, and
-    // the full chain reaches v2 so world-state forward-fills to reach too.
-    expect(migrated?.grist).toBe(10);
-    expect(migrated?.rng).toEqual({ seed: 7, state: 7 });
-    expect(migrated?.choice.resolved).toBe(false);
-    expect(migrated?.moralLedger.karma).toBe(0);
-    expect(migrated?.worldState).toBe("reach");
-  });
-
-  it("returns null for a version newer than the runtime understands", () => {
-    expect(migrate({ version: 999 })).toBeNull();
-  });
-
-  it("returns null for an un-versioned / non-object value", () => {
-    expect(migrate(null)).toBeNull();
-    expect(migrate("nope")).toBeNull();
-    expect(migrate({ grist: 5 })).toBeNull();
-  });
-
-  it("deserialize runs the migration chain for an older serialized save", () => {
-    const v0Text = JSON.stringify({
-      version: 0,
-      party: [],
-      grist: 3,
-      seed: 1,
-      rngState: 1,
-    });
-    const restored = deserialize(v0Text);
-    expect(restored?.version).toBe(SAVE_VERSION);
-    expect(restored?.grist).toBe(3);
-    expect(restored?.worldState).toBe("reach");
   });
 });

@@ -14,11 +14,15 @@ export {
   type RngLineage,
   type SaveDataV1,
   type SaveDataV2,
+  type SaveDataV3,
   type SaveVersion,
+  type SavedBuild,
   type SavedChoice,
   type SavedInventoryItem,
   type SavedLearning,
   type SavedPartyMember,
+  type SavedScene,
+  type SavedSceneFlag,
   type ShardMode,
 } from "./types";
 export { asCurrentSave, deserialize, freshSave, serialize } from "./serialize";

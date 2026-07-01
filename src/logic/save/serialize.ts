@@ -30,6 +30,11 @@ export { asCurrentSave } from "./validate";
  * `worldState` starts in {@link INITIAL_WORLD_STATE} (Act I `reach`): a new game
  * begins before the Reckoning, so a fresh save and a fresh run agree on the start
  * state.
+ *
+ * `build` starts empty (no bench stat augments, no equipped shards) and `scene`
+ * is `null` (#116): a new game has neither grown a build nor entered a narrative
+ * scene, so both axes start at their "nothing yet" baseline rather than a
+ * fabricated cursor.
  * @returns A new {@link CurrentSave} with empty cross-slice state.
  */
 export function freshSave(): CurrentSave {
@@ -44,6 +49,8 @@ export function freshSave(): CurrentSave {
     moralLedger: { karma: 0, freeChoices: 0, wieldChoices: 0 },
     rng: { seed: 0, state: 0 },
     worldState: INITIAL_WORLD_STATE,
+    build: { statBonuses: {}, equippedShards: [] },
+    scene: null,
   };
 }
 

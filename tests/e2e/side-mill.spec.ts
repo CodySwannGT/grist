@@ -48,12 +48,14 @@ interface DialogueState {
 }
 
 /**
- * The serialized save shape the bridge round-trips — structurally aligned with the
- * current v2 `CurrentSave` but declared locally so the spec needs no app import
- * (mirrors `bound-site.spec.ts` / `save-reload.spec.ts`).
+ * The serialized save shape the bridge round-trips — a structural *subset* of the
+ * current v3 `CurrentSave` (only the moral fields this spec asserts), declared
+ * locally so the spec needs no app import (mirrors `bound-site.spec.ts` /
+ * `save-reload.spec.ts`). Used only as a cast target for `loadSave()` reads, so it
+ * lists just the `version` discriminant plus the choice + moralLedger it checks.
  */
-interface SaveDataV2 {
-  readonly version: 2;
+interface SaveDataV3 {
+  readonly version: 3;
   readonly choice: {
     readonly resolved: boolean;
     readonly shard?: string;
@@ -212,12 +214,12 @@ test.describe("GRIST — 'What the mill took' side-story verification (UAT, #111
     // IndexedDB and surfaced scene-agnostically through runState().
     const restored = await page.evaluate(() => window.__VERIFY__!.loadSave());
     const run = await page.evaluate(() => window.__VERIFY__!.runState());
-    expect((restored as SaveDataV2).moralLedger).toEqual({
+    expect((restored as SaveDataV3).moralLedger).toEqual({
       karma: -1,
       freeChoices: 0,
       wieldChoices: 1,
     });
-    expect((restored as SaveDataV2).choice.variant).toBe("wield");
+    expect((restored as SaveDataV3).choice.variant).toBe("wield");
     expect(run!.moralLedger.karma).toBe(-1);
     expect(run!.choice.variant).toBe("wield");
 
@@ -251,7 +253,7 @@ test.describe("GRIST — 'What the mill took' side-story verification (UAT, #111
 
     const restored = await page.evaluate(() => window.__VERIFY__!.loadSave());
     const run = await page.evaluate(() => window.__VERIFY__!.runState());
-    expect((restored as SaveDataV2).moralLedger).toEqual({
+    expect((restored as SaveDataV3).moralLedger).toEqual({
       karma: 1,
       freeChoices: 1,
       wieldChoices: 0,

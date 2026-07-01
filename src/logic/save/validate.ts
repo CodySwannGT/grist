@@ -17,12 +17,33 @@ import {
   type CurrentSave,
   type MoralLedger,
   type RngLineage,
+  type SavedBuild,
   type SavedChoice,
   type SavedInventoryItem,
   type SavedLearning,
   type SavedPartyMember,
+  type SavedScene,
+  type SavedSceneFlag,
   type ShardMode,
 } from "./types";
+
+/**
+ * The stat axes a {@link SavedBuild.statBonuses} delta may carry — the keys of
+ * `combat/types`' `Stats`, listed here as plain strings so the validator stays
+ * type-only-coupled to combat (it never imports a `Stats` value). Any other key
+ * in a stored `statBonuses` record is corruption, not a bonus, and rejects the
+ * save.
+ */
+const STAT_AXES: readonly string[] = [
+  "hp",
+  "ap",
+  "pow",
+  "foc",
+  "def",
+  "wrd",
+  "spd",
+  "lck",
+];
 
 /** A plain JSON object (the shape `JSON.parse` yields for `{...}`). */
 type JsonObject = Record<string, unknown>;
@@ -243,6 +264,97 @@ function asRngLineage(value: unknown): RngLineage | null {
 }
 
 /**
+ * Validate the persisted stat-bonus delta: a partial `Stats` record whose only
+ * keys are known stat axes ({@link STAT_AXES}) and whose every value is a finite
+ * number. An unknown key (corruption / a tampered axis) or a non-finite bonus
+ * rejects the whole save rather than loading a build with a phantom or `NaN` stat.
+ * Built by reduction (not mutation) so the result is a fresh frozen-safe record.
+ * @param value - The candidate `statBonuses` value.
+ * @returns The typed partial-stats delta, or `null` when invalid.
+ */
+function asStatBonuses(value: unknown): SavedBuild["statBonuses"] | null {
+  if (!isObject(value)) return null;
+  return Object.keys(value).reduce<SavedBuild["statBonuses"] | null>(
+    (acc, key) => {
+      if (acc === null) return null;
+      if (!STAT_AXES.includes(key)) return null;
+      const bonus = value[key];
+      if (!isFiniteNumber(bonus)) return null;
+      return { ...acc, [key]: bonus };
+    },
+    {}
+  );
+}
+
+/**
+ * Validate the persisted character build (#116): a `statBonuses` partial-stats
+ * delta plus an `equippedShards` string-id list. A malformed sub-axis rejects the
+ * whole save (no silent trim), mirroring the rest of the validator.
+ * @param value - The candidate `build` value.
+ * @returns The typed build, or `null` when invalid.
+ */
+function asBuild(value: unknown): SavedBuild | null {
+  if (!isObject(value)) return null;
+  const statBonuses = asStatBonuses(value["statBonuses"]);
+  const equippedShards = asStringArray(value["equippedShards"]);
+  if (statBonuses === null || equippedShards === null) return null;
+  return { statBonuses, equippedShards };
+}
+
+/**
+ * Whether a value is a valid {@link SavedSceneFlag}: a plain primitive (boolean,
+ * string, or finite number). A `NaN`/`Infinity` numeric flag, or an object /
+ * array / null, is rejected so the flag ledger only ever holds serializable
+ * primitives.
+ * @param value - The candidate flag value.
+ * @returns True when `value` is a boolean, string, or finite number.
+ */
+function isSceneFlag(value: unknown): value is SavedSceneFlag {
+  return (
+    typeof value === "boolean" ||
+    typeof value === "string" ||
+    isFiniteNumber(value)
+  );
+}
+
+/**
+ * Validate the persisted scene-flag ledger: a `Record` whose every value is a
+ * {@link SavedSceneFlag} primitive. A non-primitive flag value rejects the whole
+ * save. Built by reduction so the result is a fresh record, never the untrusted
+ * input object.
+ * @param value - The candidate `flags` value.
+ * @returns The typed flag ledger, or `null` when invalid.
+ */
+function asSceneFlags(value: unknown): SavedScene["flags"] | null {
+  if (!isObject(value)) return null;
+  return Object.keys(value).reduce<SavedScene["flags"] | null>((acc, key) => {
+    if (acc === null) return null;
+    const flag = value[key];
+    if (!isSceneFlag(flag)) return null;
+    return { ...acc, [key]: flag };
+  }, {});
+}
+
+/**
+ * Validate a *present* scene cursor: a `{ sceneId, nodeId, flags }` object with
+ * string ids and a valid flag ledger, or `null` when the value is malformed. The
+ * not-yet-entered state (a literal `null` scene) is handled by the caller
+ * ({@link asCurrentSave}) before this runs, so a `null` return here always means
+ * "malformed", never "no scene".
+ * @param value - The candidate (known non-null) `scene` value.
+ * @returns The typed scene, or `null` when the object is malformed.
+ */
+function asScene(value: unknown): SavedScene | null {
+  if (!isObject(value)) return null;
+  const sceneId = value["sceneId"];
+  const nodeId = value["nodeId"];
+  const flags = asSceneFlags(value["flags"]);
+  if (typeof sceneId !== "string" || typeof nodeId !== "string") return null;
+  if (flags === null) return null;
+  return { sceneId, nodeId, flags };
+}
+
+/**
  * Structurally validate a candidate object as a current-version
  * {@link CurrentSave}. This is the gate the current version's read path runs;
  * older versions reach it only after the migration chain has lifted them
@@ -262,6 +374,13 @@ export function asCurrentSave(value: unknown): CurrentSave | null {
   const rng = asRngLineage(value["rng"]);
   const grist = value["grist"];
   const worldState = value["worldState"];
+  const build = asBuild(value["build"]);
+  // `scene` legitimately may be null (no scene entered yet). Distinguish that
+  // valid `null` from a malformed scene object: a present non-null value must
+  // validate, but a literal `null` passes through as the not-yet-entered state.
+  const rawScene = value["scene"];
+  const scene = rawScene === null ? null : asScene(rawScene);
+  const sceneInvalid = rawScene !== null && scene === null;
   if (
     party === null ||
     inventory === null ||
@@ -271,7 +390,9 @@ export function asCurrentSave(value: unknown): CurrentSave | null {
     moralLedger === null ||
     rng === null ||
     !isFiniteNumber(grist) ||
-    !isWorldState(worldState)
+    !isWorldState(worldState) ||
+    build === null ||
+    sceneInvalid
   ) {
     return null;
   }
@@ -286,5 +407,7 @@ export function asCurrentSave(value: unknown): CurrentSave | null {
     moralLedger,
     rng,
     worldState,
+    build,
+    scene,
   };
 }

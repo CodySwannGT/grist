@@ -61,7 +61,7 @@ interface FieldSnap {
 
 /** The serialized save shape the bridge round-trips (structurally a v2 save). */
 interface SaveDataV2 {
-  readonly version: 2;
+  readonly version: 3;
   readonly party: readonly {
     readonly id: string;
     readonly level: number;
@@ -87,6 +87,15 @@ interface SaveDataV2 {
   };
   readonly rng: { readonly seed: number; readonly state: number };
   readonly worldState: "reach" | "ashfall";
+  readonly build: {
+    readonly statBonuses: Readonly<Record<string, number>>;
+    readonly equippedShards: readonly string[];
+  };
+  readonly scene: {
+    readonly sceneId: string;
+    readonly nodeId: string;
+    readonly flags: Readonly<Record<string, boolean | string | number>>;
+  } | null;
 }
 
 /**
@@ -102,7 +111,7 @@ interface SaveDataV2 {
 function resolvedSlice(variant: "free" | "wield", grist: number): SaveDataV2 {
   const free = variant === "free";
   return {
-    version: 2,
+    version: 3,
     party: [{ id: "wren", level: 4, shard: MARROW, shardMode: variant }],
     grist,
     inventory: [{ id: "salve", qty: 2 }],
@@ -116,6 +125,8 @@ function resolvedSlice(variant: "free" | "wield", grist: number): SaveDataV2 {
     },
     rng: { seed: FIXED_SEED, state: 987654321 },
     worldState: "reach",
+    build: { statBonuses: {}, equippedShards: [] },
+    scene: null,
   };
 }
 
