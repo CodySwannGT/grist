@@ -160,7 +160,14 @@ function requiemHallName(region: RegionDef, worldState: WorldState): string {
  * @returns True when the region's Bound has been attuned.
  */
 function ch4PrerequisitesMet(region: RegionDef, run: RunState): boolean {
-  return run.shards.includes(region.boundSite);
+  // A region that cages no Bound (`boundSite` undefined — e.g. upper Vanta, #128)
+  // has no attunement gate to satisfy; the requiem-hall is a Roots (#145) beat, so
+  // for a Bound-less region the prerequisite is vacuously unmet (the hall is not its
+  // set-piece). Guarding the optional shard also keeps `includes(undefined)` from
+  // silently matching a run that carries no shards.
+  return (
+    region.boundSite !== undefined && run.shards.includes(region.boundSite)
+  );
 }
 
 /**

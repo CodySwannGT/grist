@@ -3,11 +3,13 @@
  * that boots a {@link RegionDef}-authored region into a deterministic, scene-agnostic
  * session the `__VERIFY__` bridge drives with `scene()` / `state()` / `act()` /
  * `hash()`, plus the per-region Bound-site template (#135) that anchors a region's
- * single Bound site and wires it through the Phase-2 free-vs-wield kit. Engine-free
+ * single Bound site and wires it through the Phase-2 free-vs-wield kit, the Ch.4
+ * Sidhe requiem-hall set-piece (#145), and the Ch.5 Mourne keystone set-piece (#128 —
+ * upper Vanta's Reckoning-trigger anchor, the region that cages no Bound). Engine-free
  * and unit-testable, with zero Phaser, zero I/O, and only the seeded RNG. The bridge
  * cells (`uat/region-harness-cell`, `uat/bound-site-cell`) and the region scene
  * pipeline import from here. Re-export only — all logic lives in the per-concern
- * modules (`./region-runtime`, `./bound-site`).
+ * modules (`./region-runtime`, `./bound-site`, `./requiem-hall`, `./keystone`).
  * @module logic/region
  */
 export {
@@ -38,3 +40,15 @@ export {
   RequiemHallPhases,
   type RequiemHallSession,
 } from "./requiem-hall";
+export {
+  hashKeystone,
+  isKeystoneComplete,
+  isKeystoneReachable,
+  keystoneTriggersReckoning,
+  KEYSTONE_LOCATION,
+  KeystonePhases,
+  openKeystone,
+  playKeystone,
+  playKeystoneToCompletion,
+  type KeystoneSession,
+} from "./keystone";

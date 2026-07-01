@@ -115,6 +115,13 @@ export function openBoundSite(
   ledger: MoralLedger
 ): BoundSiteSession {
   const shard = region.boundSite;
+  // A region may cage no Bound (`boundSite` undefined — upper Vanta, #128); opening a
+  // Bound site on such a region is a caller error (its anchor is elsewhere — the Ch.5
+  // keystone), so reject it explicitly rather than offering a phantom shard. Narrows
+  // `shard` from `BoundId | undefined` to `BoundId` for the rest of the function.
+  if (shard === undefined) {
+    throw new Error(`region "${region.id}" cages no bound site to open`);
+  }
   const def = BOUNDS[shard];
   if (def === undefined) {
     throw new Error(

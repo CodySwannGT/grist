@@ -35,6 +35,10 @@ export const EncounterIds = {
   requiemHall: "requiem-hall",
   deepAudit: "deep-audit",
   halcyonChase: "halcyon-chase",
+  // ── Upper Vanta — the Crown + the Tiers (#128) ──────────────────────────────
+  crownConcord: "crown-concord",
+  mourneRefinery: "mourne-refinery",
+  tiersMarket: "tiers-market",
 } as const;
 
 /** An encounter id (the literal-union of every defined encounter key). */
@@ -105,6 +109,31 @@ export const ENCOUNTERS: {
   "halcyon-chase": {
     id: EncounterIds.halcyonChase,
     enemies: [EnemyIds.halcyonKnight],
+    backdrop: Backdrops.marrow,
+  },
+  // ── Upper Vanta encounters (#128) ───────────────────────────────────────────
+  // The Crown + the Tiers rooms. Per decision 0003, new enemy families / stat
+  // blocks are authored at authoring time and are OUT OF SCOPE here; these
+  // encounters compose EXISTING enemies (House Concord enforcers hold the Crown's
+  // cold order; render-constructs are the refinery's automated arbiters; the deep
+  // auditor arbitrates House Mourne's refinery-spire). The backdrop reuses the
+  // shared `marrow` placeholder (per-region art is out of scope; the Region scene
+  // resolves the shared `region-backdrop` texture at boot). The Reach and Ashfall
+  // variant tables (authored in `content/regions`) draw DIFFERENT subsets so upper
+  // Vanta reads observably differently across the Reckoning.
+  "crown-concord": {
+    id: EncounterIds.crownConcord,
+    enemies: [EnemyIds.houseEnforcer],
+    backdrop: Backdrops.marrow,
+  },
+  "mourne-refinery": {
+    id: EncounterIds.mourneRefinery,
+    enemies: [EnemyIds.houseEnforcer, EnemyIds.deepAuditor],
+    backdrop: Backdrops.marrow,
+  },
+  "tiers-market": {
+    id: EncounterIds.tiersMarket,
+    enemies: [EnemyIds.marrowScrapper, EnemyIds.renderConstruct],
     backdrop: Backdrops.marrow,
   },
 };

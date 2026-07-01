@@ -94,15 +94,27 @@ export type RegionStates = WorldStateResolver<RegionVariant>;
  * A region definition — the region-as-data template. `id` is the region's stable
  * key (a free-form string: a *new* region is authored with its own id, never by
  * widening an engine-side union — that is the "added by authoring data, not code"
- * thesis); `boundSite` is the single Bound shard sited in the region (exactly one,
- * type-enforced as a lone {@link BoundId}); `states` carries both world-state
- * variants. Everything is authored data: a new region is a new `RegionDef`, no
- * engine-code edit (AC scenario 1). Ids of regions registered in {@link REGIONS}
- * are additionally captured by the {@link RegionId} literal union for table reads.
+ * thesis); `boundSite` is the single Bound shard sited in the region (**at most
+ * one**, type-enforced as a lone {@link BoundId}) and is **optional** — a region
+ * that cages no Bound omits it (Story #128: upper Vanta's Crown "consumes, it
+ * doesn't hold", so its anchor is the Ch.5 keystone, not a Bound site); `states`
+ * carries both world-state variants. Everything is authored data: a new region is a
+ * new `RegionDef`, no engine-code edit (AC scenario 1). Ids of regions registered in
+ * {@link REGIONS} are additionally captured by the {@link RegionId} literal union for
+ * table reads.
  */
 export interface RegionDef {
   readonly id: string;
-  readonly boundSite: BoundId;
+  /**
+   * The single Bound shard sited in the region, or `undefined` when the region
+   * cages none. Optional so a keystone-anchored region (upper Vanta, #128) is
+   * expressible: the per-region Bound-site template
+   * ({@link import("../logic/region/bound-site")}) is simply never opened for a
+   * region without one, and consumers that fold the site (the requiem-hall Ch.4
+   * gate, the region-cell digest) treat its absence explicitly rather than
+   * dereferencing a phantom shard.
+   */
+  readonly boundSite?: BoundId;
   readonly states: RegionStates;
 }
 
@@ -110,6 +122,7 @@ export interface RegionDef {
 export const RegionIds = {
   marrow: "marrow",
   roots: "roots",
+  upperVanta: "upper-vanta",
 } as const;
 
 /** A registered region id (the literal-union of every {@link REGIONS} key). */
@@ -193,6 +206,74 @@ export const REGIONS: {
         encounters: [EncounterIds.requiemHall, EncounterIds.deepAudit],
         sideStories: [
           { id: "the-choir-that-remembers", name: "The Choir Gone Quiet" },
+        ],
+      },
+    },
+  },
+  // Upper Vanta — the Crown + the Tiers (#128), the FIRST of Story #121's serial
+  // Act I regions and the one that carries the Ch.5 keystone the others depend on.
+  // Authored against the shipped template (framework #119, CLOSED) in BOTH
+  // world-states, wiki-authoritative (`wiki/design/regions.md` — Vanta the vertical
+  // hub; `wiki/narrative/main-quest.md` — Ch.5 the keystone):
+  //   • The Crown — corporate spires on Aurel's skull (Concord Hall; House Mourne's
+  //     refinery-spire; the Founding plaza); gold light, cold order.
+  //   • The Tiers — the working city (Tobi's workshop; the grand market; Quill
+  //     media-halls).
+  // Unlike every other Act I region, upper Vanta cages NO Bound — "the Crown
+  // consumes, it doesn't hold" (regions.md) — so `boundSite` is omitted and its lone
+  // anchor is the Ch.5 keystone at the Mourne refinery-spire (the Act I climax
+  // set-piece where Mr. Sallow triggers the Reckoning), modeled in
+  // `logic/region/keystone`. Reach and Ashfall draw DIFFERENT encounter tables so
+  // the region reads observably differently across the Reckoning: the Reach is gold
+  // and orderly, the Ashfall half-collapsed and grey (the Crown bunkered/fled, the
+  // Tiers shuttered and scavenger-run). Detailed stat blocks / palettes / dialogue
+  // are living docs (decision 0003), out of scope; this authors the region identity,
+  // key locations, per-region encounters, side-stories, and both variants.
+  "upper-vanta": {
+    id: RegionIds.upperVanta,
+    // No boundSite — the Crown holds no Bound; the anchor is the Ch.5 keystone.
+    states: {
+      reach: {
+        name: "Upper Vanta — the Crown & the Tiers",
+        tone: "verdant",
+        keyLocations: [
+          { id: "concord-hall", name: "The Concord Hall" },
+          {
+            id: "mourne-refinery-spire",
+            name: "House Mourne's Refinery-Spire",
+          },
+          { id: "founding-plaza", name: "The Founding Plaza" },
+          { id: "tobis-workshop", name: "Tobi's Workshop" },
+          { id: "grand-market", name: "The Grand Market" },
+          { id: "quill-media-halls", name: "The Quill Media-Halls" },
+        ],
+        encounters: [EncounterIds.tiersMarket, EncounterIds.crownConcord],
+        sideStories: [
+          { id: "the-founding-holiday", name: "The Founding Holiday" },
+          { id: "tobis-commission", name: "Tobi's Commission" },
+        ],
+      },
+      ashfall: {
+        name: "Upper Vanta — the Grey Crown & the Shuttered Tiers",
+        tone: "ashen",
+        keyLocations: [
+          { id: "concord-hall", name: "The Concord Hall (bunkered)" },
+          {
+            id: "mourne-refinery-spire",
+            name: "House Mourne's Refinery-Spire (the keystone struck)",
+          },
+          { id: "founding-plaza", name: "The Founding Plaza (ash-fallen)" },
+          { id: "tobis-workshop", name: "Tobi's Workshop (shuttered)" },
+          { id: "grand-market", name: "The Grand Market (scavenger-run)" },
+          {
+            id: "quill-media-halls",
+            name: "The Quill Media-Halls (a few stubborn lights)",
+          },
+        ],
+        encounters: [EncounterIds.crownConcord, EncounterIds.mourneRefinery],
+        sideStories: [
+          { id: "the-founding-holiday", name: "The Founding, Mourned" },
+          { id: "tobis-commission", name: "Tobi's Last Commission" },
         ],
       },
     },
