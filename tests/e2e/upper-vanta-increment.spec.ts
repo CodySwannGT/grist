@@ -220,7 +220,13 @@ test.describe("GRIST — upper Vanta increment verification (UAT, #128)", () => 
     await bootVanta(page);
     const reachHashesAgain = await playRegionToComplete(page);
     expect(reachHashesAgain).toEqual(reachHashes);
-    void ashHashes;
+
+    // …and the same reload-determinism holds for the Ashfall (Act II) variant, so
+    // BOTH world-states are proven reproducible across a genuine document boundary
+    // (not just Reach).
+    await bootVanta(page, "ashfall");
+    const ashHashesAgain = await playRegionToComplete(page);
+    expect(ashHashesAgain).toEqual(ashHashes);
 
     expect(errors).toEqual([]);
   });
