@@ -60,7 +60,10 @@ function hashRegion(region: RegionDef, state: WorldState): string {
     variant.tone,
     variant.encounters.join(","),
     variant.keyLocations.map(l => l.id).join(","),
-    region.boundSite,
+    // A region may cage no Bound (`boundSite` undefined — upper Vanta, #128); fold a
+    // stable sentinel so the digest is well-defined either way (never the coerced
+    // "undefined" string) and a Bound-less region still digests reproducibly.
+    region.boundSite ?? "none",
   ].join("|");
   const digest = Array.from(canonical).reduce(
     (hash, char) => Math.imul(hash ^ char.charCodeAt(0), 0x01000193),

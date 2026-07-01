@@ -38,6 +38,11 @@ import {
   type OpenRequiemHallOptions,
   type VerifyRequiemHallState,
 } from "./requiem-hall-cell";
+import {
+  KeystoneCell,
+  type OpenKeystoneOptions,
+  type VerifyKeystoneState,
+} from "./keystone-cell";
 import { RunStateCell, type VerifyRunState } from "./run-state-cell";
 import { type MillDecision } from "../logic/side-story/mill";
 import { TravelCell, type VerifyTravelState } from "./travel-cell";
@@ -119,6 +124,16 @@ const millBeatCell = new MillBeatCell();
  * scene-agnostically, without a live scene attached.
  */
 const requiemHallCell = new RequiemHallCell();
+
+/**
+ * The bridge-held keystone cell (#128): the Ch.5 Mourne keystone set-piece — upper
+ * Vanta's Reckoning-trigger anchor (the region that cages no Bound). Gated purely by
+ * *traversal* (reaching House Mourne's refinery-spire) and played through the pure
+ * set-piece logic in `logic/region`, so the Ch.5 e2e can reach + play the keystone to
+ * completion — observing Mr. Sallow trigger the Reckoning (and the soft-gate when the
+ * spire is un-reached) — scene-agnostically, without a live scene attached.
+ */
+const keystoneCell = new KeystoneCell();
 
 /**
  * The bridge-held defection cell (#146): Halcyon's Ch.4 defection + party expansion,
@@ -313,6 +328,22 @@ export interface DataCellApi {
   /** The requiem-hall snapshot (reachability + beat + phase + completion + hash), or null. */
   readonly requiemHall: () => VerifyRequiemHallState | null;
   /**
+   * Open the Ch.5 Mourne keystone set-piece (#128). Defaults to upper Vanta with the
+   * Ch.5 prerequisite met (House Mourne's refinery-spire reached) in Act I `reach`;
+   * pass `{ reached: false }` to open the soft-gated (unreachable) keystone, or
+   * `worldState`/`seed` to vary the fork.
+   */
+  readonly openKeystone: (
+    regionId?: string,
+    options?: OpenKeystoneOptions
+  ) => void;
+  /** Advance the keystone set-piece one authored beat (no-op when gated/complete). */
+  readonly playKeystone: () => void;
+  /** Drive the keystone set-piece to its terminal phase — Sallow triggers the Reckoning (no-op when gated). */
+  readonly playKeystoneToCompletion: () => void;
+  /** The keystone snapshot (reachability + beat + phase + Reckoning-trigger + completion + hash), or null. */
+  readonly keystone: () => VerifyKeystoneState | null;
+  /**
    * Open Halcyon's defection requiem-hall in the Roots / the Deep (#146). Defaults to
    * a Ch.4-ready run (Velith attuned); pass `{ withVelith: false }` to open the
    * soft-gated hall so firing too early never recruits her.
@@ -389,6 +420,11 @@ export function dataCellApi(): DataCellApi {
     playRequiemHall: () => requiemHallCell.play(),
     playRequiemHallToCompletion: () => requiemHallCell.playToCompletion(),
     requiemHall: () => requiemHallCell.snapshot(),
+    openKeystone: (regionId?: string, options?: OpenKeystoneOptions) =>
+      keystoneCell.open(regionId, options),
+    playKeystone: () => keystoneCell.play(),
+    playKeystoneToCompletion: () => keystoneCell.playToCompletion(),
+    keystone: () => keystoneCell.snapshot(),
     openDefection: (options?: OpenDefectionOptions) =>
       defectionCell.openRequiem(options),
     playDefectionRequiem: () => defectionCell.playRequiemToTruth(),
