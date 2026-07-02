@@ -17,6 +17,15 @@
     },
     "order": ["production"]
   },
+  "exploration": {
+    "default": "production",
+    "environments": {
+      "production": {
+        "mutation": "full",
+        "prodMutationAck": "Local-only offline game: 'production' is the only environment, and the only mutations are the player's own local IndexedDB save state — there is no shared backend or other-user data to harm."
+      }
+    }
+  },
   "wiki": {
     "source": {
       "path": "wiki"
