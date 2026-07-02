@@ -80,6 +80,13 @@
 | [0007 — Local-only, offline](decisions/0007-local-only-offline.md) | Local saves only; no remote connectivity | 2026-06-27 |
 | [0008 — Local persistence: IndexedDB](decisions/0008-local-persistence-indexeddb.md) | IndexedDB (via `idb`) for saves, and why not SQLite | 2026-06-27 |
 
+## Personas
+| Page | Summary | Updated |
+|---|---|---|
+| [README](personas/README.md) | The role/instance contract feeding the lisa-phaser persona subagents | 2026-07-01 |
+| [target-players](personas/target-players.md) | Audience archetypes the target-player / player-advocate subagents speak for | 2026-07-01 |
+| [stakeholders](personas/stakeholders.md) | Publisher, market, and production constraints for the business-lens subagents | 2026-07-01 |
+
 ## Playbooks
 | Page | Summary | Updated |
 |---|---|---|
