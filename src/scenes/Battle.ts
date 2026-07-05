@@ -51,6 +51,7 @@ import {
   buildUnitView,
   playEventJuice,
   syncUnitView,
+  type StageViews,
   type UnitView,
 } from "../ui/battler-stage";
 import { battlerArtRef } from "../ui/battler-view";
@@ -299,7 +300,10 @@ export class Battle extends Phaser.Scene {
    */
   #consumeLogEvents(): void {
     const { log } = this.#runner.state();
-    const views = { party: this.#partyViews, enemies: this.#enemyViews };
+    const views: StageViews = {
+      party: this.#partyViews,
+      enemies: this.#enemyViews,
+    };
     for (let index = this.#logCursor; index < log.length; index++) {
       const event = log[index];
       if (event && event.kind !== ActionKinds.tick) {

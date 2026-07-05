@@ -28,7 +28,7 @@ export const BattlerKinds = {
 } as const;
 
 /** A battler art kind. */
-export type BattlerKind = (typeof BattlerKinds)[keyof typeof BattlerKinds];
+type BattlerKind = (typeof BattlerKinds)[keyof typeof BattlerKinds];
 
 /** The facing directions the sheets provide. */
 export const BattlerDirs = {
