@@ -30,6 +30,8 @@ export const JuiceTuning = {
   popupRisePx: 14,
   /** Damage-popup rise + fade duration (ms). */
   popupMs: 550,
+  /** Break hitstop duration (ms) — the brief tween freeze on a Break. */
+  hitstopMs: 120,
 } as const;
 
 /** Damage-popup text style (monospace chrome, matching the HUD). */
@@ -94,6 +96,27 @@ export function hitFlash(
   sprite.setTint(FLASH_TINT).setTintMode(Phaser.TintModes.FILL);
   scene.time.delayedCall(JuiceTuning.flashMs, () => {
     sprite.clearTint();
+  });
+}
+
+/**
+ * A brief hitstop — freeze every active tween for {@link JuiceTuning.hitstopMs},
+ * then resume — the weight behind a Break. The resume is scheduled on the scene
+ * clock (unaffected by the tween freeze) so it always fires. Sprite ANIMATIONS
+ * (the Break burst) run on the anims manager, not the tween manager, so they keep
+ * playing through the freeze — only motion tweens (lunges, popups) stutter. A
+ * no-op under reduced motion (the freeze reads as a motion stutter that
+ * reduced-motion users opt out of; the burst + tint still play).
+ * @param scene - The scene whose active tweens briefly freeze.
+ * @returns void
+ */
+export function hitstop(scene: Phaser.Scene): void {
+  if (prefersReducedMotion()) {
+    return;
+  }
+  scene.tweens.pauseAll();
+  scene.time.delayedCall(JuiceTuning.hitstopMs, () => {
+    scene.tweens.resumeAll();
   });
 }
 

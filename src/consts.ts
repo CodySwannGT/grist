@@ -11,6 +11,7 @@
  * and its label.
  * @module consts
  */
+import { Elements, type ElementId } from "./logic/combat/types";
 import {
   GRIST_GOLD,
   GRIST_GOLD_CSS,
@@ -105,7 +106,31 @@ export const BattleColors = {
   atbBarBg: 0x1d2738,
   atbBarFill: 0x4cc2e0,
   title: "#ffd166",
+  /** The tint held on a Broken combatant while it stays vulnerable (#201). */
+  brokenTint: 0xff8f8f,
 } as const;
+
+/**
+ * The combat color language (art-direction §"Elemental color coding") as the
+ * tints the render layer multiplies onto each element's craft-FX strip so an
+ * action reads by element: Flux cyan-white, Ash grey-violet, Iron steel-orange,
+ * Bloom warm green-gold, Gloom void-black. Because a tint MULTIPLIES the strip's
+ * pixels, a pure black (0x000000) would erase the FX — so Gloom is the darkest,
+ * most-desaturated tone (a deep violet-black) that still reads as void while
+ * keeping the strip legible. `neutral` is the un-elemental (Strike) flavor and
+ * `break` is the Pressure→Break burst (grist-gold, {@link GRIST_GOLD}).
+ */
+export const FxColors: Readonly<
+  Record<ElementId | "neutral" | "break", number>
+> = {
+  [Elements.flux]: 0xaef7ff,
+  [Elements.ash]: 0xb7a2d6,
+  [Elements.iron]: 0xe0912f,
+  [Elements.bloom]: 0xc4e06a,
+  [Elements.gloom]: 0x3b3350,
+  neutral: 0xffffff,
+  break: GRIST_GOLD,
+};
 
 /**
  * Battle timing. `atbTickMs` is the Normal-speed real-time step at which the

@@ -307,6 +307,10 @@ function resolveHit(
     target: refs.targetRef,
     roll: rolls.varianceRoll,
     damage: appliedDamage,
+    // Annotate the logged hit with its resolved element (Craft only; a physical
+    // Strike is neutral and leaves this absent) so the render layer can read the
+    // action's element without re-deriving it from the spell table.
+    ...(profile.element ? { element: profile.element } : {}),
   };
   return {
     ...state,

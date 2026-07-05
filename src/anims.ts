@@ -31,10 +31,22 @@ const FX_FPS = 14;
 export const FxAnims = {
   /** Physical hit arc (strike / bind). */
   slash: "anim-fx-slash",
-  /** Craft / magic burst. */
+  /** Craft / magic burst (neutral fallback for an element-less Craft). */
   spark: "anim-fx-spark",
   /** Defend / vanish puff. */
   smoke: "anim-fx-smoke",
+  /** Flux craft — lightning arc (view tints it cyan-white). */
+  flux: "anim-fx-flux",
+  /** Ash craft — ember flare (view tints it grey-violet). */
+  ash: "anim-fx-ash",
+  /** Iron craft — earthen shard burst (view tints it steel-orange). */
+  iron: "anim-fx-iron",
+  /** Bloom craft — verdant spray (view tints it green-gold). */
+  bloom: "anim-fx-bloom",
+  /** Gloom craft — void crystal (view tints it a deep violet-black void). */
+  gloom: "anim-fx-gloom",
+  /** The Break burst — the dedicated Pressure→Break visual moment. */
+  break: "anim-fx-break",
 } as const;
 
 /**
@@ -66,6 +78,75 @@ export const FX_FRAMES: Readonly<
     Frames.fx.smoke3,
     Frames.fx.smoke4,
     Frames.fx.smoke5,
+  ],
+  flux: [
+    Frames.fx.flux0,
+    Frames.fx.flux1,
+    Frames.fx.flux2,
+    Frames.fx.flux3,
+    Frames.fx.flux4,
+    Frames.fx.flux5,
+    Frames.fx.flux6,
+    Frames.fx.flux7,
+  ],
+  ash: [
+    Frames.fx.ash0,
+    Frames.fx.ash1,
+    Frames.fx.ash2,
+    Frames.fx.ash3,
+    Frames.fx.ash4,
+    Frames.fx.ash5,
+    Frames.fx.ash6,
+    Frames.fx.ash7,
+  ],
+  iron: [
+    Frames.fx.iron0,
+    Frames.fx.iron1,
+    Frames.fx.iron2,
+    Frames.fx.iron3,
+    Frames.fx.iron4,
+    Frames.fx.iron5,
+    Frames.fx.iron6,
+    Frames.fx.iron7,
+    Frames.fx.iron8,
+    Frames.fx.iron9,
+    Frames.fx.iron10,
+    Frames.fx.iron11,
+    Frames.fx.iron12,
+    Frames.fx.iron13,
+  ],
+  bloom: [
+    Frames.fx.bloom0,
+    Frames.fx.bloom1,
+    Frames.fx.bloom2,
+    Frames.fx.bloom3,
+    Frames.fx.bloom4,
+    Frames.fx.bloom5,
+    Frames.fx.bloom6,
+    Frames.fx.bloom7,
+  ],
+  gloom: [
+    Frames.fx.gloom0,
+    Frames.fx.gloom1,
+    Frames.fx.gloom2,
+    Frames.fx.gloom3,
+    Frames.fx.gloom4,
+    Frames.fx.gloom5,
+    Frames.fx.gloom6,
+    Frames.fx.gloom7,
+    Frames.fx.gloom8,
+    Frames.fx.gloom9,
+  ],
+  break: [
+    Frames.fx.break0,
+    Frames.fx.break1,
+    Frames.fx.break2,
+    Frames.fx.break3,
+    Frames.fx.break4,
+    Frames.fx.break5,
+    Frames.fx.break6,
+    Frames.fx.break7,
+    Frames.fx.break8,
   ],
 };
 
