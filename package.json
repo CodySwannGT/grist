@@ -40,6 +40,8 @@
     "vitest": "^4.1.0"
   },
   "scripts": {
+    "assets": "node scripts/pack-assets.mjs",
+    "assets:check": "node scripts/pack-assets.mjs --check",
     "build": "vite build",
     "postinstall": "[ -n \"$CI\" ] || node node_modules/@codyswann/lisa/dist/index.js --yes --skip-git-check . 2>/dev/null || true",
     "test:integration": "vitest run tests/integration --passWithNoTests",
