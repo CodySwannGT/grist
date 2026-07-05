@@ -158,11 +158,16 @@ function settledSave(variant: "free" | "wield"): SaveDataV2 {
 /**
  * Re-derive the corruption a restored choice carries, the way the kit does: free
  * accrues none; wield accrues the carried shard's wield rate read from the live
- * content table via a freshly-opened site. Proves the WIELDED carry restores WITH its
- * (positive) corruption — not merely the variant flag — without persisting a
- * fractional count the save validator would reject.
+ * content table via a freshly-opened site (the only content-table access an e2e has).
+ * Corruption is intentionally NOT persisted as a number — the save validator rejects
+ * fractional counts — so it is always re-derived from the persisted
+ * `choice.shard`+`choice.variant`, exactly as the live site does. Callers pass the
+ * `variant` that actually survived `loadSave()`/`runState()` (the rehydrated
+ * `run.choice.variant`), so this derivation is driven by the reloaded state, not an
+ * independent literal: a regression where the wielded carry fails to rehydrate changes
+ * `run.choice.variant`, which changes (or fails) the asserted value.
  * @param page - The Playwright page.
- * @param variant - The restored carry mode.
+ * @param variant - The carry mode read off the rehydrated session.
  * @returns The corruption the restored carry accrues (0 for free, > 0 for wield).
  */
 async function restoredCorruption(
@@ -233,10 +238,15 @@ test.describe("GRIST — Korrholt the Anvil-Heart free-vs-wield site (UAT, #130)
       variant: "free",
     });
     expect(restored.moralLedger.karma).toBe(1);
-    expect(run!.choice.variant).toBe("free");
     expect(run!.moralLedger.karma).toBe(1);
-    // Freeing accrues NO corruption — the restored carry derives zero.
-    expect(await restoredCorruption(page, "free")).toBe(0);
+    // Freeing accrues NO corruption — derived from the variant that survived the
+    // reload (`run.choice.variant`), so the assertion is driven by the rehydrated
+    // session rather than an independent literal.
+    const restoredFreeVariant = run!.choice.variant;
+    expect(restoredFreeVariant).toBe("free");
+    expect(
+      await restoredCorruption(page, restoredFreeVariant as "free" | "wield")
+    ).toBe(0);
 
     expect(errors).toEqual([]);
   });
@@ -285,12 +295,18 @@ test.describe("GRIST — Korrholt the Anvil-Heart free-vs-wield site (UAT, #130)
       variant: "wield",
     });
     expect(restored.moralLedger.karma).toBe(-1);
-    expect(run!.choice.variant).toBe("wield");
     expect(run!.moralLedger.karma).toBe(-1);
-    // The accrued corruption restored WITH the wielded carry: re-derived from the
-    // persisted choice through the content table, strictly positive, and identical to
-    // what Wield accrued before the reload — not just the variant flag.
-    const restoredWieldCorruption = await restoredCorruption(page, "wield");
+    // The accrued corruption restored WITH the wielded carry: derived from the variant
+    // that actually survived the reload (`run.choice.variant`) through the content
+    // table — strictly positive, and identical to what Wield accrued before the reload.
+    // Sourcing the mode from the rehydrated session (not a hardcoded literal) means a
+    // regression where the wielded carry fails to rehydrate changes this value.
+    const restoredWieldVariant = run!.choice.variant;
+    expect(restoredWieldVariant).toBe("wield");
+    const restoredWieldCorruption = await restoredCorruption(
+      page,
+      restoredWieldVariant as "free" | "wield"
+    );
     expect(restoredWieldCorruption).toBeGreaterThan(0);
     expect(restoredWieldCorruption).toBe(accruedBeforeReload);
 
