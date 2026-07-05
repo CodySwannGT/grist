@@ -54,6 +54,12 @@ import {
   type VerifyReunionState,
 } from "./reunion-cell";
 import { type ReunionId } from "../content";
+import {
+  EndingsCell,
+  type OpenEndingsOptions,
+  type VerifyEndingsState,
+} from "./endings-cell";
+import { type EndingId } from "../logic/narrative";
 import { RunStateCell, type VerifyRunState } from "./run-state-cell";
 import { type MillDecision } from "../logic/side-story/mill";
 import { TravelCell, type VerifyTravelState } from "./travel-cell";
@@ -178,6 +184,16 @@ const defectionCell = new DefectionCell();
 const reunionCell = new ReunionCell();
 
 /**
+ * The bridge-held endings cell (#142): the Act II ending-gate resolver + finale
+ * set-piece, gated on the world having turned to Ashfall and resolved through the pure
+ * `logic/narrative/endings` + `logic/narrative/finale` kit, so the endings e2e can load
+ * two standing profiles and observe the reachable ending set differ (gated by standing),
+ * then reach the finale at Aurel's heart (Sallow confronted, the Choir's Song heard
+ * whole) and commit an ending — scene-agnostically, without a live scene attached.
+ */
+const endingsCell = new EndingsCell();
+
+/**
  * The bridge-held travel cell (#136): the earned-freedom mobility chain (foot →
  * skiff → airship → fast-travel) and its capability/knowledge soft-gate live here in
  * memory (tier / gate / fast-travel semantics delegated to `logic/travel`), so the
@@ -294,6 +310,9 @@ async function clearAndReset(): Promise<void> {
   // completed/missed) alongside the others so a clearSave leaves reunions() reading the
   // starting roster with an untouched board, not a stale post-reunion state (#140).
   reunionCell.reset();
+  // Reset the endings cell back to the neutral damning-default floor so a clearSave
+  // leaves endings() reading the fresh standing, not a stale post-choice finale (#142).
+  endingsCell.reset();
   // Reset the build cell to the empty build alongside the others so a clearSave fields
   // the base party in the next snapshot, not a stale grown build (#116).
   buildCell.reset();
@@ -445,6 +464,12 @@ export interface DataCellApi {
   readonly advanceReunions: () => void;
   /** The reunion snapshot (active roster with stats + kit, per-reunion statuses, reachability, hash). */
   readonly reunions: () => VerifyReunionState;
+  /** Load a standing profile the ending gates resolve through (#142). */
+  readonly openEndings: (options?: OpenEndingsOptions) => void;
+  /** Commit one of the finale's reachable endings (#142). */
+  readonly chooseEnding: (id: EndingId) => void;
+  /** Read the reachable ending set + finale state at Aurel's heart (#142). */
+  readonly endings: () => VerifyEndingsState;
   /** Project the recruited roster + reunion statuses into a CurrentSave the `save` path persists. */
   readonly reunionsSave: () => CurrentSave;
   /** Earn the skiff (foot → skiff), opening regional travel (#136). */
@@ -530,6 +555,9 @@ export function dataCellApi(): DataCellApi {
     advanceReunions: () => reunionCell.advance(),
     reunions: () => reunionCell.snapshot(),
     reunionsSave: () => reunionCell.toSave(),
+    openEndings: (options?: OpenEndingsOptions) => endingsCell.open(options),
+    chooseEnding: (id: EndingId) => endingsCell.choose(id),
+    endings: () => endingsCell.snapshot(),
     earnSkiff: () => travelCell.earnSkiff(),
     earnAirship: () => travelCell.earnAirship(),
     discoverSafehouse: (safehouse: string) => travelCell.discover(safehouse),
