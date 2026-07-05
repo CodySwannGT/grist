@@ -54,6 +54,7 @@ export const BoundIds = {
   emberwisp: "emberwisp",
   marrowBound: "marrow-bound",
   velithDeepbound: "velith-deepbound",
+  sylvath: "sylvath",
 } as const;
 
 /** A Bound id (the literal-union of every defined shard key). */
@@ -133,5 +134,36 @@ export const BOUNDS: {
     growthBias: { foc: 2, spd: 1 },
     corruptionRate: 0.05,
     variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.05 } },
+  },
+  // The Sylvemarch Bound DATA REFERENCE per #129: Sylvath, the Green Wyrm — the
+  // great caged wyrm at the heart of the surviving forest, the one Bound of the
+  // Sidhe enclave (wiki/design/regions.md — Sylvemarch; wiki/design/bestiary.md —
+  // Sylvath, the Green Wyrm). Element `bloom` (the living Weave of the Green
+  // Mother's march). Unlike Velith the "near-free" Deep-bound, Sylvath is a MAJOR
+  // free-vs-wield decision (a great power caged, not an ancient one almost beyond
+  // the leash): its Wield corruption is the HEAVIEST authored Bound to date —
+  // strictly above the Marrow Bound's 0.1 — so wielding the Green Wyrm accrues the
+  // starkest cost while freeing it stays corruption-free (the safe attunement).
+  // This is a MINIMAL, data-only reference so the Sylvemarch region can `site` it
+  // via `boundSite`; the free-vs-wield resolution reuses the shipped Bound-site
+  // template (#135) + Phase-2 kit (#69) verbatim. Combat stat tuning beyond the
+  // corruption rate stays deferred (decision 0003).
+  sylvath: {
+    id: BoundIds.sylvath,
+    name: "Sylvath, the Green Wyrm",
+    element: Elements.bloom,
+    bind: {
+      id: BindSpellIds.bindBloom,
+      name: "Bind: Bloom",
+      element: Elements.bloom,
+      apCost: 0,
+      gristCost: 14,
+      power: 18,
+      target: SpellTargets.all,
+    },
+    teaches: [SpellIds.spark],
+    growthBias: { wrd: 2, foc: 1 },
+    corruptionRate: 0.14,
+    variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.14 } },
   },
 };

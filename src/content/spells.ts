@@ -33,6 +33,7 @@ export const BindSpellIds = {
   bindWisp: "bind-wisp",
   bindMarrow: "bind-marrow",
   bindDeep: "bind-deep",
+  bindBloom: "bind-bloom",
 } as const;
 
 /** A Bind action id. */
