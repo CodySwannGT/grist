@@ -340,5 +340,6 @@ export const Frames = {
     arrow: "arrow",
     choiceBox: "choice-box",
     dialogBox: "dialog-box",
+    panel: "panel",
   },
 } as const;

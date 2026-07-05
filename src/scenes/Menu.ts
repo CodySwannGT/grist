@@ -21,6 +21,7 @@
 import Phaser from "phaser";
 import { GameView, SceneKeys } from "../consts";
 import { MenuColors, MenuLayout, MenuTextStyles } from "../menu-consts";
+import { addCursor, addPanel } from "../ui/chrome";
 import {
   PAUSE_MENU_ENTRIES,
   PauseMenuEntryIds,
@@ -60,8 +61,8 @@ export class Menu extends Phaser.Scene {
   #openPanel: PauseMenuEntryId | null = null;
   /** The pooled per-entry label texts, parallel to {@link PAUSE_MENU_ENTRIES}. */
   #entryLabels: readonly Phaser.GameObjects.Text[] = [];
-  #caret!: Phaser.GameObjects.Text;
-  #panelBox!: Phaser.GameObjects.Rectangle;
+  #caret!: Phaser.GameObjects.Image;
+  #panelBox!: Phaser.GameObjects.NineSlice;
   #panelTitle!: Phaser.GameObjects.Text;
   /** The pooled detail-panel body lines (text set/cleared on render). */
   #panelLines: readonly Phaser.GameObjects.Text[] = [];
@@ -83,14 +84,14 @@ export class Menu extends Phaser.Scene {
     this.#entryLabels = PAUSE_MENU_ENTRIES.map((entry, row) =>
       this.#buildEntry(entry, row)
     );
-    this.#caret = this.add
-      .text(
-        MenuLayout.caretX,
-        MenuLayout.firstEntryY,
-        "▶",
-        MenuTextStyles.entry
-      )
-      .setOrigin(0.5);
+    // The grist-gold `arrow` cursor rotated a quarter-turn to point right at the
+    // focused entry (the pack art points down), replacing the old "▶" text glyph.
+    this.#caret = addCursor(
+      this,
+      MenuLayout.caretX,
+      MenuLayout.firstEntryY,
+      -Math.PI / 2
+    ).setOrigin(0.5);
     this.#buildPanel();
     this.#buildHint();
 
@@ -133,16 +134,13 @@ export class Menu extends Phaser.Scene {
    * @returns void
    */
   #buildPanel(): void {
-    this.#panelBox = this.add
-      .rectangle(
-        MenuLayout.panelX,
-        MenuLayout.panelY,
-        MenuLayout.panelWidth,
-        MenuLayout.panelHeight,
-        MenuColors.panelFill
-      )
-      .setOrigin(0, 0)
-      .setStrokeStyle(1, MenuColors.panelStroke);
+    this.#panelBox = addPanel(
+      this,
+      MenuLayout.panelX,
+      MenuLayout.panelY,
+      MenuLayout.panelWidth,
+      MenuLayout.panelHeight
+    ).setOrigin(0, 0);
     this.#panelTitle = this.add.text(
       MenuLayout.panelX + MenuLayout.panelPadX,
       MenuLayout.panelTitleY,
@@ -260,9 +258,7 @@ export class Menu extends Phaser.Scene {
         row === focused ? MenuColors.entryFocused : MenuColors.entry
       );
     });
-    this.#caret
-      .setY(MenuLayout.firstEntryY + focused * MenuLayout.rowGap)
-      .setColor(MenuColors.entryFocused);
+    this.#caret.setY(MenuLayout.firstEntryY + focused * MenuLayout.rowGap);
     this.#renderPanel();
   }
 

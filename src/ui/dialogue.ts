@@ -25,7 +25,6 @@
 import Phaser from "phaser";
 import { AtlasKeys, Frames } from "../assets";
 import {
-  DialogueColors,
   DialogueEvents,
   DialogueLayout,
   DialogueTextStyles,
@@ -45,15 +44,16 @@ import {
 } from "../logic/narrative";
 import { eventsCenter } from "../services/events";
 import { GuardedText } from "./hud-text";
+import { addPanel, enablePanelTap, PanelTint } from "./chrome";
 import { dialogueChoiceRect } from "./dialogue-layout";
 import type { Rect } from "./layout";
 
 /** The scene-definition table the presenter plays through, keyed by scene id. */
 type SceneTable = Readonly<Record<string, SceneDef>>;
 
-/** One choice-button slot: its background rect, label, and hit-rect. */
+/** One choice-button slot: its 9-slice panel, label, and hit-rect. */
 interface ChoiceSlot {
-  readonly fill: Phaser.GameObjects.Rectangle;
+  readonly fill: Phaser.GameObjects.NineSlice;
   readonly label: GuardedText;
   readonly rect: Rect;
 }
@@ -113,8 +113,8 @@ export class DialoguePresenter {
   readonly #table: SceneTable;
   #state: DialoguePresenterState;
 
-  #box!: Phaser.GameObjects.Rectangle;
-  #portrait!: Phaser.GameObjects.Rectangle;
+  #box!: Phaser.GameObjects.NineSlice;
+  #portrait!: Phaser.GameObjects.NineSlice;
   /** The speaker's faceset, shown over the portrait slot for known speakers. */
   #portraitImage!: Phaser.GameObjects.Image;
   #speaker!: GuardedText;
@@ -155,27 +155,24 @@ export class DialoguePresenter {
    */
   #create(): void {
     const add = this.#scene.add;
-    this.#box = add
-      .rectangle(
-        DialogueLayout.boxX,
-        DialogueLayout.boxY,
-        DialogueLayout.boxWidth,
-        DialogueLayout.boxHeight,
-        DialogueColors.boxFill
-      )
+    this.#box = addPanel(
+      this.#scene,
+      DialogueLayout.boxX,
+      DialogueLayout.boxY,
+      DialogueLayout.boxWidth,
+      DialogueLayout.boxHeight
+    )
       .setOrigin(0, 0)
-      .setStrokeStyle(1, DialogueColors.boxStroke)
       .setDepth(DIALOGUE_DEPTH);
-    this.#portrait = add
-      .rectangle(
-        DialogueLayout.portraitX,
-        DialogueLayout.portraitY,
-        DialogueLayout.portraitSize,
-        DialogueLayout.portraitSize,
-        DialogueColors.portraitFill
-      )
+    this.#portrait = addPanel(
+      this.#scene,
+      DialogueLayout.portraitX,
+      DialogueLayout.portraitY,
+      DialogueLayout.portraitSize,
+      DialogueLayout.portraitSize
+    )
       .setOrigin(0, 0)
-      .setStrokeStyle(1, DialogueColors.portraitStroke)
+      .setTint(PanelTint.active)
       .setDepth(DIALOGUE_DEPTH);
     this.#portraitImage = add
       .image(
@@ -255,26 +252,16 @@ export class DialoguePresenter {
    */
   #makeChoiceSlot(index: number): ChoiceSlot {
     const rect = dialogueChoiceRect(index);
-    const fill = this.#scene.add
-      .rectangle(
-        rect.x,
-        rect.y,
-        rect.width,
-        rect.height,
-        DialogueColors.choiceFill
-      )
+    const fill = addPanel(this.#scene, rect.x, rect.y, rect.width, rect.height)
       .setOrigin(0, 0)
-      .setStrokeStyle(1, DialogueColors.choiceStroke)
       .setDepth(DIALOGUE_DEPTH)
       .setVisible(false);
     // The touch path: a tapped choice button reports its index to the scene's
     // pointer handler (set via onChoicePointer), which routes it through the
     // semantic input layer — the same intent a number-key press produces.
-    fill
-      .setInteractive({ useHandCursor: true })
-      .on(Phaser.Input.Events.POINTER_DOWN, () =>
-        this.#onChoicePointer?.(index)
-      );
+    enablePanelTap(fill, rect.width, rect.height, () =>
+      this.#onChoicePointer?.(index)
+    );
     const label = this.#makeText(
       rect.x + DialogueLayout.choicePadX,
       rect.y + 4,

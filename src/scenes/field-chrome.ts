@@ -8,6 +8,7 @@
 import type Phaser from "phaser";
 import { ImageKeys } from "../assets";
 import { FieldColors, FieldLayout, FieldTextStyles, GameView } from "../consts";
+import { addPanel } from "../ui/chrome";
 import { GristPalette } from "../logic/render";
 import { type MarrowRoomDef } from "../content/map";
 
@@ -74,19 +75,17 @@ export function drawFieldChrome(
   scene: Phaser.Scene,
   room: MarrowRoomDef
 ): {
-  readonly loreBox: Phaser.GameObjects.Rectangle;
+  readonly loreBox: Phaser.GameObjects.NineSlice;
   readonly loreText: Phaser.GameObjects.Text;
 } {
-  const loreBox = scene.add
-    .rectangle(
-      FieldLayout.loreBoxX,
-      FieldLayout.loreBoxY,
-      FieldLayout.loreBoxWidth,
-      FieldLayout.loreBoxHeight,
-      FieldColors.loreBoxFill
-    )
+  const loreBox = addPanel(
+    scene,
+    FieldLayout.loreBoxX,
+    FieldLayout.loreBoxY,
+    FieldLayout.loreBoxWidth,
+    FieldLayout.loreBoxHeight
+  )
     .setOrigin(0, 0)
-    .setStrokeStyle(1, FieldColors.loreBoxStroke)
     .setVisible(false);
   const loreText = scene.add
     .text(

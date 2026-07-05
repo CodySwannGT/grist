@@ -38,6 +38,7 @@ import {
 } from "./commands";
 import { commandRect, HudColors, HudLayout, unitCenter } from "./layout";
 import { GuardedText, makeText, nameForRef } from "./hud-text";
+import { addCursor, addPanel, PanelTint } from "./chrome";
 
 /** Vertical offset of a party row's second line (AP + ATB gauge). */
 const ROW_LINE2_DY = 9;
@@ -58,7 +59,7 @@ interface PartyRow {
 /** The pooled objects for one command button (its highlight box + label). */
 interface CommandButton {
   readonly id: CommandId;
-  readonly box: Phaser.GameObjects.Rectangle;
+  readonly box: Phaser.GameObjects.NineSlice;
   readonly label: GuardedText;
 }
 
@@ -70,7 +71,7 @@ export class BattleHud {
   readonly #grist: GuardedText;
   readonly #speed: GuardedText;
   readonly #targetLabel: GuardedText;
-  readonly #marker: Phaser.GameObjects.Triangle;
+  readonly #marker: Phaser.GameObjects.Image;
   readonly #status: BattleStatusPanel;
   readonly #rows: readonly PartyRow[];
   readonly #buttons: readonly CommandButton[];
@@ -142,13 +143,12 @@ export class BattleHud {
   }
 
   /**
-   * Build the downward target caret (repositioned over the targeted enemy).
-   * @returns The marker triangle.
+   * Build the downward target caret — the grist-gold `arrow` cursor (the pack art
+   * points down) repositioned over the targeted enemy each frame.
+   * @returns The marker image.
    */
-  #buildMarker(): Phaser.GameObjects.Triangle {
-    const marker = this.#scene.add
-      .triangle(0, 0, 0, 0, 8, 0, 4, 6, HudColors.marker)
-      .setVisible(false);
+  #buildMarker(): Phaser.GameObjects.Image {
+    const marker = addCursor(this.#scene, 0, 0).setVisible(false);
     return this.#track(marker);
   }
 
@@ -203,15 +203,9 @@ export class BattleHud {
   #buildButton(id: CommandId): CommandButton {
     const rect = commandRect(COMMAND_ORDER.indexOf(id));
     const box = this.#track(
-      this.#scene.add
-        .rectangle(
-          rect.x,
-          rect.y,
-          rect.width,
-          rect.height,
-          HudColors.highlightFill
-        )
+      addPanel(this.#scene, rect.x, rect.y, rect.width, rect.height)
         .setOrigin(0, 0)
+        .setTint(PanelTint.active)
         .setVisible(false)
     );
     const zone = this.#track(
@@ -277,8 +271,10 @@ export class BattleHud {
       return;
     }
     const tag = enemy.broken ? " BREAK" : ` P${enemy.pressure}`;
+    // The gold `arrow` caret (below) marks the target now, so the label drops its
+    // old "> " text cursor and reads as a plain name + Pressure/Break tag.
     this.#targetLabel.set(
-      `> ${nameForRef(enemy.ref)}${tag}`,
+      `${nameForRef(enemy.ref)}${tag}`,
       enemy.broken ? HudColors.breakTag : HudColors.text
     );
     const center = unitCenter(BattleSides.enemies, target);

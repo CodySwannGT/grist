@@ -83,7 +83,7 @@ export class Field extends Phaser.Scene {
   #facing: BattlerDir = BattlerDirs.down;
   /** The examinable-prop marker for the current room, or null when it has none. */
   #sign: Phaser.GameObjects.Rectangle | null = null;
-  #loreBox!: Phaser.GameObjects.Rectangle;
+  #loreBox!: Phaser.GameObjects.NineSlice;
   #loreText!: Phaser.GameObjects.Text;
   /** The field HUD (persistent grist readout, context prompt, mini-map). */
   #hud!: FieldHud;

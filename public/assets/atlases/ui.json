@@ -48,9 +48,33 @@
         "y": 0.5
       }
     },
-    "arrow": {
+    "panel": {
       "frame": {
         "x": 73,
+        "y": 67,
+        "w": 16,
+        "h": 16
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+      },
+      "sourceSize": {
+        "w": 16,
+        "h": 16
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "arrow": {
+      "frame": {
+        "x": 95,
         "y": 67,
         "w": 13,
         "h": 13
