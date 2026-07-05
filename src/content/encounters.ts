@@ -47,6 +47,10 @@ export const EncounterIds = {
   theGreatFoundry: "the-great-foundry",
   frameYards: "frame-yards",
   ripperRow: "ripper-row",
+  // ── Cinderfen — the ashlands (#131) ─────────────────────────────────────────
+  theStripMines: "the-strip-mines",
+  theDeadRefineries: "the-dead-refineries",
+  theCinderWastes: "the-cinder-wastes",
 } as const;
 
 /** An encounter id (the literal-union of every defined encounter key). */
@@ -195,6 +199,35 @@ export const ENCOUNTERS: {
   "ripper-row": {
     id: EncounterIds.ripperRow,
     enemies: [EnemyIds.houseEnforcer, EnemyIds.deepAuditor],
+    backdrop: Backdrops.marrow,
+  },
+  // ── Cinderfen encounters (#131) ─────────────────────────────────────────────
+  // The abandoned strip-mines, the dead refineries, and the haunted cinder-wastes
+  // of the ashlands. Per decision 0003, new enemy families / stat blocks are
+  // authored at authoring time and are OUT OF SCOPE here; these encounters compose
+  // EXISTING enemies (the strip-mines' scavengers and abandoned render-constructs;
+  // the dead refineries' haunted husks and requiem wraiths of a magic-dead waste;
+  // the cinder-wastes' wraiths and the Ashling drifting the ash). The backdrop
+  // reuses the shared `marrow` placeholder (per-region art is out of scope; the
+  // Region scene resolves the shared `region-backdrop` texture at boot until #200).
+  // The Reach and Ashfall variant tables (authored in `content/regions`) draw
+  // DIFFERENT subsets so the Cinderfen reads observably differently across the
+  // Reckoning — the strip-mines still being picked over in the Reach, the region
+  // gone to silent haunted cinder-wastes in the Ashfall (barely changed, because it
+  // was already ruin — now the rest of the world looks like it).
+  "the-strip-mines": {
+    id: EncounterIds.theStripMines,
+    enemies: [EnemyIds.marrowScrapper, EnemyIds.renderConstruct],
+    backdrop: Backdrops.marrow,
+  },
+  "the-dead-refineries": {
+    id: EncounterIds.theDeadRefineries,
+    enemies: [EnemyIds.drownedHusk, EnemyIds.requiemWraith],
+    backdrop: Backdrops.marrow,
+  },
+  "the-cinder-wastes": {
+    id: EncounterIds.theCinderWastes,
+    enemies: [EnemyIds.requiemWraith, EnemyIds.theAshling],
     backdrop: Backdrops.marrow,
   },
 };

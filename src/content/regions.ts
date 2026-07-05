@@ -125,6 +125,7 @@ export const RegionIds = {
   upperVanta: "upper-vanta",
   sylvemarch: "sylvemarch",
   holtspire: "holtspire",
+  cinderfen: "cinderfen",
 } as const;
 
 /** A registered region id (the literal-union of every {@link REGIONS} key). */
@@ -377,6 +378,58 @@ export const REGIONS: {
             id: "caldecotts-resentment",
             name: "Caldecott, the Warlord Remnant",
           },
+        ],
+      },
+    },
+  },
+  // Cinderfen (#131): the ashlands — strip-mined, magic-dead wastes of abandoned
+  // grist-mines and dead refineries, holding the Ashfast enclave (Brother Asch's
+  // order) (wiki/design/regions.md — the Cinderfen). Sites Morrath, the Cinder-bound
+  // (Ash), the region's one Bound: a dying, half-rendered power, a moral gut-punch
+  // more than a fight. Unlike the other regions it reads the SAME across the
+  // Reckoning by design — both variants `ashen`: the Reach is already ruin amid a
+  // still-living world, the Ashfall barely changed because now the rest of the world
+  // looks like it. Its observable divergence is therefore NOT tone but the ENCOUNTER
+  // TABLE (Reach strip-mines still picked over → Ashfall silent haunted
+  // cinder-wastes), so the run digests differently across the flag. The Morrath
+  // Bound-site reuses the shipped template (#135) + Phase-2 kit (#69); stat blocks /
+  // palettes / dialogue are living docs (decision 0003).
+  cinderfen: {
+    id: RegionIds.cinderfen,
+    boundSite: BoundIds.morrath,
+    states: {
+      reach: {
+        name: "The Cinderfen Reach — the Ashlands Already Fallen",
+        tone: "ashen",
+        keyLocations: [
+          { id: "the-grist-mines", name: "The Abandoned Grist-Mines" },
+          { id: "the-ashfast-enclave", name: "The Ashfast Enclave" },
+          { id: "the-felled-bound", name: "The Bones of a Felled Bound" },
+          { id: "the-cinder-bound", name: "Morrath, the Cinder-bound" },
+        ],
+        encounters: [
+          EncounterIds.theStripMines,
+          EncounterIds.theDeadRefineries,
+        ],
+        sideStories: [
+          { id: "brother-aschs-vigil", name: "Brother Asch's Vigil" },
+        ],
+      },
+      ashfall: {
+        name: "The Cinderfen Ashfall — the World Made Ashlands",
+        tone: "ashen",
+        keyLocations: [
+          { id: "the-grist-mines", name: "The Grist-Mines (silent)" },
+          { id: "the-ashfast-enclave", name: "The Ashfast Enclave (a vigil)" },
+          { id: "the-felled-bound", name: "The Bones of a Felled Bound" },
+          { id: "the-cinder-bound", name: "Morrath, guttering out" },
+        ],
+        encounters: [
+          EncounterIds.theDeadRefineries,
+          EncounterIds.theCinderWastes,
+        ],
+        sideStories: [
+          { id: "brother-aschs-vigil", name: "Brother Asch, the Last Warden" },
         ],
       },
     },
