@@ -124,6 +124,7 @@ export const RegionIds = {
   roots: "roots",
   upperVanta: "upper-vanta",
   sylvemarch: "sylvemarch",
+  holtspire: "holtspire",
 } as const;
 
 /** A registered region id (the literal-union of every {@link REGIONS} key). */
@@ -321,6 +322,61 @@ export const REGIONS: {
         encounters: [EncounterIds.weaveSpring, EncounterIds.greyingMarch],
         sideStories: [
           { id: "the-green-mothers-march", name: "The Green Mother, Mourned" },
+        ],
+      },
+    },
+  },
+  // Holtspire (#130): the Anvil-city — a rival industrial city-state ruled by House
+  // Caldecott, all foundries, frames, and smoke, and Caldecott's resentment of House
+  // Mourne (wiki/design/regions.md — Holtspire, the Anvil-city). Sites Korrholt, the
+  // Anvil-Heart (Iron), the region's one Bound: a power harnessed OPENLY as the city
+  // reactor — the atrocity industrialized, so the free-vs-wield choice is at its
+  // starkest. Authored against the shipped template in BOTH world-states: the verdant
+  // Reach (the loud, working anvil-city; Halcyon's old frame-yards still turning) and
+  // the ashen Ashfall (the foundries cold and silent, Caldecott a warlord remnant).
+  // Reach and Ashfall draw DIFFERENT encounter tables so the region reads observably
+  // differently across the Reckoning: the Reach works the great foundry and the
+  // frame-yards; the Ashfall replaces the foundry with the black-market ripper row as
+  // the warlord's economy takes over. The Korrholt Bound-site free-vs-wield interaction
+  // reuses the shipped Bound-site template (#135) + Phase-2 kit (#69); this authors the
+  // region identity, key locations, per-region encounters, side-stories, and both
+  // variants (stat blocks / palettes / dialogue are living docs, decision 0003).
+  holtspire: {
+    id: RegionIds.holtspire,
+    boundSite: BoundIds.korrholt,
+    states: {
+      reach: {
+        name: "The Holtspire Reach — the Working Anvil-City",
+        tone: "verdant",
+        keyLocations: [
+          { id: "the-great-foundry", name: "The Great Foundry" },
+          { id: "the-frame-yards", name: "The Frame-Yards" },
+          { id: "ripper-row", name: "The Black-Market Ripper Row" },
+          { id: "the-anvil-heart", name: "Korrholt, the Anvil-Heart" },
+        ],
+        encounters: [EncounterIds.theGreatFoundry, EncounterIds.frameYards],
+        sideStories: [
+          { id: "caldecotts-resentment", name: "Caldecott's Resentment" },
+        ],
+      },
+      ashfall: {
+        name: "The Holtspire Ashfall — the Cold Foundries",
+        tone: "ashen",
+        keyLocations: [
+          {
+            id: "the-great-foundry",
+            name: "The Great Foundry (cold and silent)",
+          },
+          { id: "the-frame-yards", name: "The Frame-Yards (rusting)" },
+          { id: "ripper-row", name: "The Ripper Row (a warlord's market)" },
+          { id: "the-anvil-heart", name: "Korrholt, the Anvil-Heart (banked)" },
+        ],
+        encounters: [EncounterIds.frameYards, EncounterIds.ripperRow],
+        sideStories: [
+          {
+            id: "caldecotts-resentment",
+            name: "Caldecott, the Warlord Remnant",
+          },
         ],
       },
     },
