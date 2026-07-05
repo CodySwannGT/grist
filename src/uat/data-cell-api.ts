@@ -43,6 +43,12 @@ import {
   type OpenKeystoneOptions,
   type VerifyKeystoneState,
 } from "./keystone-cell";
+import {
+  ReunionCell,
+  type OpenReunionOptions,
+  type VerifyReunionState,
+} from "./reunion-cell";
+import { type ReunionId } from "../content";
 import { RunStateCell, type VerifyRunState } from "./run-state-cell";
 import { type MillDecision } from "../logic/side-story/mill";
 import { TravelCell, type VerifyTravelState } from "./travel-cell";
@@ -147,6 +153,17 @@ const keystoneCell = new KeystoneCell();
 const defectionCell = new DefectionCell();
 
 /**
+ * The bridge-held reunion cell (#140): the Act II open, nonlinear, optional/missable
+ * reunion structure, gated on the world having turned to Ashfall and resolved through
+ * the pure reunion logic in `logic/party/reunion`, so the reunion e2e can complete one
+ * reunion (its companion joins), bypass another (recorded missed), and advance past the
+ * window (the rest sealed missed) — reading the active roster + per-reunion statuses,
+ * and persisting/reloading them through the existing save path — scene-agnostically,
+ * without a live scene attached.
+ */
+const reunionCell = new ReunionCell();
+
+/**
  * The bridge-held travel cell (#136): the earned-freedom mobility chain (foot →
  * skiff → airship → fast-travel) and its capability/knowledge soft-gate live here in
  * memory (tier / gate / fast-travel semantics delegated to `logic/travel`), so the
@@ -203,6 +220,10 @@ function adoptIntoCells(save: CurrentSave): void {
   // live stats + kit), not the fresh starting party — the hydration path the e2e
   // asserts after reload (#146).
   defectionCell.adopt(save);
+  // reunionCell.adopt rebuilds its base roster from save.party and its reunion session
+  // from save.scene.flags, so a reload's loadSave() rehydrates the reunion read to the
+  // *restored* roster + completed/missed statuses (#140), not a fresh Ashfall board.
+  reunionCell.adopt(save);
   // buildCell.adopt holds save.build so the post-reload battle snapshot fields the
   // *restored* grown build (the persisted stat augments), not the empty starting
   // build — the battle-hydration path the save-reload e2e asserts after reload (#116).
@@ -255,6 +276,10 @@ async function clearAndReset(): Promise<void> {
   // Reset the defection cell back to the fresh starting party alongside the others so
   // a clearSave leaves defection() reading [wren, tobi], not a stale recruited roster.
   defectionCell.reset();
+  // Reset the reunion cell back to the fresh Ashfall board (starting party, nothing
+  // completed/missed) alongside the others so a clearSave leaves reunions() reading the
+  // starting roster with an untouched board, not a stale post-reunion state (#140).
+  reunionCell.reset();
   // Reset the build cell to the empty build alongside the others so a clearSave fields
   // the base party in the next snapshot, not a stale grown build (#116).
   buildCell.reset();
@@ -376,6 +401,22 @@ export interface DataCellApi {
   readonly defection: () => VerifyDefectionState;
   /** Project the post-defection roster into a CurrentSave the `save` path persists. */
   readonly defectionSave: () => CurrentSave;
+  /**
+   * Open the Act II reunion board (#140). Defaults to a reachable board in `ashfall`;
+   * pass `{ worldState: "reach" }` to open the Ashfall-gated (unreachable) board so a
+   * reunion completed too early never recruits anyone, or `seed` to vary the fork.
+   */
+  readonly openReunions: (options?: OpenReunionOptions) => void;
+  /** Complete a reunion — recruit its companion (no-op when gated / already resolved). */
+  readonly completeReunion: (id: ReunionId) => void;
+  /** Bypass a reunion — record it missed (no-op when gated / already resolved). */
+  readonly bypassReunion: (id: ReunionId) => void;
+  /** Advance past the reunion window — seal every still-open reunion missed. */
+  readonly advanceReunions: () => void;
+  /** The reunion snapshot (active roster with stats + kit, per-reunion statuses, reachability, hash). */
+  readonly reunions: () => VerifyReunionState;
+  /** Project the recruited roster + reunion statuses into a CurrentSave the `save` path persists. */
+  readonly reunionsSave: () => CurrentSave;
   /** Earn the skiff (foot → skiff), opening regional travel (#136). */
   readonly earnSkiff: () => void;
   /** Earn the airship (skiff → airship), opening the full Reach and fast-travel (#136). */
@@ -451,6 +492,12 @@ export function dataCellApi(): DataCellApi {
     fireDefection: () => defectionCell.fireDefection(),
     defection: () => defectionCell.snapshot(),
     defectionSave: () => defectionCell.toSave(),
+    openReunions: (options?: OpenReunionOptions) => reunionCell.open(options),
+    completeReunion: (id: ReunionId) => reunionCell.complete(id),
+    bypassReunion: (id: ReunionId) => reunionCell.bypass(id),
+    advanceReunions: () => reunionCell.advance(),
+    reunions: () => reunionCell.snapshot(),
+    reunionsSave: () => reunionCell.toSave(),
     earnSkiff: () => travelCell.earnSkiff(),
     earnAirship: () => travelCell.earnAirship(),
     discoverSafehouse: (safehouse: string) => travelCell.discover(safehouse),

@@ -89,6 +89,15 @@ export {
 } from "./map";
 export { REGIONS } from "./region-catalog";
 export {
+  REUNIONS,
+  ReunionIds,
+  REUNION_ORDER,
+  authorReunion,
+  isCompleteReunion,
+  type ReunionId,
+  type ReunionQuestDef,
+} from "./reunions";
+export {
   RegionIds,
   authorRegion,
   isCompleteRegion,

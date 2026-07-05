@@ -33,6 +33,13 @@ export const PartyMemberIds = {
   wren: "wren",
   tobi: "tobi",
   halcyon: "halcyon",
+  // The Act II secondary roster (#140) — the scattered companions the player
+  // reassembles through the open, nonlinear reunion quests
+  // (`wiki/narrative/main-quest.md` Ch.7, `wiki/narrative/characters.md`).
+  quietus: "quietus",
+  asch: "asch",
+  cal: "cal",
+  shrike: "shrike",
 } as const;
 
 /** A party-member id (the literal-union of every defined party key). */
@@ -130,6 +137,108 @@ export const PARTY: {
     signatureKit: ["Frame-Lance"],
     // Frame/anvil kit: Halcyon's heavy frame actives ride the Augment slot, with
     // the Strike/Defend baseline — a third distinct menu (no Craft, no Bind).
+    kit: [Commands.strike, Commands.augment, Commands.defend],
+  },
+  // Quietus ("Q") — the ghost in the machine, the consciousness assembled from the
+  // rendered dead who "wields the stored power of the souls it's made of"
+  // (`wiki/narrative/characters.md`; the tragic esper / the summon that is also a
+  // soul). Numbers are authored here (the wiki gives identity only, a living doc,
+  // decision 0003); Q reads as the ESPER-CASTER: the party's highest FOC + WRD and
+  // the biggest AP pool (it channels the anima it is made of), with the lowest DEF
+  // (incorporeal — projected through screens and drones), no starting shard (its
+  // power is the souls, not a Bound), and a hand-authored "Soul-Chorus" signature.
+  quietus: {
+    id: PartyMemberIds.quietus,
+    name: "Quietus",
+    level: 3,
+    baseStats: {
+      hp: 130,
+      ap: 30,
+      pow: 10,
+      foc: 22,
+      def: 8,
+      wrd: 18,
+      spd: 12,
+      lck: 9,
+    },
+    signatureKit: ["Soul-Chorus"],
+    // Esper/caster kit: Q surfaces the full caster loadout — Craft (cast) + Bind
+    // (summon the stored souls) — with the Strike/Defend baseline; no augment/item
+    // (its tools are the anima it wields, not gadgets).
+    kit: [Commands.strike, Commands.craft, Commands.bind, Commands.defend],
+  },
+  // Brother Asch — the bare-handed monk of an Ashfast enclave that has "renounced
+  // grist entirely … proof a life without the fuel is possible"
+  // (`wiki/narrative/characters.md`; the Sabin). Authored as the MARTIAL striker:
+  // high POW + SPD + HP but the LOWEST AP of the roster (he renounced grist, so he
+  // funds no grist-fueled actives), low FOC/WRD (no caster), no starting shard, and
+  // a hand-authored "Ashfast-Kata" signature.
+  asch: {
+    id: PartyMemberIds.asch,
+    name: "Brother Asch",
+    level: 3,
+    baseStats: {
+      hp: 150,
+      ap: 8,
+      pow: 20,
+      foc: 6,
+      def: 14,
+      wrd: 9,
+      spd: 16,
+      lck: 7,
+    },
+    signatureKit: ["Ashfast-Kata"],
+    // Monk kit: bare hands, no grist tools — Strike + Item + Defend only (no Craft,
+    // no Bind, no Augment), the data behind "a life without the fuel".
+    kit: [Commands.strike, Commands.item, Commands.defend],
+  },
+  // Calliope "Cal" Quill — the gambler, pilot, and House Quill's disowned heir who
+  // "bets on the long odds of saving the world" (`wiki/narrative/characters.md`; the
+  // Setzer). Authored as the LUCK unit: the party's highest LCK, high SPD, and an
+  // otherwise balanced block, no starting shard, and a hand-authored "Long-Odds"
+  // signature (the gambler's wild-draw active).
+  cal: {
+    id: PartyMemberIds.cal,
+    name: "Calliope Quill",
+    level: 3,
+    baseStats: {
+      hp: 118,
+      ap: 18,
+      pow: 15,
+      foc: 12,
+      def: 9,
+      wrd: 8,
+      spd: 15,
+      lck: 16,
+    },
+    signatureKit: ["Long-Odds"],
+    // Gambler kit: Craft (her wild-draw gambles) + Item, with the Strike/Defend
+    // baseline — a distinct menu from the monk and the assassin.
+    kit: [Commands.strike, Commands.craft, Commands.item, Commands.defend],
+  },
+  // The Shrike — "an assassin who works for whoever pays, traveling with a single
+  // loyal hound; loyalties hidden until they aren't … a blade the party never quite
+  // trusts" (`wiki/narrative/characters.md`; the Shadow). Authored as the GLASS
+  // striker: the party's highest SPD, high POW + LCK, but the lowest HP + DEF/WRD
+  // (evasive, not durable), no starting shard, and a hand-authored "Killstroke"
+  // signature.
+  shrike: {
+    id: PartyMemberIds.shrike,
+    name: "The Shrike",
+    level: 3,
+    baseStats: {
+      hp: 110,
+      ap: 16,
+      pow: 19,
+      foc: 9,
+      def: 7,
+      wrd: 7,
+      spd: 18,
+      lck: 14,
+    },
+    signatureKit: ["Killstroke"],
+    // Assassin kit: Augment (the blade's tools) + the Strike/Defend baseline — no
+    // caster slots; a fourth distinct menu.
     kit: [Commands.strike, Commands.augment, Commands.defend],
   },
 };

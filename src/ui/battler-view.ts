@@ -52,6 +52,15 @@ export const BATTLER_KIND: Readonly<Record<BattlerRef, BattlerKind>> = {
   wren: BattlerKinds.char,
   tobi: BattlerKinds.char,
   halcyon: BattlerKinds.char,
+  // The Act II reunion roster (#140) — `char` actors like the rest of the party. Their
+  // dedicated battler art is authored with their reunion content (a living doc, decision
+  // 0003); until that art lands they are ART-PENDING (see `ART_PENDING_REFS` /
+  // `battlerArtRef`'s fallback), so the cast is registered here (satisfying the
+  // compile-checked exhaustiveness) without a committed atlas frame yet.
+  quietus: BattlerKinds.char,
+  asch: BattlerKinds.char,
+  cal: BattlerKinds.char,
+  shrike: BattlerKinds.char,
   "marrow-scrapper": BattlerKinds.monster,
   "render-construct": BattlerKinds.monster,
   "the-ashling": BattlerKinds.monster,
@@ -62,20 +71,48 @@ export const BATTLER_KIND: Readonly<Record<BattlerRef, BattlerKind>> = {
   "halcyon-knight": BattlerKinds.char,
 } as const;
 
-/** Every cast battler ref (iteration order = table order). */
-export const BATTLER_REFS = Object.keys(BATTLER_KIND) as readonly BattlerRef[];
+/**
+ * Cast refs whose dedicated battler art has not yet been authored — the Act II reunion
+ * roster (#140), whose art ships with their reunion content (a living doc, decision
+ * 0003). They are registered in {@link BATTLER_KIND} so the exhaustive, compile-checked
+ * cast type stays satisfied, but are held out of the art-iteration seams below until
+ * their frames land: {@link BATTLER_REFS} (anim registration + the asset-coverage
+ * contract) excludes them, and {@link battlerArtRef} falls them back to stand-in art —
+ * so an art-pending member never registers a missing-frame anim or renders a white box.
+ * Remove a ref here the moment its `<ref>/…` frames are committed to the atlas.
+ */
+const ART_PENDING_REFS: ReadonlySet<BattlerRef> = new Set<BattlerRef>([
+  "quietus",
+  "asch",
+  "cal",
+  "shrike",
+]);
+
+/**
+ * Every cast battler ref that owns committed art (iteration order = table order) — the
+ * {@link BATTLER_KIND} keys minus the {@link ART_PENDING_REFS}. Anim registration and
+ * the asset-coverage contract iterate this, so they cover exactly the refs with real
+ * atlas frames and never demand frames for an art-pending member.
+ */
+export const BATTLER_REFS = (
+  Object.keys(BATTLER_KIND) as readonly BattlerRef[]
+).filter(ref => !ART_PENDING_REFS.has(ref));
 
 /** The stand-in art for a ref that has no casting yet (never a crash). */
 const FALLBACK_REF: BattlerRef = "marrow-scrapper";
 
 /**
- * Narrow an arbitrary combatant ref to a cast battler ref, falling back to
- * {@link FALLBACK_REF} for content that predates its art.
+ * Narrow an arbitrary combatant ref to a cast battler ref with committed art, falling
+ * back to {@link FALLBACK_REF} for content that predates its art — an unknown ref, or a
+ * cast-but-{@link ART_PENDING_REFS art-pending} member — so the resolved ref always
+ * resolves to real atlas frames.
  * @param ref - The combatant's content ref.
  * @returns A ref that is guaranteed to have atlas frames.
  */
 export function battlerArtRef(ref: string): BattlerRef {
-  return ref in BATTLER_KIND ? (ref as BattlerRef) : FALLBACK_REF;
+  return ref in BATTLER_KIND && !ART_PENDING_REFS.has(ref as BattlerRef)
+    ? (ref as BattlerRef)
+    : FALLBACK_REF;
 }
 
 /**
