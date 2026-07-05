@@ -2,16 +2,18 @@
  * Battle scene — the thin side-view (FFVI-style) adapter between the pure combat
  * sim (`src/logic/combat`) and Phaser. It owns NO combat rules (decision 0006,
  * T3): every frame it asks the {@link BattleRunner} to advance the ATB and then
- * mirrors the resulting {@link BattleState} onto pooled placeholder sprites — party
- * on the right, enemies on the left, each with HP + ATB bars drawn from programmatic
- * art only. Player/verification actions are *emitted* on the EventsCenter bus
- * (`ActionRequested`); the runner is the sole code that threads them through the
- * sim. Nothing is allocated in `update()` and the runner's bus listener is freed on
- * shutdown.
+ * mirrors the resulting {@link BattleState} onto the pooled battler views built
+ * by `ui/battler-stage` — party on the right facing left, enemies on the left
+ * facing right, each with HP + ATB bars. Discrete sim events (the append-only
+ * battle log) drive the game-feel layer (lunge, attack pose, hit-flash, FX,
+ * damage popup, camera shake) — one-shot, event-driven, never per-frame.
+ * Player/verification actions are *emitted* on the EventsCenter bus
+ * (`ActionRequested`); the runner is the sole code that threads them through
+ * the sim. The runner's bus listener is freed on shutdown.
  * @module scenes/Battle
  */
 import Phaser from "phaser";
-import { TextureKeys } from "../assets";
+import { ImageKeys } from "../assets";
 import {
   BattleColors,
   BattleEvents,
@@ -31,7 +33,7 @@ import {
 } from "../content";
 import { BattleRunner } from "../game/battle-runner";
 import {
-  AtbTuning,
+  ActionKinds,
   BattleSides,
   hashState,
   isResolved,
@@ -45,7 +47,13 @@ import { fadeSceneIn, transitionToScene } from "./scene-transition";
 import { setLastBattleResult } from "../services/run-store";
 import { BattleController } from "../ui/battle-controller";
 import { BattleHud } from "../ui/battle-hud";
-import { unitCenter } from "../ui/layout";
+import {
+  buildUnitView,
+  playEventJuice,
+  syncUnitView,
+  type UnitView,
+} from "../ui/battler-stage";
+import { battlerArtRef } from "../ui/battler-view";
 import { verifyBridge, type BattleView } from "../uat/bridge";
 
 /** Fallback seed when none is supplied via the verification bridge / `?seed=`. */
@@ -69,13 +77,9 @@ const PARTY_LINEUP: readonly PartyMemberDef[] = [PARTY.wren, PARTY.tobi];
  */
 const DEFAULT_ENCOUNTER: EncounterDef = ENCOUNTERS[EncounterIds.theDrip];
 
-/** The pooled render objects mirroring one combatant. */
-interface UnitView {
-  readonly unit: Phaser.GameObjects.Image;
-  readonly hpFill: Phaser.GameObjects.Rectangle;
-  readonly atbFill: Phaser.GameObjects.Rectangle;
-  readonly baseTint: number;
-}
+/** Backdrop readability scrim (color + alpha) between the parallax and units. */
+const SCRIM_COLOR = 0x0b0e16;
+const SCRIM_ALPHA = 0.45;
 
 /** Renders a {@link BattleState} and emits {@link BattleAction}s; holds no rules. */
 export class Battle extends Phaser.Scene {
@@ -85,6 +89,8 @@ export class Battle extends Phaser.Scene {
   #hud!: BattleHud;
   #partyViews: readonly UnitView[] = [];
   #enemyViews: readonly UnitView[] = [];
+  /** How many battle-log events have already fired their juice. */
+  #logCursor = 0;
   /** The encounter this run resolved (default for a standalone boot, or launched). */
   #encounter: EncounterDef = DEFAULT_ENCOUNTER;
   /**
@@ -115,6 +121,7 @@ export class Battle extends Phaser.Scene {
    */
   init(data?: Partial<BattleLaunchData>): void {
     this.#resolutionHandled = false;
+    this.#logCursor = 0;
     const launchedEncounter =
       data?.encounterId !== undefined
         ? (ENCOUNTERS[data.encounterId as EncounterId] ?? null)
@@ -147,16 +154,8 @@ export class Battle extends Phaser.Scene {
       fadeSceneIn(this);
     }
     this.add.text(GameView.width / 2, 6, TITLE, TITLE_STYLE).setOrigin(0.5, 0);
-    this.#partyViews = this.#buildSide(
-      BattleSides.party,
-      state.party.length,
-      BattleColors.partyTint
-    );
-    this.#enemyViews = this.#buildSide(
-      BattleSides.enemies,
-      state.enemies.length,
-      BattleColors.enemyTint
-    );
+    this.#partyViews = this.#buildSide(BattleSides.party, state.party);
+    this.#enemyViews = this.#buildSide(BattleSides.enemies, state.enemies);
     this.#wireEnemyTargets();
     this.#hud = new BattleHud(this, this.#input, PARTY_LINEUP);
 
@@ -182,8 +181,10 @@ export class Battle extends Phaser.Scene {
   }
 
   /**
-   * Per-frame: advance the ATB and mirror state onto the pooled sprites and HUD.
-   * No allocations, tweens, or timers are created here.
+   * Per-frame: advance the ATB, mirror state onto the pooled views and HUD,
+   * then fire one-shot juice for any newly logged sim events. Nothing here
+   * allocates on the steady-state frame — allocations happen only when a new
+   * discrete event (an attack, a hit) enters the log.
    * @param _time - Absolute time (unused; the sim is delta-driven).
    * @param delta - Milliseconds since the last frame.
    * @returns void
@@ -191,6 +192,7 @@ export class Battle extends Phaser.Scene {
   override update(_time: number, delta: number): void {
     this.#runner.advance(delta);
     this.#render();
+    this.#consumeLogEvents();
     this.#hud.render(this.#runner.state(), this.#controller);
     this.#maybeReturnToField();
   }
@@ -229,23 +231,25 @@ export class Battle extends Phaser.Scene {
   }
 
   /**
-   * Paint the two-tone side-view backdrop and ground line.
+   * Paint the side-view backdrop: the Marrow parallax layers (far → near),
+   * a dark readability scrim so battlers and bars stay legible over the art,
+   * and the ground line the two columns stand on.
    * @returns void
    */
   #drawBackdrop(): void {
     const { width, height } = GameView;
     const { groundY } = BattleLayout;
+    for (const layer of [
+      ImageKeys.marrowBgFar,
+      ImageKeys.marrowBgMid,
+      ImageKeys.marrowBgNear,
+    ]) {
+      // Anchor each layer to the bottom edge; taller-than-stage art crops at the
+      // top, wider-than-stage art crops at the right (camera bounds clip it).
+      this.add.image(0, height, layer).setOrigin(0, 1);
+    }
     this.add
-      .rectangle(0, 0, width, groundY, BattleColors.backdropSky)
-      .setOrigin(0, 0);
-    this.add
-      .rectangle(
-        0,
-        groundY,
-        width,
-        height - groundY,
-        BattleColors.backdropGround
-      )
+      .rectangle(0, 0, width, height, SCRIM_COLOR, SCRIM_ALPHA)
       .setOrigin(0, 0);
     this.add
       .rectangle(0, groundY, width, 1, BattleColors.groundLine)
@@ -255,130 +259,54 @@ export class Battle extends Phaser.Scene {
   /**
    * Build the pooled views for one side, aligned by index to its combatant array.
    * @param side - Which side this column renders.
-   * @param count - The number of combatants on the side.
-   * @param tint - The placeholder tint for the side.
+   * @param combatants - The side's combatants (for their art refs).
    * @returns The side's pooled views.
    */
   #buildSide(
     side: BattleSide,
-    count: number,
-    tint: number
+    combatants: readonly Combatant[]
   ): readonly UnitView[] {
-    return Array.from({ length: count }, (_unused, index) =>
-      this.#buildUnit(side, index, tint)
+    return combatants.map((combatant, index) =>
+      buildUnitView(this, side, index, battlerArtRef(combatant.ref))
     );
   }
 
   /**
-   * Create the pooled objects for one combatant: a tinted placeholder body and a
-   * floating HP + ATB bar pair (programmatic art only — no name tag; the labelled
-   * HUD lands in the follow-up HUD sub-task).
-   * @param side - The combatant's side.
-   * @param index - The combatant's index within its side.
-   * @param tint - The side's placeholder tint.
-   * @returns The pooled view for the combatant.
-   */
-  #buildUnit(side: BattleSide, index: number, tint: number): UnitView {
-    const { x, y } = unitCenter(side, index);
-    const unit = this.add
-      .image(x, y, TextureKeys.Unit)
-      .setTint(tint)
-      .setFlipX(side === BattleSides.party);
-    const hpBarY =
-      y -
-      BattleLayout.unitHeight / 2 -
-      BattleLayout.barGap -
-      BattleLayout.hpBarHeight / 2;
-    const atbBarY =
-      hpBarY -
-      BattleLayout.hpBarHeight / 2 -
-      BattleLayout.barGap -
-      BattleLayout.atbBarHeight / 2;
-    const left = x - BattleLayout.barWidth / 2;
-    this.add.rectangle(
-      x,
-      hpBarY,
-      BattleLayout.barWidth,
-      BattleLayout.hpBarHeight,
-      BattleColors.hpBarBg
-    );
-    const hpFill = this.add
-      .rectangle(
-        left,
-        hpBarY,
-        BattleLayout.barWidth,
-        BattleLayout.hpBarHeight,
-        BattleColors.hpBarFill
-      )
-      .setOrigin(0, 0.5);
-    this.add.rectangle(
-      x,
-      atbBarY,
-      BattleLayout.barWidth,
-      BattleLayout.atbBarHeight,
-      BattleColors.atbBarBg
-    );
-    const atbFill = this.add
-      .rectangle(
-        left,
-        atbBarY,
-        BattleLayout.barWidth,
-        BattleLayout.atbBarHeight,
-        BattleColors.atbBarFill
-      )
-      .setOrigin(0, 0.5);
-    return { unit, hpFill, atbFill, baseTint: tint };
-  }
-
-  /**
-   * Mirror the live sim state onto every pooled view.
+   * Mirror the live sim state onto every pooled view (index-aligned).
    * @returns void
    */
   #render(): void {
     const state = this.#runner.state();
-    this.#renderSide(this.#partyViews, state.party);
-    this.#renderSide(this.#enemyViews, state.enemies);
+    state.party.forEach((combatant, index) => {
+      const view = this.#partyViews[index];
+      if (view) {
+        syncUnitView(view, combatant);
+      }
+    });
+    state.enemies.forEach((combatant, index) => {
+      const view = this.#enemyViews[index];
+      if (view) {
+        syncUnitView(view, combatant);
+      }
+    });
   }
 
   /**
-   * Mirror one side's combatants onto its pooled views (index-aligned).
-   * @param views - The side's pooled views.
-   * @param combatants - The side's live combatants.
+   * Fire one-shot juice for every sim event logged since the last frame.
+   * Purely presentational — the sim state is already final when these fire,
+   * and skipping them (reduced motion) changes nothing.
    * @returns void
    */
-  #renderSide(
-    views: readonly UnitView[],
-    combatants: readonly Combatant[]
-  ): void {
-    for (const [index, combatant] of combatants.entries()) {
-      const view = views[index];
-      if (view) {
-        this.#renderUnit(view, combatant);
+  #consumeLogEvents(): void {
+    const { log } = this.#runner.state();
+    const views = { party: this.#partyViews, enemies: this.#enemyViews };
+    for (let index = this.#logCursor; index < log.length; index++) {
+      const event = log[index];
+      if (event && event.kind !== ActionKinds.tick) {
+        playEventJuice(this, views, event);
       }
     }
-  }
-
-  /**
-   * Mirror one combatant onto its view: HP/ATB bar fill and a downed dim/tint.
-   * Allocation-free — only transform/tint scalars change.
-   * @param view - The combatant's pooled view.
-   * @param combatant - The live combatant.
-   * @returns void
-   */
-  #renderUnit(view: UnitView, combatant: Combatant): void {
-    const alive = combatant.hp > 0;
-    view.hpFill.scaleX = Phaser.Math.Clamp(
-      combatant.hp / combatant.stats.hp,
-      0,
-      1
-    );
-    view.atbFill.scaleX = Phaser.Math.Clamp(
-      combatant.atb / AtbTuning.ready,
-      0,
-      1
-    );
-    view.unit.setTint(alive ? view.baseTint : BattleColors.downedTint);
-    view.unit.setAlpha(alive ? 1 : 0.4);
+    this.#logCursor = log.length;
   }
 
   /**
@@ -405,6 +333,7 @@ export class Battle extends Phaser.Scene {
       restart: (seed: number) => {
         this.#runner.restart(seed);
         this.#controller.reset();
+        this.#logCursor = 0;
       },
       act: action => eventsCenter.emit(BattleEvents.ActionRequested, action),
       advanceTurn: () => this.#runner.advanceTurn(),

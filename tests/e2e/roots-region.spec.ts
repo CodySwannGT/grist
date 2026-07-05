@@ -140,7 +140,7 @@ test.describe("GRIST — the Roots / the Deep region verification (UAT, #143)", 
     expect(run!.worldState).toBe("reach");
     expect(run!.booted).toBe(true);
     expect(run!.error).toBeNull();
-    expect(run!.backdrop).toBe("region-backdrop");
+    expect(run!.backdrop).toBe("img-marrow/bg-far");
     expect(run!.hash).toMatch(/^[0-9a-f]{8}$/);
     expect(await page.evaluate(() => window.__VERIFY__!.hash())).toBe(
       run!.hash

@@ -1,33 +1,47 @@
 /**
- * Static Field-scene chrome builders (sub-task #82 split-out) — the programmatic
+ * Static Field-scene chrome builders (sub-task #82 split-out) — the room
  * backdrop the Field scene paints once on create. Pulled out of the scene so the
  * scene body stays a thin renderer of live state; this module only places fixed
  * decoration (no game state, no rules), so it is a plain `(scene) => void` helper.
- * Programmatic art only — no binary assets.
  * @module scenes/field-chrome
  */
 import type Phaser from "phaser";
+import { ImageKeys } from "../assets";
 import { FieldColors, FieldLayout, FieldTextStyles, GameView } from "../consts";
 import { GristPalette } from "../logic/render";
 import { type MarrowRoomDef } from "../content/map";
 
+/** Dimming over the skyline band so the HUD text stays readable above it. */
+const SKYLINE_SCRIM_ALPHA = 0.55;
+
 /**
- * Paint the top-down room backdrop: a dark back wall, the lit floor band below
- * the wall line, and the dividing wall line. Fixed decoration only — drawn once.
+ * Paint the room backdrop: the Marrow's neon skyline (the parallax far/mid
+ * layers, bottom-anchored to the wall line so the city rises behind the room),
+ * a readability scrim over that band, the lit floor band below the wall line,
+ * and the dividing wall line. Fixed decoration only — drawn once.
  *
- * The Marrow's structural tones come from the centralized {@link GristPalette}
- * (#114 AC1): the floor and wall are its desaturated, near-grey base — the world
- * reads drained — so the grist-gold HUD accents glow against them. Routing these
- * through the palette (not the raw `FieldColors`) is what makes the desaturation +
- * grist-gold grade real and coherent across every surface rather than per-scene ad
- * hoc hues.
- * @param scene - The Field scene to add the backdrop rectangles to.
+ * The floor keeps the centralized {@link GristPalette} desaturated base (#114
+ * AC1) so the grist-gold HUD accents still glow against a drained world; the
+ * skyline band above the wall line is where the "neon over old bone" mood
+ * shows through.
+ * @param scene - The Field scene to add the backdrop to.
  * @returns void
  */
 export function drawFieldBackdrop(scene: Phaser.Scene): void {
   const { width, height } = GameView;
+  for (const layer of [ImageKeys.marrowBgFar, ImageKeys.marrowBgMid]) {
+    // Bottom-anchored to the wall line: the skyline fills the back-wall band.
+    scene.add.image(0, FieldLayout.wallY, layer).setOrigin(0, 1);
+  }
   scene.add
-    .rectangle(0, 0, width, FieldLayout.wallY, GristPalette.wall)
+    .rectangle(
+      0,
+      0,
+      width,
+      FieldLayout.wallY,
+      GristPalette.wall,
+      SKYLINE_SCRIM_ALPHA
+    )
     .setOrigin(0, 0);
   scene.add
     .rectangle(

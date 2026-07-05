@@ -182,7 +182,7 @@ describe("region-runtime — the per-region boot harness (#137)", () => {
     // Until per-region art exists, every region resolves to the shared placeholder
     // backdrop key the Preloader generates — an asset the loader can actually load
     // (the run state never claims a per-region texture Phaser can't resolve).
-    expect(state.backdrop).toBe("region-backdrop");
+    expect(state.backdrop).toBe("img-marrow/bg-far");
     expect(state.phase).toBe(RegionPhases.exploring);
     const done = playToComplete(state);
     expect(done.cleared).toEqual([EncounterIds.warrenStreet]);

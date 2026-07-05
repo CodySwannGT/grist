@@ -285,9 +285,3 @@ export const Frames = {
     dialogBox: "dialog-box",
   },
 } as const;
-
-/** Legacy Preloader-generated placeholder keys (transitional art-debt). */
-export const TextureKeys = {
-  Unit: "unit",
-  RegionBackdrop: "region-backdrop",
-} as const;

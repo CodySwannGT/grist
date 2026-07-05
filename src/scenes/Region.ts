@@ -23,7 +23,7 @@
  * @module scenes/Region
  */
 import Phaser from "phaser";
-import { TextureKeys } from "../assets";
+import { ImageKeys } from "../assets";
 import {
   GameView,
   RegionColors,
@@ -46,6 +46,25 @@ import { type RegionView } from "../uat/region-scene-view";
 
 /** Fallback seed when none is supplied via the verification bridge / `?seed=`. */
 const DEFAULT_SEED = 0x9e3779b1;
+
+/**
+ * Parallax layer stacks per backdrop key (far → near). A booted session's
+ * `state.backdrop` names its FAR layer (see `regionBackdrop()` in
+ * `logic/region`); when that key has an entry here the scene layers the full
+ * stack, otherwise it renders the key as a single flat backdrop — so a future
+ * per-region art set ships by adding images + one row here, no scene logic.
+ */
+const REGION_BACKDROP_LAYERS: Readonly<Record<string, readonly string[]>> = {
+  [ImageKeys.marrowBgFar]: [
+    ImageKeys.marrowBgFar,
+    ImageKeys.marrowBgMid,
+    ImageKeys.marrowBgNear,
+  ],
+};
+
+/** Readability scrim over the backdrop (color + alpha) so chrome stays legible. */
+const SCRIM_COLOR = 0x0b0e16;
+const SCRIM_ALPHA = 0.35;
 
 /**
  * A deliberately-incomplete region (missing its `ashfall` variant) authored for the
@@ -124,20 +143,32 @@ export class Region extends Phaser.Scene {
   }
 
   /**
-   * Tile the programmatic side-view backdrop (sky over ground, split by a horizon)
-   * across the whole 384×216 view. The texture key is the booted session's OWN
-   * `state.backdrop` (resolved by the harness via `regionBackdrop()`) — so the scene
-   * renders exactly the asset the run state claims, and a future per-region texture
-   * flows through with no scene-code edit. Falls back to the shared
-   * {@link TextureKeys.RegionBackdrop} when boot threw (no session to read).
+   * Paint the side-view backdrop: the parallax stack registered for the booted
+   * session's OWN `state.backdrop` key (resolved by the harness via
+   * `regionBackdrop()`), far layer first, plus a dark scrim so the chrome stays
+   * readable over the art — so the scene renders exactly the asset the run state
+   * claims, and a future per-region set flows through by data alone. Falls back
+   * to the Marrow far layer when boot threw (no session to read).
    * @param state - The booted session, or null when boot threw.
    * @returns void
    */
   #buildBackdrop(state: RegionRunState | null): void {
+    const key = state?.backdrop ?? ImageKeys.marrowBgFar;
+    const layers = REGION_BACKDROP_LAYERS[key] ?? [key];
+    for (const layer of layers) {
+      // Bottom-anchored: taller-than-stage art crops at the top edge.
+      this.add.image(0, GameView.height, layer).setOrigin(0, 1);
+    }
     this.add
-      .image(0, 0, state?.backdrop ?? TextureKeys.RegionBackdrop)
-      .setOrigin(0, 0)
-      .setDisplaySize(GameView.width, GameView.height);
+      .rectangle(
+        0,
+        0,
+        GameView.width,
+        GameView.height,
+        SCRIM_COLOR,
+        SCRIM_ALPHA
+      )
+      .setOrigin(0, 0);
   }
 
   /**

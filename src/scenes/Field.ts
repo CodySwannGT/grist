@@ -12,6 +12,7 @@
  * @module scenes/Field
  */
 import Phaser from "phaser";
+import { AtlasKeys } from "../assets";
 import {
   FieldColors,
   FieldEvents,
@@ -20,7 +21,14 @@ import {
   SceneKeys,
   type FieldResumeData,
 } from "../consts";
-import { MARROW_MAP } from "../content";
+import { MARROW_MAP, PartyMemberIds } from "../content";
+import {
+  BattlerDirs,
+  battlerIdleFrame,
+  battlerWalkAnim,
+  facingForMove,
+  type BattlerDir,
+} from "../ui/battler-view";
 import {
   FieldActionKinds,
   examinablePropForRoom,
@@ -70,7 +78,9 @@ export class Field extends Phaser.Scene {
    * arrives at the tap destination, so a distant sign-tap still surfaces lore.
    */
   #pendingExamine = false;
-  #wren!: Phaser.GameObjects.Rectangle;
+  #wren!: Phaser.GameObjects.Sprite;
+  /** Wren's current facing (drives which walk cycle / idle frame shows). */
+  #facing: BattlerDir = BattlerDirs.down;
   /** The examinable-prop marker for the current room, or null when it has none. */
   #sign: Phaser.GameObjects.Rectangle | null = null;
   #loreBox!: Phaser.GameObjects.Rectangle;
@@ -160,6 +170,7 @@ export class Field extends Phaser.Scene {
       this.#clampWren();
       this.#syncWren();
     }
+    this.#syncWrenAnim(dir, len > 0);
     // The HUD reflects live state every frame; its grist readout and context
     // prompt repaint only on change (guarded text), so a still frame is free.
     this.#syncHud();
@@ -340,13 +351,32 @@ export class Field extends Phaser.Scene {
         })
         .setOrigin(0.5);
     }
-    this.#wren = this.add.rectangle(
+    this.#wren = this.add.sprite(
       this.#wrenX,
       this.#wrenY,
-      FieldLayout.wrenWidth,
-      FieldLayout.wrenHeight,
-      FieldColors.wren
+      AtlasKeys.battlers,
+      battlerIdleFrame(PartyMemberIds.wren, this.#facing)
     );
+  }
+
+  /**
+   * Mirror this frame's movement onto Wren's animation: walking runs the facing
+   * walk cycle, stopping holds the idle pose (no-ops on steady frames).
+   * @param dir - The frame's movement direction (pre-normalization).
+   * @param moving - Whether Wren actually stepped this frame.
+   * @returns void
+   */
+  #syncWrenAnim(dir: FieldMoveDir, moving: boolean): void {
+    if (!moving) {
+      if (this.#wren.anims.isPlaying) {
+        this.#wren
+          .stop()
+          .setFrame(battlerIdleFrame(PartyMemberIds.wren, this.#facing));
+      }
+      return;
+    }
+    this.#facing = facingForMove(dir.dx, dir.dy);
+    this.#wren.play(battlerWalkAnim(PartyMemberIds.wren, this.#facing), true);
   }
 
   /**

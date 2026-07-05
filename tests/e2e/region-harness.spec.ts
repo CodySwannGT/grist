@@ -155,7 +155,7 @@ test.describe("GRIST — region-harness verification (UAT, #137)", () => {
     expect(run!.error).toBeNull();
     // The scene renders exactly the backdrop key the run state declares (the shared
     // placeholder until per-region art exists) — never an asset Phaser can't load.
-    expect(run!.backdrop).toBe("region-backdrop");
+    expect(run!.backdrop).toBe("img-marrow/bg-far");
     expect(run!.hash).toMatch(/^[0-9a-f]{8}$/);
     // `__VERIFY__.hash()` dispatches to the booted region session, matching the
     // snapshot's digest — the determinism gate samples this same entry point.

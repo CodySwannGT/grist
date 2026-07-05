@@ -61,12 +61,7 @@ const OUT_IMAGES = join(ROOT, "public", "assets", "images");
  * moment the last scene using it loads real art instead.
  * @type {Readonly<Record<string, string>>}
  */
-const LEGACY_GENERATED_TEXTURE_KEYS = {
-  /** The white, tintable combatant placeholder (Battle) — reskin pending. */
-  Unit: "unit",
-  /** The banded region side-view backdrop (Region) — reskin pending. */
-  RegionBackdrop: "region-backdrop",
-};
+const LEGACY_GENERATED_TEXTURE_KEYS = {};
 
 /**
  * free-tex-packer-core options shared by every atlas. Pixel-art-safe: no
@@ -208,12 +203,14 @@ function renderKeysModule(atlases, imageRelPaths) {
     ) +
     "\n" +
     `/** Per-atlas frame names (every packed frame, path-derived). */\nexport const Frames = {\n${frameBlocks}\n} as const;\n` +
-    "\n" +
-    renderRecord(
-      "TextureKeys",
-      "Legacy Preloader-generated placeholder keys (transitional art-debt).",
-      LEGACY_GENERATED_TEXTURE_KEYS
-    )
+    (Object.keys(LEGACY_GENERATED_TEXTURE_KEYS).length > 0
+      ? "\n" +
+        renderRecord(
+          "TextureKeys",
+          "Legacy Preloader-generated placeholder keys (transitional art-debt).",
+          LEGACY_GENERATED_TEXTURE_KEYS
+        )
+      : "")
   );
 }
 
