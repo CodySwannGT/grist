@@ -54,3 +54,19 @@ export {
   isRevealBeatElapsed,
   stepRevealBeat,
 } from "./reveal-beat";
+export type { EndingGate, EndingId, EndingStanding } from "./endings";
+export {
+  ENDING_GATES,
+  EndingIds,
+  isEndingReachable,
+  isGateReachable,
+  resolveReachableEndings,
+  standingFromLedger,
+} from "./endings";
+export type { FinaleState } from "./finale";
+export {
+  chooseEnding,
+  hashFinale,
+  isFinaleReached,
+  resolveFinale,
+} from "./finale";
