@@ -47,6 +47,7 @@ import { RunStateCell, type VerifyRunState } from "./run-state-cell";
 import { type MillDecision } from "../logic/side-story/mill";
 import { TravelCell, type VerifyTravelState } from "./travel-cell";
 import { WalletCell } from "./wallet-cell";
+import { WorldMapCell, type VerifyWorldMapState } from "./world-map-cell";
 import { WorldStateCell } from "./world-state-cell";
 
 /**
@@ -175,6 +176,16 @@ const buildCell = new BuildCell();
 const renderCell = new RenderCell();
 
 /**
+ * The bridge-held transformed-map cell (#139): a stateless reader over the pure
+ * `logic/region/world-map` resolver, so the Ashfall-map e2e can read the whole map
+ * resolved through the live world-state flag (every region transformed, the palette
+ * drained to grey at full strength, the Act-I-loved place mourned) scene-agnostically —
+ * the SAME map the render consumes, resolved through the same flag the world-state cell
+ * holds and the Reckoning flips.
+ */
+const worldMapCell = new WorldMapCell();
+
+/**
  * Adopt a {@link CurrentSave} into the bridge-held world-state + run-state cells so
  * the in-memory read paths (`worldState` / `reckon` / `regionTone` / `runState`)
  * reflect it — the single sync point shared by a successful persist and a reload.
@@ -269,6 +280,14 @@ export interface DataCellApi {
   readonly reckon: () => void;
   /** The region tone resolved through the live world-state flag, or null. */
   readonly regionTone: () => string | null;
+  /**
+   * The Ashfall transformed map (#139 AC6) resolved through the live world-state flag —
+   * every region transformed (the same map ids), the map-wide desaturation grade (drained
+   * to grey at full strength in ashfall), and the Act-I-loved place mourned once the world
+   * turns. Reads the SAME map the render consumes; the flag defaults to Act I `reach`
+   * until a save adopts or `reckon()` flips one.
+   */
+  readonly worldMap: () => VerifyWorldMapState;
   /** Load the canonical example region authored against the template. */
   readonly loadRegion: () => void;
   /** The loaded region resolved through the live world-state, or null. */
@@ -401,6 +420,7 @@ export function dataCellApi(): DataCellApi {
     worldState: () => worldStateCell.read(),
     reckon: () => worldStateCell.reckon(),
     regionTone: () => worldStateCell.regionTone(),
+    worldMap: () => worldMapCell.snapshot(worldStateCell.read() ?? "reach"),
     loadRegion: () => regionCell.load(),
     region: () => regionCell.snapshot(worldStateCell.read() ?? "reach"),
     loadEnemy: () => enemyCell.load(),
