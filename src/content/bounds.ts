@@ -55,6 +55,7 @@ export const BoundIds = {
   marrowBound: "marrow-bound",
   velithDeepbound: "velith-deepbound",
   sylvath: "sylvath",
+  korrholt: "korrholt",
 } as const;
 
 /** A Bound id (the literal-union of every defined shard key). */
@@ -165,5 +166,35 @@ export const BOUNDS: {
     growthBias: { wrd: 2, foc: 1 },
     corruptionRate: 0.14,
     variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.14 } },
+  },
+  // The Holtspire Bound DATA REFERENCE per #130: Korrholt, the Anvil-Heart — the
+  // power harnessed OPENLY as the Anvil-city's reactor, House Caldecott's foundries
+  // running on a caged Bound (wiki/design/regions.md — Holtspire, the Anvil-city;
+  // wiki/design/bestiary.md — Korrholt, the Anvil-Heart). Element `iron` (the
+  // industrial city-state's affinity). This is the franchise's free-vs-wield fork at
+  // its STARKEST: the atrocity industrialized, a Bound wielded in plain sight as
+  // infrastructure — so its Wield corruption is the heaviest authored Bound to date
+  // (strictly above the Marrow Bound's 0.1), while freeing it (shutting the reactor
+  // down) stays corruption-free. A MINIMAL, data-only reference so the Holtspire
+  // region can `site` it via `boundSite`; the free-vs-wield resolution reuses the
+  // shipped Bound-site template (#135) + Phase-2 kit (#69) verbatim. Combat stat
+  // tuning beyond the corruption rate stays deferred (decision 0003).
+  korrholt: {
+    id: BoundIds.korrholt,
+    name: "Korrholt, the Anvil-Heart",
+    element: Elements.iron,
+    bind: {
+      id: BindSpellIds.bindIron,
+      name: "Bind: Iron",
+      element: Elements.iron,
+      apCost: 0,
+      gristCost: 14,
+      power: 18,
+      target: SpellTargets.all,
+    },
+    teaches: [SpellIds.spark],
+    growthBias: { def: 2, pow: 1 },
+    corruptionRate: 0.16,
+    variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.16 } },
   },
 };

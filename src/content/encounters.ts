@@ -43,6 +43,10 @@ export const EncounterIds = {
   sylvanEnclave: "sylvan-enclave",
   weaveSpring: "weave-spring",
   greyingMarch: "greying-march",
+  // ── Holtspire — the Anvil-city (#130) ───────────────────────────────────────
+  greatFoundry: "great-foundry",
+  frameYards: "frame-yards",
+  ripperRow: "ripper-row",
 } as const;
 
 /** An encounter id (the literal-union of every defined encounter key). */
@@ -164,6 +168,32 @@ export const ENCOUNTERS: {
   "greying-march": {
     id: EncounterIds.greyingMarch,
     enemies: [EnemyIds.drownedHusk, EnemyIds.requiemWraith],
+    backdrop: Backdrops.marrow,
+  },
+  // ── Holtspire encounters (#130) ─────────────────────────────────────────────
+  // The great foundry, the frame-yards, and the black-market ripper row. Per
+  // decision 0003, new enemy families / stat blocks are authored at authoring time
+  // and are OUT OF SCOPE here; these encounters compose EXISTING enemies (the
+  // foundry's render-construct automata; House Caldecott's standing enforcers; the
+  // ripper-row's cold arbiter). The backdrop reuses the shared `marrow` placeholder
+  // (per-region art is out of scope; the Region scene resolves the shared
+  // `region-backdrop` texture at boot). The Reach and Ashfall variant tables
+  // (authored in `content/regions`) draw DIFFERENT subsets so Holtspire reads
+  // observably differently across the Reckoning — the loud working anvil-city in the
+  // Reach, the cold silent foundries under a warlord remnant in the Ashfall.
+  "great-foundry": {
+    id: EncounterIds.greatFoundry,
+    enemies: [EnemyIds.renderConstruct],
+    backdrop: Backdrops.marrow,
+  },
+  "frame-yards": {
+    id: EncounterIds.frameYards,
+    enemies: [EnemyIds.houseEnforcer, EnemyIds.renderConstruct],
+    backdrop: Backdrops.marrow,
+  },
+  "ripper-row": {
+    id: EncounterIds.ripperRow,
+    enemies: [EnemyIds.houseEnforcer, EnemyIds.deepAuditor],
     backdrop: Backdrops.marrow,
   },
 };

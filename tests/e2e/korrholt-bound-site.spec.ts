@@ -1,0 +1,333 @@
+/**
+ * Korrholt the Anvil-Heart free-vs-wield site verification (UAT) suite — the
+ * Bound-site half of the Validation Journey for #130 (PRD #43 FR5 / AC7). Drives the
+ * in-game `window.__VERIFY__` bridge against the live build to prove EMPIRICALLY
+ * (unit / typecheck / lint alone are NOT acceptable per the issue) that Holtspire
+ * sites Korrholt, and reaching that site lets the player face the region's
+ * free-vs-wield decision at its starkest — shutting the reactor down (free) or leaving
+ * the Bound running openly as the Anvil-city's reactor (wield) — resolved and
+ * persisted across a genuine reload:
+ *
+ * - [EVIDENCE: korrholt-bound-resolves] — freeing Korrholt grants the WEAKER shard
+ *   with karma+ and NO corruption, observed scene-agnostically via
+ *   `__VERIFY__.openBoundSite("holtspire")` / `chooseBound("free")` / `boundSite()`;
+ *   then a save built from that settled choice round-trips through IndexedDB and is
+ *   restored after a GENUINE page reload (`loadSave()` / `runState()` show
+ *   `variant: "free"`, `karma: 1`).
+ * - [EVIDENCE: korrholt-bound-resolves] — the SAME site, choosing WIELD, grants the
+ *   STRONGER carry with ACCRUING corruption (karma−), and the wielded state WITH its
+ *   corruption survives the reload too (`runState()` shows `variant: "wield"`,
+ *   `karma: -1`; the persisted corruption is the carried shard's wield rate).
+ *
+ * Korrholt is the choice at its starkest (a power harnessed openly as infrastructure)
+ * — its wield corruption is the heaviest authored Bound, so wielding it genuinely
+ * accrues corruption (the fork is measurable). Determinism: the site's
+ * `boundSite().hash` is reproducible across a genuine reload (same region + ledger +
+ * mode ⇒ identical digest), and free vs wield diverge. The bridge is enabled with
+ * `?uat=1`; the Bound-site template rides the content tables, so the active scene is
+ * irrelevant and the default boot is used (mirrors `sylvath-bound-site.spec.ts`). The
+ * Phaser-free unit twin (`tests/logic/korrholt-bound-site.test.ts`) proves the
+ * resolution headlessly; this spec proves it on the live canvas across a real document
+ * boundary.
+ */
+import { expect, test, type Page } from "@playwright/test";
+
+const SEEN_TIMEOUT = 15_000;
+/** The Holtspire region — the one that sites Korrholt. */
+const HOLTSPIRE = "holtspire";
+/** The Bound the Holtspire region sites: Korrholt, the Anvil-Heart. */
+const KORRHOLT = "korrholt";
+
+/**
+ * Wait until the verification bridge is installed with its Bound-site contract
+ * (`openBoundSite` / `chooseBound` / `boundSite`) plus the save + run-state seam the
+ * persistence assertions read. Asserting the whole shape up front means a broken
+ * bridge fails here, loudly, instead of silently no-op'ing through an optional chain.
+ * @param page - The Playwright page.
+ */
+async function waitForBridge(page: Page): Promise<void> {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const api = window.__VERIFY__;
+          return (
+            typeof api?.openBoundSite === "function" &&
+            typeof api?.chooseBound === "function" &&
+            typeof api?.boundSite === "function" &&
+            typeof api?.save === "function" &&
+            typeof api?.loadSave === "function" &&
+            typeof api?.runState === "function"
+          );
+        }),
+      { timeout: SEEN_TIMEOUT }
+    )
+    .toBe(true);
+}
+
+/**
+ * Boot the app with the verification bridge enabled (scene-agnostic — the Bound-site
+ * template rides the content tables, not the active scene).
+ * @param page - The Playwright page.
+ */
+async function bootWithBridge(page: Page): Promise<void> {
+  await page.goto("/?uat=1");
+  await waitForBridge(page);
+}
+
+/**
+ * The serialized save shape the bridge round-trips — structurally aligned with the
+ * current v3 `CurrentSave` but declared locally so the spec needs no app import
+ * (mirrors `sylvath-bound-site.spec.ts`).
+ */
+interface SaveDataV2 {
+  readonly version: 3;
+  readonly party: readonly {
+    readonly id: string;
+    readonly level: number;
+    readonly shard?: string;
+    readonly shardMode?: "free" | "wield";
+  }[];
+  readonly grist: number;
+  readonly inventory: readonly { readonly id: string; readonly qty: number }[];
+  readonly learned: readonly string[];
+  readonly learning: readonly {
+    readonly spell: string;
+    readonly progress: number;
+  }[];
+  readonly choice: {
+    readonly resolved: boolean;
+    readonly shard?: string;
+    readonly variant?: "free" | "wield";
+  };
+  readonly moralLedger: {
+    readonly karma: number;
+    readonly freeChoices: number;
+    readonly wieldChoices: number;
+  };
+  readonly rng: { readonly seed: number; readonly state: number };
+  readonly worldState: "reach" | "ashfall";
+  readonly build: {
+    readonly statBonuses: Readonly<Record<string, number>>;
+    readonly equippedShards: readonly string[];
+  };
+  readonly scene: {
+    readonly sceneId: string;
+    readonly nodeId: string;
+    readonly flags: Readonly<Record<string, boolean | string | number>>;
+  } | null;
+}
+
+/**
+ * Build the save a settled Korrholt Bound-site choice persists: Korrholt carried in
+ * the chosen mode (`party[].shard` + `shardMode`), the resolved `choice`, and the
+ * matching karma / ledger tallies — the exact run state the player would save after
+ * facing Korrholt. The two variants flip the shardMode / choice / karma so the forks
+ * are measurably distinct persisted payloads.
+ *
+ * The accrued corruption is NOT a separate persisted number: the kit derives it from
+ * the persisted `choice.shard` + `choice.variant` through the content table
+ * (`BOUNDS[shard].variants[variant].corruptionRate`), exactly as the live site does —
+ * so restoring `{ shard: korrholt, variant: "wield" }` restores the WIELDED state WITH
+ * its corruption (a positive, derivable rate), while `"free"` restores zero.
+ * @param variant - The resolved choice ("free" or "wield").
+ * @returns A complete v3 save for the settled Korrholt choice.
+ */
+function settledSave(variant: "free" | "wield"): SaveDataV2 {
+  const free = variant === "free";
+  return {
+    version: 3,
+    party: [{ id: "wren", level: 7, shard: KORRHOLT, shardMode: variant }],
+    grist: 14,
+    inventory: [],
+    learned: [],
+    learning: [],
+    choice: { resolved: true, shard: KORRHOLT, variant },
+    moralLedger: {
+      karma: free ? 1 : -1,
+      freeChoices: free ? 1 : 0,
+      wieldChoices: free ? 0 : 1,
+    },
+    rng: { seed: 0x4017, state: 0x4017 },
+    worldState: "reach",
+    build: { statBonuses: {}, equippedShards: [] },
+    scene: null,
+  };
+}
+
+/**
+ * Re-derive the corruption a restored choice carries, the way the kit does: free
+ * accrues none; wield accrues the carried shard's wield rate read from the live
+ * content table via a freshly-opened site. Proves the WIELDED carry restores WITH its
+ * (positive) corruption — not merely the variant flag — without persisting a
+ * fractional count the save validator would reject.
+ * @param page - The Playwright page.
+ * @param variant - The restored carry mode.
+ * @returns The corruption the restored carry accrues (0 for free, > 0 for wield).
+ */
+async function restoredCorruption(
+  page: Page,
+  variant: "free" | "wield"
+): Promise<number> {
+  return page.evaluate(mode => {
+    const api = window.__VERIFY__!;
+    api.openBoundSite("holtspire");
+    api.chooseBound(mode);
+    return api.boundSite()!.corruptionAccrued;
+  }, variant);
+}
+
+test.describe("GRIST — Korrholt the Anvil-Heart free-vs-wield site (UAT, #130)", () => {
+  test.beforeEach(async ({ page }) => {
+    await bootWithBridge(page);
+    await page.evaluate(() => window.__VERIFY__!.clearSave());
+  });
+
+  test("[EVIDENCE: korrholt-bound-resolves] freeing Korrholt grants the weaker shard with karma+ and no corruption, restored from IndexedDB after reload", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+
+    // Before opening: no site is held — the cell cannot fabricate one.
+    expect(
+      await page.evaluate(() => window.__VERIFY__!.boundSite())
+    ).toBeNull();
+
+    // Reach the Holtspire region's single Bound site through the template (pure data
+    // through the content barrel — no engine wiring), then read the unsettled site.
+    await page.evaluate(() => window.__VERIFY__!.openBoundSite("holtspire"));
+    const opened = await page.evaluate(() => window.__VERIFY__!.boundSite());
+    expect(opened).not.toBeNull();
+    // The site is exactly Korrholt in the Holtspire region, offering its variants.
+    expect(opened!.shard).toBe(KORRHOLT);
+    expect(opened!.regionId).toBe(HOLTSPIRE);
+    expect(opened!.settled).toBe(false);
+    expect(opened!.freeCorruptionRate).toBe(0);
+    // Korrholt is the choice at its starkest — the wield path costs corruption.
+    expect(opened!.wieldCorruptionRate).toBeGreaterThan(0);
+
+    // Choose FREE — the weaker, corruption-free attunement (karma+): reactor shut down.
+    await page.evaluate(() => window.__VERIFY__!.chooseBound("free"));
+    const settled = await page.evaluate(() => window.__VERIFY__!.boundSite());
+    expect(settled!.settled).toBe(true);
+    expect(settled!.variant).toBe("free");
+    expect(settled!.corruptionAccrued).toBe(0);
+    expect(settled!.karma).toBe(1);
+    expect(settled!.freeChoices).toBe(1);
+    expect(settled!.wieldChoices).toBe(0);
+
+    // Persist the settled choice and reload across a genuine document boundary.
+    await page.evaluate(
+      save => window.__VERIFY__!.save(save),
+      settledSave("free")
+    );
+    await bootWithBridge(page);
+    const restored = await page.evaluate(() => window.__VERIFY__!.loadSave());
+    const run = await page.evaluate(() => window.__VERIFY__!.runState());
+
+    // The freed Korrholt state survived the reload exactly — restored from IndexedDB.
+    expect(restored.choice).toEqual({
+      resolved: true,
+      shard: KORRHOLT,
+      variant: "free",
+    });
+    expect(restored.moralLedger.karma).toBe(1);
+    expect(run!.choice.variant).toBe("free");
+    expect(run!.moralLedger.karma).toBe(1);
+    // Freeing accrues NO corruption — the restored carry derives zero.
+    expect(await restoredCorruption(page, "free")).toBe(0);
+
+    expect(errors).toEqual([]);
+  });
+
+  test("[EVIDENCE: korrholt-bound-resolves] wielding Korrholt grants the stronger carry with accruing corruption that, with its corruption, survives the reload", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+
+    // Reach Korrholt's site and choose WIELD — the stronger carry that accrues
+    // corruption (karma−): the Bound left running openly as the city reactor.
+    await page.evaluate(() => window.__VERIFY__!.openBoundSite("holtspire"));
+    const opened = await page.evaluate(() => window.__VERIFY__!.boundSite());
+    expect(opened!.shard).toBe(KORRHOLT);
+    expect(opened!.regionId).toBe(HOLTSPIRE);
+
+    await page.evaluate(() => window.__VERIFY__!.chooseBound("wield"));
+    const settled = await page.evaluate(() => window.__VERIFY__!.boundSite());
+    expect(settled!.settled).toBe(true);
+    expect(settled!.variant).toBe("wield");
+    // Corruption accrued is Korrholt's wield rate — strictly positive (the cost).
+    expect(settled!.corruptionAccrued).toBeGreaterThan(0);
+    expect(settled!.corruptionAccrued).toBe(settled!.wieldCorruptionRate);
+    expect(settled!.karma).toBe(-1);
+    expect(settled!.wieldChoices).toBe(1);
+    expect(settled!.freeChoices).toBe(0);
+
+    // The corruption Wield accrued, captured before the reload, to compare against what
+    // the restored state re-derives.
+    const accruedBeforeReload = settled!.corruptionAccrued;
+
+    // Persist and reload — the corrupting carry AND its accrued corruption survive the
+    // document boundary (AC7: "corruption has accrued … restored from IndexedDB").
+    await page.evaluate(
+      save => window.__VERIFY__!.save(save),
+      settledSave("wield")
+    );
+    await bootWithBridge(page);
+    const restored = await page.evaluate(() => window.__VERIFY__!.loadSave());
+    const run = await page.evaluate(() => window.__VERIFY__!.runState());
+
+    expect(restored.choice).toEqual({
+      resolved: true,
+      shard: KORRHOLT,
+      variant: "wield",
+    });
+    expect(restored.moralLedger.karma).toBe(-1);
+    expect(run!.choice.variant).toBe("wield");
+    expect(run!.moralLedger.karma).toBe(-1);
+    // The accrued corruption restored WITH the wielded carry: re-derived from the
+    // persisted choice through the content table, strictly positive, and identical to
+    // what Wield accrued before the reload — not just the variant flag.
+    const restoredWieldCorruption = await restoredCorruption(page, "wield");
+    expect(restoredWieldCorruption).toBeGreaterThan(0);
+    expect(restoredWieldCorruption).toBe(accruedBeforeReload);
+
+    expect(errors).toEqual([]);
+  });
+
+  test("[EVIDENCE: korrholt-bound-resolves] free vs wield diverge at Korrholt's site, and its hash is deterministic across a reload", async ({
+    page,
+  }) => {
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+
+    // Free fork: open Korrholt's site + choose free, capture its digest.
+    await page.evaluate(() => window.__VERIFY__!.openBoundSite("holtspire"));
+    await page.evaluate(() => window.__VERIFY__!.chooseBound("free"));
+    const free = await page.evaluate(() => window.__VERIFY__!.boundSite());
+    expect(free!.shard).toBe(KORRHOLT);
+    expect(free!.hash).toMatch(/^[0-9a-f]{8}$/);
+
+    // A genuine full reload: fresh document + fresh bridge. The same region + ledger +
+    // free choice yields a byte-identical hash — no drift.
+    await bootWithBridge(page);
+    await page.evaluate(() => window.__VERIFY__!.openBoundSite("holtspire"));
+    await page.evaluate(() => window.__VERIFY__!.chooseBound("free"));
+    const freeAgain = await page.evaluate(() => window.__VERIFY__!.boundSite());
+    expect(freeAgain!.hash).toBe(free!.hash);
+
+    // Wield fork from the same site diverges from free (variant + karma + corruption +
+    // digest) — the region's moral fork made measurable on the live canvas.
+    await bootWithBridge(page);
+    await page.evaluate(() => window.__VERIFY__!.openBoundSite("holtspire"));
+    await page.evaluate(() => window.__VERIFY__!.chooseBound("wield"));
+    const wield = await page.evaluate(() => window.__VERIFY__!.boundSite());
+    expect(wield!.hash).not.toBe(free!.hash);
+    expect(wield!.variant).not.toBe(free!.variant);
+    expect(wield!.corruptionAccrued).not.toBe(free!.corruptionAccrued);
+
+    expect(errors).toEqual([]);
+  });
+});
