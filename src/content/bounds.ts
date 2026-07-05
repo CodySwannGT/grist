@@ -55,6 +55,7 @@ export const BoundIds = {
   marrowBound: "marrow-bound",
   velithDeepbound: "velith-deepbound",
   sylvath: "sylvath",
+  korrholt: "korrholt",
 } as const;
 
 /** A Bound id (the literal-union of every defined shard key). */
@@ -165,5 +166,38 @@ export const BOUNDS: {
     growthBias: { wrd: 2, foc: 1 },
     corruptionRate: 0.14,
     variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.14 } },
+  },
+  // The Holtspire Bound DATA REFERENCE per #130: Korrholt, the Anvil-Heart — the
+  // one Bound of the Anvil-city, harnessed OPENLY as a city reactor by House
+  // Caldecott (wiki/design/regions.md — Holtspire, the Anvil-city; wiki/design/
+  // bestiary.md — "Korrholt, the Anvil-Heart … harnessed openly as a city reactor —
+  // the atrocity industrialized"). Element `iron` (the frame-and-foundry power of
+  // the industrial city-state; Iron is the soft-opposite of Bloom). Where Sylvath
+  // caged the atrocity in a great wyrm, Korrholt INDUSTRIALIZES it — the reactor
+  // runs in the open, so the free-vs-wield choice is at its STARKEST: freeing it
+  // banks the city's reactor (karma+, corruption-free), while wielding it draws on
+  // the atrocity as raw power at the HEAVIEST authored cost to date — strictly above
+  // Sylvath's — the naked "wield = accrue corruption" fork PRD #43 AC7 hangs on.
+  // This is a MINIMAL, data-only reference so the Holtspire region can `site` it via
+  // `boundSite`; the free-vs-wield resolution reuses the shipped Bound-site template
+  // (#135) + Phase-2 kit (#69) verbatim. Combat stat tuning beyond the corruption
+  // rate stays deferred (decision 0003).
+  korrholt: {
+    id: BoundIds.korrholt,
+    name: "Korrholt, the Anvil-Heart",
+    element: Elements.iron,
+    bind: {
+      id: BindSpellIds.bindIron,
+      name: "Bind: Iron",
+      element: Elements.iron,
+      apCost: 0,
+      gristCost: 16,
+      power: 20,
+      target: SpellTargets.all,
+    },
+    teaches: [SpellIds.spark],
+    growthBias: { def: 2, wrd: 1 },
+    corruptionRate: 0.16,
+    variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.16 } },
   },
 };
