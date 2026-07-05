@@ -51,6 +51,10 @@ export const EncounterIds = {
   theStripMines: "the-strip-mines",
   theDeadRefineries: "the-dead-refineries",
   theCinderWastes: "the-cinder-wastes",
+  // ── The Wrack — the Sundering coast (#132) ───────────────────────────────────
+  theSunderingScar: "the-sundering-scar",
+  theOblivionHold: "the-oblivion-hold",
+  theDrownedChoir: "the-drowned-choir",
 } as const;
 
 /** An encounter id (the literal-union of every defined encounter key). */
@@ -228,6 +232,35 @@ export const ENCOUNTERS: {
   "the-cinder-wastes": {
     id: EncounterIds.theCinderWastes,
     enemies: [EnemyIds.requiemWraith, EnemyIds.theAshling],
+    backdrop: Backdrops.marrow,
+  },
+  // ── The Wrack encounters (#132) ──────────────────────────────────────────────
+  // The broken tidal coast where the Sundering's wound is rawest: the raw Sundering-
+  // scar, the oblivion-cult's hold (Sallow's unwitting congregation), and a sunken
+  // Choir-shrine the retreating sea uncovers. Per decision 0003, new enemy families /
+  // stat blocks are authored at authoring time and are OUT OF SCOPE here; these
+  // encounters compose EXISTING enemies — the drowned husks of the tidal wreckage and
+  // the requiem wraiths of an entropy-touched coast; the cult-hold's enforcers backed
+  // by wraiths; the sunken choir's drowned dead and a drifting Ashling. The backdrop
+  // reuses the shared `marrow` placeholder (per-region art is out of scope; the Region
+  // scene resolves the shared `region-backdrop` texture at boot until #200). The Reach
+  // and Ashfall variant tables (authored in `content/regions`) draw DIFFERENT subsets
+  // so the Wrack reads observably differently across the Reckoning — the scar and the
+  // cult's hold in the Reach; in the Ashfall the sea pulls back to lay the drowned
+  // Choir-shrine bare as the scar widens toward the edge of the end.
+  "the-sundering-scar": {
+    id: EncounterIds.theSunderingScar,
+    enemies: [EnemyIds.drownedHusk, EnemyIds.requiemWraith],
+    backdrop: Backdrops.marrow,
+  },
+  "the-oblivion-hold": {
+    id: EncounterIds.theOblivionHold,
+    enemies: [EnemyIds.houseEnforcer, EnemyIds.requiemWraith],
+    backdrop: Backdrops.marrow,
+  },
+  "the-drowned-choir": {
+    id: EncounterIds.theDrownedChoir,
+    enemies: [EnemyIds.drownedHusk, EnemyIds.theAshling],
     backdrop: Backdrops.marrow,
   },
 };

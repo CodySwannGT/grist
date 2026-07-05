@@ -87,8 +87,8 @@ export {
   type MarrowRoomDef,
   type MarrowRoomId,
 } from "./map";
+export { REGIONS } from "./region-catalog";
 export {
-  REGIONS,
   RegionIds,
   authorRegion,
   isCompleteRegion,
