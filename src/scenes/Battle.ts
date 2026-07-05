@@ -41,8 +41,11 @@ import {
   type Combatant,
 } from "../logic/combat";
 import { extractBattleResult } from "../logic/battle-result";
+import { AudioCues, spentGrist } from "../logic/audio";
 import { eventsCenter } from "../services/events";
+import { soundService } from "../services/sound-service";
 import { InputService } from "../services/input";
+import { CueCaptionView } from "../ui/cue-caption";
 import { fadeSceneIn, transitionToScene } from "./scene-transition";
 import { setLastBattleResult } from "../services/run-store";
 import { BattleController } from "../ui/battle-controller";
@@ -56,7 +59,11 @@ import {
 } from "../ui/battler-stage";
 import { type FxSelection } from "../ui/battle-fx";
 import { battlerArtRef } from "../ui/battler-view";
-import { verifyBridge, type BattleView } from "../uat/bridge";
+import {
+  isVerificationEnabled,
+  verifyBridge,
+  type BattleView,
+} from "../uat/bridge";
 
 /** Fallback seed when none is supplied via the verification bridge / `?seed=`. */
 const DEFAULT_SEED = 0x9e3779b1;
@@ -83,6 +90,26 @@ const DEFAULT_ENCOUNTER: EncounterDef = ENCOUNTERS[EncounterIds.theDrip];
 const SCRIM_COLOR = 0x0b0e16;
 const SCRIM_ALPHA = 0.45;
 
+/**
+ * The encounter named by the `?encounter=<id>` query, or null when absent/unknown
+ * or the verification surface is disabled. A verification-only standalone-boot seam
+ * (the battle counterpart of the bench's `?grist=`): it lets a UAT boot a specific
+ * encounter — e.g. a tanky one to demonstrate a survivable Rendering/Break (#115) —
+ * without a field launch. Gated behind {@link isVerificationEnabled} so a production
+ * user (no `?uat=1`) can never reach it, and guarded for non-browser (test) contexts.
+ * @returns The selected encounter, or null when the seam does not apply.
+ */
+function urlEncounter(): EncounterDef | null {
+  if (!isVerificationEnabled() || typeof window === "undefined") {
+    return null;
+  }
+  const raw = new URLSearchParams(window.location.search).get("encounter");
+  if (raw === null) {
+    return null;
+  }
+  return ENCOUNTERS[raw as EncounterId] ?? null;
+}
+
 /** Renders a {@link BattleState} and emits {@link BattleAction}s; holds no rules. */
 export class Battle extends Phaser.Scene {
   #runner!: BattleRunner;
@@ -91,6 +118,14 @@ export class Battle extends Phaser.Scene {
   #hud!: BattleHud;
   #partyViews: readonly UnitView[] = [];
   #enemyViews: readonly UnitView[] = [];
+  /** The redundant on-screen caption for audio cues (#115, FR11 / AC12). */
+  #cueCaption!: CueCaptionView;
+  /**
+   * The grist pool as of the last frame — the prior value the grist-spend stinger
+   * edge-detects a strict decrease against (a Bind or any spend, #115). Reset on
+   * every reseed so a fresh battle never mis-fires against a stale pool.
+   */
+  #lastGrist = 0;
   /** How many battle-log events have already fired their juice. */
   #logCursor = 0;
   /**
@@ -136,7 +171,11 @@ export class Battle extends Phaser.Scene {
         ? (ENCOUNTERS[data.encounterId as EncounterId] ?? null)
         : null;
     this.#fromField = launchedEncounter !== null;
-    this.#encounter = launchedEncounter ?? DEFAULT_ENCOUNTER;
+    // A standalone boot honors an optional `?encounter=<id>` verification seam
+    // (gated like `?seed=` / the bench `?grist=`), so a UAT can boot a tanky
+    // encounter to demonstrate a survivable Rendering/Break (#115); otherwise the
+    // shipped default — every existing battle test — is unchanged.
+    this.#encounter = launchedEncounter ?? urlEncounter() ?? DEFAULT_ENCOUNTER;
     this.#launchSeed = this.#fromField ? (data?.seed ?? DEFAULT_SEED) : null;
   }
 
@@ -167,6 +206,9 @@ export class Battle extends Phaser.Scene {
     this.#enemyViews = this.#buildSide(BattleSides.enemies, state.enemies);
     this.#wireEnemyTargets();
     this.#hud = new BattleHud(this, this.#input, PARTY_LINEUP);
+    this.#cueCaption = new CueCaptionView(this);
+    this.#lastGrist = state.grist;
+    soundService.attachUnlock(this);
 
     verifyBridge.attach(SceneKeys.Battle, this.#bridgeView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
@@ -203,7 +245,23 @@ export class Battle extends Phaser.Scene {
     this.#render();
     this.#consumeLogEvents();
     this.#hud.render(this.#runner.state(), this.#controller);
+    this.#fireGristSpendCue();
     this.#maybeReturnToField();
+  }
+
+  /**
+   * Fire the grist-spend stinger on the frame the battle-local grist pool strictly
+   * decreases (a Bind or any spend, #115). Edge-tracked off {@link #lastGrist} so a
+   * loot credit — grist rising — never triggers it. Presentation only; the sim is
+   * final before this reads it.
+   * @returns void
+   */
+  #fireGristSpendCue(): void {
+    const grist = this.#runner.state().grist;
+    if (spentGrist(this.#lastGrist, grist)) {
+      soundService.playCue(AudioCues.gristSpend);
+    }
+    this.#lastGrist = grist;
   }
 
   /**
@@ -361,6 +419,7 @@ export class Battle extends Phaser.Scene {
         this.#controller.reset();
         this.#logCursor = 0;
         this.#lastFx = null;
+        this.#lastGrist = this.#runner.state().grist;
       },
       act: action => eventsCenter.emit(BattleEvents.ActionRequested, action),
       advanceTurn: () => this.#runner.advanceTurn(),
@@ -377,6 +436,7 @@ export class Battle extends Phaser.Scene {
     // Detach the bridge first so __VERIFY__.state()/hud() return null (their
     // documented out-of-battle contract) instead of reading disposed objects.
     verifyBridge.attach("", null);
+    this.#cueCaption.destroy();
     this.#hud.destroy();
     this.#controller.dispose();
     this.#input.dispose();

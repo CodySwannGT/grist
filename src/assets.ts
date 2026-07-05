@@ -21,6 +21,22 @@ export const ImageKeys = {
   marrowBgNear: "img-marrow/bg-near",
 } as const;
 
+/** Standalone audio load keys (CC0 temp music + stingers under `assets/src/audio`). */
+export const AudioKeys = {
+  break: "audio-break",
+  choirLeitmotif: "audio-choir-leitmotif",
+  gristSpend: "audio-grist-spend",
+  rendering: "audio-rendering",
+} as const;
+
+/** Audio clips to `load.audio` (key + url with its real extension). */
+export const AudioManifest = [
+  { key: "audio-break", url: "assets/audio/break.wav" },
+  { key: "audio-choir-leitmotif", url: "assets/audio/choir-leitmotif.ogg" },
+  { key: "audio-grist-spend", url: "assets/audio/grist-spend.wav" },
+  { key: "audio-rendering", url: "assets/audio/rendering.wav" },
+] as const;
+
 /** Per-atlas frame names (every packed frame, path-derived). */
 export const Frames = {
   battlers: {

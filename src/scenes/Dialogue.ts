@@ -43,10 +43,13 @@ import {
   stepRevealBeat,
   type RevealBeatState,
 } from "../logic/narrative";
+import { AudioCues } from "../logic/audio";
 import { DialogueInputService } from "../services/dialogue-input";
 import type { DialogueIntent } from "../services/dialogue-input-map";
 import { eventsCenter } from "../services/events";
+import { soundService } from "../services/sound-service";
 import { DialoguePresenter } from "../ui/dialogue";
+import { CueCaptionView } from "../ui/cue-caption";
 import { verifyBridge, type VerifyResolution } from "../uat/bridge";
 import {
   DEMO_DIALOGUE_OPENING,
@@ -84,6 +87,8 @@ interface DialogueMount {
 export class Dialogue extends Phaser.Scene {
   #presenter!: DialoguePresenter;
   #input!: DialogueInputService;
+  /** The redundant on-screen caption for audio cues (#115, FR11 / AC12). */
+  #cueCaption!: CueCaptionView;
   /** True when this scene is hosting the authored Ch.1 opening (`?scene=opening`). */
   #ch1 = false;
   /** Latches the reveal-flag fold so it happens exactly once at the reveal node. */
@@ -127,6 +132,15 @@ export class Dialogue extends Phaser.Scene {
     this.#presenter.onChoicePointer((index: number) =>
       this.#input.tapChoose(index)
     );
+
+    this.#cueCaption = new CueCaptionView(this);
+    soundService.attachUnlock(this);
+    // The Choir leitmotif fragment plays under the authored opening only (#115);
+    // the demo/mill scripts stay silent. Stopped in #shutdown as the scene hands
+    // off to the tutorial ambush.
+    if (this.#ch1) {
+      soundService.startMusic(AudioCues.choir);
+    }
 
     verifyBridge.attach(SceneKeys.Dialogue, this.#bridgeView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
@@ -343,6 +357,8 @@ export class Dialogue extends Phaser.Scene {
    */
   #shutdown(): void {
     verifyBridge.attach("", null);
+    soundService.stopMusic();
+    this.#cueCaption.destroy();
     eventsCenter.off(DialogueEvents.Intent, this.#onIntent);
     this.#input.dispose();
     this.#presenter.dispose();

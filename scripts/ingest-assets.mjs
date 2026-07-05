@@ -24,7 +24,7 @@
  * Usage: node scripts/ingest-assets.mjs --packs <dir with the downloaded packs>
  * @module scripts/ingest-assets
  */
-import { existsSync, mkdirSync, rmSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Jimp } from "jimp";
@@ -167,6 +167,21 @@ const BACKDROPS = [
   { name: "marrow/bg-far", file: "assets/environment/bg-1.png" },
   { name: "marrow/bg-mid", file: "assets/environment/bg-2.png" },
   { name: "marrow/bg-near", file: "assets/environment/bg-3.png" },
+];
+
+/**
+ * Temp (demo-quality) audio → `assets/src/audio` (#115, PRD #42 Scope-IN
+ * "temp-but-intentional audio", FR11). Copied verbatim from the Ninja Adventure
+ * pack's CC0 `Audio/` tree (no re-encode) — one opening Choir-leitmotif fragment
+ * (a short story theme) plus the three resonant stingers the demo hooks fire:
+ * grist-spend (a gold chime), Break (a heavy impact), and Rendering (a spectral,
+ * entropy-touched flourish). Placeholders, not finished score/SFX.
+ */
+const AUDIO = [
+  { name: "choir-leitmotif.ogg", file: "Audio/Musics/6 - Story (Short).ogg" },
+  { name: "grist-spend.wav", file: "Audio/Sounds/Bonus/Gold1.wav" },
+  { name: "break.wav", file: "Audio/Sounds/Hit & Impact/Impact.wav" },
+  { name: "rendering.wav", file: "Audio/Sounds/Magic & Skill/Spirit.wav" },
 ];
 
 /**
@@ -347,6 +362,11 @@ async function main() {
     const outPath = join(OUT, "images", `${backdrop.name}.png`);
     mkdirSync(dirname(outPath), { recursive: true });
     await img.write(outPath);
+  }
+  for (const clip of AUDIO) {
+    const outPath = join(OUT, "audio", clip.name);
+    mkdirSync(dirname(outPath), { recursive: true });
+    copyFileSync(join(ninja, clip.file), outPath);
   }
   console.log("ingest-assets: assets/src rebuilt from packs.");
 }
