@@ -67,7 +67,15 @@ const CAST = [
 /** Non-battler portrait speakers (dialogue facesets only). */
 const PORTRAIT_ONLY = [{ ref: "sable", folder: "Actor/Character/GoldStatue" }];
 
-/** Battle FX strips: name, source, frame width/height, frame count. */
+/**
+ * Battle FX strips: name, source, frame width/height, frame count. The three
+ * base flavors (slash/spark/smoke) plus the five per-element strips and the
+ * Break burst (#201). Every element's strip is a distinct Ninja Adventure
+ * `FX/Elemental/` sheet so an action reads by element; the view layer tints each
+ * to the combat color language (Flux cyan-white … Gloom void-black). Frame
+ * sizes were derived empirically from each sheet (single row, N equal cells) —
+ * `width / count` per strip, height = sheet height.
+ */
 const FX = [
   {
     name: "slash",
@@ -89,6 +97,50 @@ const FX = [
     w: 32,
     h: 32,
     count: 6,
+  },
+  // ── Per-element craft FX (#201) — one Elemental strip per combat element. ──
+  {
+    name: "flux",
+    file: "FX/Elemental/Thunder/SpriteSheet.png",
+    w: 20,
+    h: 28,
+    count: 8,
+  },
+  {
+    name: "ash",
+    file: "FX/Elemental/Flam/SpriteSheet.png",
+    w: 25,
+    h: 30,
+    count: 8,
+  },
+  {
+    name: "iron",
+    file: "FX/Elemental/Rock/SpriteSheet.png",
+    w: 30,
+    h: 30,
+    count: 14,
+  },
+  {
+    name: "bloom",
+    file: "FX/Elemental/Plant/SpriteSheet.png",
+    w: 30,
+    h: 28,
+    count: 8,
+  },
+  {
+    name: "gloom",
+    file: "FX/Elemental/Ice/SpriteSheet.png",
+    w: 32,
+    h: 32,
+    count: 10,
+  },
+  // The Break burst — the dedicated Pressure→Break visual moment.
+  {
+    name: "break",
+    file: "FX/Elemental/Explosion/SpriteSheet.png",
+    w: 40,
+    h: 40,
+    count: 9,
   },
 ];
 

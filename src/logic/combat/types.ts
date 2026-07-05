@@ -179,6 +179,13 @@ export interface BattleEvent {
   readonly target?: CombatantRef;
   readonly roll?: number;
   readonly damage?: number;
+  /**
+   * The attacking element a Craft resolved with, when the action carried one
+   * (physical Strikes are neutral and omit it). Purely observational — the
+   * hash covers only the log's length, so this render-facing annotation (the
+   * view layer colors its FX by it, #201) never perturbs the determinism gate.
+   */
+  readonly element?: ElementId;
 }
 
 /**

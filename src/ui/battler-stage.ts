@@ -8,17 +8,16 @@
  * @module ui/battler-stage
  */
 import Phaser from "phaser";
-import { FxAnims } from "../anims";
 import { AtlasKeys } from "../assets";
 import { BattleColors, BattleLayout } from "../consts";
 import {
-  ActionKinds,
   AtbTuning,
   BattleSides,
   type BattleEvent,
   type BattleSide,
   type Combatant,
 } from "../logic/combat";
+import { BREAK_FX, fxForEvent, justBroke, type FxSelection } from "./battle-fx";
 import {
   BATTLER_KIND,
   BattlerDirs,
@@ -34,6 +33,7 @@ import {
   attackLunge,
   damagePopup,
   hitFlash,
+  hitstop,
   JuiceTuning,
   screenShake,
 } from "./juice";
@@ -52,6 +52,15 @@ const SHAKE_DAMAGE_THRESHOLD = 10;
 /** Damage popup colors per victim side. */
 const POPUP_ENEMY_HIT = "#ffd166";
 const POPUP_PARTY_HIT = "#ff8f8f";
+
+/**
+ * The sprite DataManager key holding the last-mirrored Broken state — the
+ * applied-visual marker that makes the Break beat (burst + hitstop) fire exactly
+ * once on the false→true edge, the same "state doubles as the marker" discipline
+ * the alive/downed alpha uses. Stored on the sprite (via `setData`, a method) so
+ * the mirror stays free of direct object mutation.
+ */
+const BROKEN_DATA_KEY = "broken";
 
 /** The pooled render objects mirroring one combatant. */
 export interface UnitView {
@@ -164,15 +173,23 @@ function addBarPair(
 }
 
 /**
- * Mirror one combatant onto its view: HP/ATB bar fill, plus the downed/alive
- * pose transition. The sprite's alpha doubles as the applied-visual marker so
- * the transition work (frame swap, tint, anim stop) runs exactly once per
- * state change — steady-state frames only write two scale scalars.
+ * Mirror one combatant onto its view: HP/ATB bar fill, the downed/alive pose
+ * transition, and the Break beat. The sprite's alpha doubles as the alive marker
+ * and `view.broken` as the Break marker, so each transition's work runs exactly
+ * once — steady-state frames only write two scale scalars (plus a cheap re-assert
+ * of the Broken tint if a hit-flash cleared it). Returns the Break FX to play on
+ * the frame a living combatant first Breaks (else null), so the scene can record
+ * it for the verification bridge.
+ * @param scene - The owning scene (Break burst + hitstop factory).
  * @param view - The combatant's pooled view.
  * @param combatant - The live combatant.
- * @returns void
+ * @returns The Break FX selection on the Break edge, else null.
  */
-export function syncUnitView(view: UnitView, combatant: Combatant): void {
+export function syncUnitView(
+  scene: Phaser.Scene,
+  view: UnitView,
+  combatant: Combatant
+): FxSelection | null {
   const alive = combatant.hp > 0;
   view.hpFill.setScale(
     Phaser.Math.Clamp(combatant.hp / combatant.stats.hp, 0, 1),
@@ -188,7 +205,9 @@ export function syncUnitView(view: UnitView, combatant: Combatant): void {
       .setFrame(battlerDeadFrame(view.artRef, view.facing))
       .setTint(BattleColors.downedTint)
       .setAlpha(DOWNED_ALPHA);
-  } else if (alive && view.unit.alpha !== ALIVE_ALPHA) {
+    return null;
+  }
+  if (alive && view.unit.alpha !== ALIVE_ALPHA) {
     view.unit
       .setFrame(battlerIdleFrame(view.artRef, view.facing))
       .clearTint()
@@ -197,20 +216,57 @@ export function syncUnitView(view: UnitView, combatant: Combatant): void {
       view.unit.play(battlerWalkAnim(view.artRef, view.facing));
     }
   }
+  return syncBrokenState(scene, view, combatant, alive);
 }
 
 /**
- * The juice for one resolved action event: actor beat + target beat.
+ * Mirror the Broken state onto a living combatant's view: on the first Break
+ * edge, fire the burst + hitstop and hold the vulnerable tint; on every later
+ * frame, re-assert that tint only if a transient hit-flash cleared it (so
+ * steady state stays allocation- and write-free). The downed branch already
+ * returned, so this only runs for a living combatant.
+ * @param scene - The owning scene.
+ * @param view - The combatant's pooled view.
+ * @param combatant - The live combatant.
+ * @param alive - Whether the combatant is alive (always true here).
+ * @returns The Break FX on the Break edge, else null.
+ */
+function syncBrokenState(
+  scene: Phaser.Scene,
+  view: UnitView,
+  combatant: Combatant,
+  alive: boolean
+): FxSelection | null {
+  if (!alive || !combatant.broken) {
+    return null;
+  }
+  const wasBroken = view.unit.getData(BROKEN_DATA_KEY) === true;
+  if (justBroke(wasBroken, combatant)) {
+    view.unit.setData(BROKEN_DATA_KEY, true).setTint(BattleColors.brokenTint);
+    spawnFx(scene, BREAK_FX, view.unit);
+    hitstop(scene);
+    return BREAK_FX;
+  }
+  if (!view.unit.isTinted) {
+    view.unit.setTint(BattleColors.brokenTint);
+  }
+  return null;
+}
+
+/**
+ * The juice for one resolved action event: actor beat + target beat. Returns
+ * the FX selection shown over the target (or null when the event has no target),
+ * so the scene can record the last-played FX for the verification bridge.
  * @param scene - The owning scene.
  * @param views - Both sides' pooled views.
  * @param event - The newly logged battle event.
- * @returns void
+ * @returns The FX selection played over the target, or null.
  */
 export function playEventJuice(
   scene: Phaser.Scene,
   views: StageViews,
   event: BattleEvent
-): void {
+): FxSelection | null {
   const actor = event.actor
     ? viewAt(views, event.actor.side, event.actor.index)
     : null;
@@ -220,9 +276,7 @@ export function playEventJuice(
   const target = event.target
     ? viewAt(views, event.target.side, event.target.index)
     : null;
-  if (target) {
-    playTargetJuice(scene, target, event);
-  }
+  return target ? playTargetJuice(scene, target, event) : null;
 }
 
 /**
@@ -250,58 +304,58 @@ function playActorJuice(
 }
 
 /**
- * The target's beat: the FX strip for the action flavor, and on real damage a
- * hit-flash, a damage popup, and (heavy hits) a camera shake.
+ * The target's beat: the element-read FX strip for the action, and on real
+ * damage a hit-flash, a damage popup, and (heavy hits) a camera shake. Returns
+ * the FX selection so the caller can record the last-played FX.
  * @param scene - The owning scene.
  * @param target - The target's view.
- * @param event - The logged event (kind + damage + victim side).
- * @returns void
+ * @param event - The logged event (kind + element + damage + victim side).
+ * @returns The FX selection played over the target.
  */
 function playTargetJuice(
   scene: Phaser.Scene,
   target: UnitView,
   event: BattleEvent
-): void {
+): FxSelection {
   const damage = event.damage ?? 0;
   const popupY = target.unit.y - (target.unit.displayHeight / 2 + 2);
   const popupColor =
     event.target?.side === BattleSides.party
       ? POPUP_PARTY_HIT
       : POPUP_ENEMY_HIT;
-  playFx(scene, event.kind, target.unit);
+  const selection = fxForEvent(event);
+  spawnFx(scene, selection, target.unit);
   if (damage <= 0) {
-    return;
+    return selection;
   }
   hitFlash(scene, target.unit);
   damagePopup(scene, target.unit.x, popupY, String(damage), popupColor);
   if (damage >= SHAKE_DAMAGE_THRESHOLD) {
     screenShake(scene);
   }
+  return selection;
 }
 
 /**
- * Spawn a play-once FX strip over a unit and free it when it finishes.
+ * Spawn a play-once FX strip over a unit, tinted to its color-language flavor,
+ * and free it when it finishes. Shared by the per-element action FX and the
+ * Break burst.
  * @param scene - The owning scene.
- * @param kind - The action kind selecting the FX flavor.
+ * @param selection - The FX animation key + tint to play.
  * @param over - The sprite the FX plays over.
  * @returns void
  */
-function playFx(
+function spawnFx(
   scene: Phaser.Scene,
-  kind: BattleEvent["kind"],
+  selection: FxSelection,
   over: Phaser.GameObjects.Sprite
 ): void {
-  const anim =
-    kind === ActionKinds.craft
-      ? FxAnims.spark
-      : kind === ActionKinds.defend
-        ? FxAnims.smoke
-        : FxAnims.slash;
   const fx = scene.add
     .sprite(over.x, over.y, AtlasKeys.fx)
-    .setDepth(over.depth + 1);
+    .setDepth(over.depth + 1)
+    .setTint(selection.tint);
   fx.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => fx.destroy());
-  fx.play(anim);
+  fx.play(selection.anim);
 }
 
 /**

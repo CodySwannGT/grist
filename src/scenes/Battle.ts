@@ -54,6 +54,7 @@ import {
   type StageViews,
   type UnitView,
 } from "../ui/battler-stage";
+import { type FxSelection } from "../ui/battle-fx";
 import { battlerArtRef } from "../ui/battler-view";
 import { verifyBridge, type BattleView } from "../uat/bridge";
 
@@ -92,6 +93,13 @@ export class Battle extends Phaser.Scene {
   #enemyViews: readonly UnitView[] = [];
   /** How many battle-log events have already fired their juice. */
   #logCursor = 0;
+  /**
+   * The last FX the stage played — an element-read action strip or the Break
+   * burst — exposed to the verification bridge (`__VERIFY__.fx()`) so an e2e can
+   * prove an action read by its element and the Break beat fired. Null until the
+   * first FX plays (and reset on every reseed).
+   */
+  #lastFx: FxSelection | null = null;
   /** The encounter this run resolved (default for a standalone boot, or launched). */
   #encounter: EncounterDef = DEFAULT_ENCOUNTER;
   /**
@@ -281,15 +289,28 @@ export class Battle extends Phaser.Scene {
     state.party.forEach((combatant, index) => {
       const view = this.#partyViews[index];
       if (view) {
-        syncUnitView(view, combatant);
+        this.#recordFx(syncUnitView(this, view, combatant));
       }
     });
     state.enemies.forEach((combatant, index) => {
       const view = this.#enemyViews[index];
       if (view) {
-        syncUnitView(view, combatant);
+        this.#recordFx(syncUnitView(this, view, combatant));
       }
     });
+  }
+
+  /**
+   * Record the last FX the stage played (an action strip or the Break burst) for
+   * the verification bridge. A null selection (no FX this mirror) leaves the last
+   * recorded value untouched — `fx()` reports the most recent FX, not "none".
+   * @param selection - The FX selection just played, or null.
+   * @returns void
+   */
+  #recordFx(selection: FxSelection | null): void {
+    if (selection) {
+      this.#lastFx = selection;
+    }
   }
 
   /**
@@ -307,7 +328,7 @@ export class Battle extends Phaser.Scene {
     for (let index = this.#logCursor; index < log.length; index++) {
       const event = log[index];
       if (event && event.kind !== ActionKinds.tick) {
-        playEventJuice(this, views, event);
+        this.#recordFx(playEventJuice(this, views, event));
       }
     }
     this.#logCursor = log.length;
@@ -334,10 +355,12 @@ export class Battle extends Phaser.Scene {
       },
       hud: () => this.#controller.model(),
       hash: () => hashState(this.#runner.state()),
+      fx: () => this.#lastFx,
       restart: (seed: number) => {
         this.#runner.restart(seed);
         this.#controller.reset();
         this.#logCursor = 0;
+        this.#lastFx = null;
       },
       act: action => eventsCenter.emit(BattleEvents.ActionRequested, action),
       advanceTurn: () => this.#runner.advanceTurn(),

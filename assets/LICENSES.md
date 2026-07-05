@@ -21,8 +21,10 @@ evidence recorded here, and (2) an ingest entry or committed source file under
 
 - **Ninja Adventure**: every battler sprite (party + enemies, sliced per-frame
   into `assets/src/sprites/battlers/<ref>/`), dialogue portraits
-  (`sprites/portraits/`), battle FX (`sprites/fx/`), and UI chrome
-  (`sprites/ui/`).
+  (`sprites/portraits/`), battle FX (`sprites/fx/` — the slash/spark/smoke base
+  flavors, the five per-element craft strips carved from `FX/Elemental/`
+  (Thunder→flux, Flam→ash, Rock→iron, Plant→bloom, Ice→gloom), and the
+  Explosion→Break burst, #201), and UI chrome (`sprites/ui/`).
 - **Warped City**: the Marrow side-view parallax backdrop layers
   (`assets/src/images/marrow/bg-{far,mid,near}.png`).
 

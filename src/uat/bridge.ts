@@ -20,6 +20,7 @@ import {
   type Combatant,
 } from "../logic/combat";
 import { type RegionAction } from "../logic/region";
+import { type FxSelection } from "../ui/battle-fx";
 import { type HudModel } from "../ui/battle-controller";
 import { autoWinView, strikeView } from "./battle-driver";
 import { BenchCell, type BenchView, type VerifyBenchState } from "./bench-view";
@@ -81,6 +82,8 @@ export interface BattleView {
   readonly resolution: () => VerifyResolution;
   readonly hud: () => HudModel | null;
   readonly hash: () => string | null;
+  /** The last FX the stage played (element action strip or Break burst), #201. */
+  readonly fx: () => FxSelection | null;
   readonly restart: (seed: number) => void;
   readonly act: (action: BattleAction) => void;
   readonly advanceTurn: () => void;
@@ -99,6 +102,14 @@ interface VerifyApi extends DialogueApi, DataCellApi, RenderApi {
   readonly resolution: () => VerifyResolution | null;
   readonly hud: () => HudModel | null;
   readonly hash: () => string | null;
+  /**
+   * The last battle FX the stage played — the resolved action's element-read
+   * strip ({@link FxSelection.element} names the element, or null for a neutral
+   * Strike) or the Break burst — or null outside a battle / before any FX. Lets
+   * the verification suite prove an action read by its element and the Break beat
+   * fired, without inspecting pixels (#201).
+   */
+  readonly fx: () => FxSelection | null;
   readonly seed: (seed: number) => void;
   /**
    * Push an action into the active gameplay scene. A {@link BattleAction} drives
@@ -375,6 +386,17 @@ class VerifyController {
   }
 
   /**
+   * The last battle FX the stage played (element-read action strip or Break
+   * burst), or null outside a battle / before any FX. Dispatched to the attached
+   * BattleView; the verification suite reads it to prove the element/Break FX
+   * (#201).
+   * @returns The last FX selection, or null.
+   */
+  fx(): FxSelection | null {
+    return this.#view?.fx() ?? null;
+  }
+
+  /**
    * The stable digest of the live scene — the {@link BattleState} hash in a battle,
    * or the booted region-session hash ({@link hashRegionRun}) in the Region scene
    * (#137), else null. The determinism gate samples this across two seeded
@@ -499,6 +521,7 @@ export function installVerifyBridge(): void {
     resolution: () => verifyBridge.resolution(),
     hud: () => verifyBridge.hud(),
     hash: () => verifyBridge.hash(),
+    fx: () => verifyBridge.fx(),
     seed: (seed: number) => verifyBridge.seed(seed),
     act: (action: BattleAction | RegionAction) => verifyBridge.act(action),
     advanceTurn: () => verifyBridge.advanceTurn(),
