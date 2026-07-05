@@ -40,6 +40,7 @@ import { BenchInputService } from "../services/bench-input";
 import { type BenchIntent } from "../services/bench-input-map";
 import { getRunState, setRunState } from "../services/run-store";
 import { isVerificationEnabled, verifyBridge } from "../uat/bridge";
+import { addPanel, enablePanelTap, PanelTint } from "../ui/chrome";
 import { type BenchView } from "../uat/bench-view";
 
 /** The shard the bench equips (the Ashling reward shard that teaches Cinder). */
@@ -47,7 +48,7 @@ const ASHLING_SHARD = BoundIds.marrowBound;
 /** The pooled objects for one sink button (its highlight box + label). */
 interface SinkButton {
   readonly id: BenchSinkId;
-  readonly box: Phaser.GameObjects.Rectangle;
+  readonly box: Phaser.GameObjects.NineSlice;
   readonly label: Phaser.GameObjects.Text;
 }
 
@@ -57,7 +58,7 @@ export class Bench extends Phaser.Scene {
   #run: RunState = newRunState();
   #input!: BenchInputService;
   #gristText!: Phaser.GameObjects.Text;
-  #equipBox!: Phaser.GameObjects.Rectangle;
+  #equipBox!: Phaser.GameObjects.NineSlice;
   #equipLabel!: Phaser.GameObjects.Text;
   #sinks: readonly SinkButton[] = [];
   #progressFill!: Phaser.GameObjects.Rectangle;
@@ -193,18 +194,15 @@ export class Bench extends Phaser.Scene {
    * for the Ashling shard. The label/stroke reflect equipped state on render.
    * @returns The equip button box (retained for restyle on render).
    */
-  #buildEquipButton(): Phaser.GameObjects.Rectangle {
-    const box = this.add
-      .rectangle(
-        BenchLayout.equipX,
-        BenchLayout.equipY,
-        BenchLayout.equipWidth,
-        BenchLayout.equipHeight,
-        BenchColors.buttonFill
-      )
-      .setStrokeStyle(1, BenchColors.buttonStroke)
-      .setInteractive({ useHandCursor: true });
-    box.on(Phaser.Input.Events.POINTER_DOWN, () => {
+  #buildEquipButton(): Phaser.GameObjects.NineSlice {
+    const box = addPanel(
+      this,
+      BenchLayout.equipX,
+      BenchLayout.equipY,
+      BenchLayout.equipWidth,
+      BenchLayout.equipHeight
+    );
+    enablePanelTap(box, BenchLayout.equipWidth, BenchLayout.equipHeight, () => {
       this.#input.tapEquip(ASHLING_SHARD);
     });
     this.#equipLabel = this.add
@@ -223,17 +221,14 @@ export class Bench extends Phaser.Scene {
    */
   #buildSinkButton(id: BenchSinkId, row: number): SinkButton {
     const y = BenchLayout.firstSinkY + row * BenchLayout.rowGap;
-    const box = this.add
-      .rectangle(
-        BenchLayout.sinkX,
-        y,
-        BenchLayout.sinkWidth,
-        BenchLayout.sinkHeight,
-        BenchColors.buttonFill
-      )
-      .setStrokeStyle(1, BenchColors.buttonStroke)
-      .setInteractive({ useHandCursor: true });
-    box.on(Phaser.Input.Events.POINTER_DOWN, () => {
+    const box = addPanel(
+      this,
+      BenchLayout.sinkX,
+      y,
+      BenchLayout.sinkWidth,
+      BenchLayout.sinkHeight
+    );
+    enablePanelTap(box, BenchLayout.sinkWidth, BenchLayout.sinkHeight, () => {
       this.#input.tapBuySink(id);
     });
     const label = this.add
@@ -303,10 +298,7 @@ export class Bench extends Phaser.Scene {
         ? "The Marrow Bound — equipped (learning Cinder)"
         : "Equip: The Marrow Bound"
     );
-    this.#equipBox.setStrokeStyle(
-      1,
-      equipped ? BenchColors.buttonStrokeEquipped : BenchColors.buttonStroke
-    );
+    this.#equipBox.setTint(equipped ? PanelTint.equipped : PanelTint.frame);
   }
 
   /**
@@ -330,9 +322,7 @@ export class Bench extends Phaser.Scene {
       .setColor(
         enabled ? BenchColors.buttonText : BenchColors.buttonTextDisabled
       );
-    button.box.setFillStyle(
-      enabled ? BenchColors.buttonFill : BenchColors.buttonFillDisabled
-    );
+    button.box.setTint(enabled ? PanelTint.frame : PanelTint.disabled);
   }
 
   /**

@@ -144,11 +144,22 @@ const FX = [
   },
 ];
 
-/** UI chrome copied verbatim from Ninja Adventure (already pixel-art). */
+/**
+ * UI chrome copied verbatim from Ninja Adventure (already pixel-art). The
+ * `panel` piece is the pack's purpose-built 9-slice frame (`ThemeMetal3` — a
+ * dark, near-black terminal screen behind a teal etched bezel with rounded
+ * corners) used as a Phaser NineSlice for every chrome panel (menus, HUD
+ * framing, the dialogue caption box, choice/command buttons). Its dark interior
+ * keeps the light HUD text legible while the bezel reads as the art bible's
+ * "corporate-terminal frame etched with old sigils"; a grist-gold NineSlice tint
+ * marks the active/selected surface (#202). `dialog-box`/`choice-box` are the
+ * pack's flat boxes and `arrow` is the selection cursor.
+ */
 const UI = [
   { name: "dialog-box", file: "Ui/Dialog/DialogBox.png" },
   { name: "choice-box", file: "Ui/Dialog/ChoiceBox.png" },
   { name: "arrow", file: "Ui/Arrow.png" },
+  { name: "panel", file: "Ui/Theme/Wip/ThemeMetal3/nine_path_panel.png" },
 ];
 
 /** Warped City parallax layers → the Marrow side-view backdrop set. */

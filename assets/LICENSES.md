@@ -24,7 +24,9 @@ evidence recorded here, and (2) an ingest entry or committed source file under
   (`sprites/portraits/`), battle FX (`sprites/fx/` — the slash/spark/smoke base
   flavors, the five per-element craft strips carved from `FX/Elemental/`
   (Thunder→flux, Flam→ash, Rock→iron, Plant→bloom, Ice→gloom), and the
-  Explosion→Break burst, #201), and UI chrome (`sprites/ui/`).
+  Explosion→Break burst, #201), and UI chrome (`sprites/ui/` — the flat
+  dialog/choice boxes, the arrow cursor, and the `panel` 9-slice terminal frame
+  carved from `Ui/Theme/Wip/ThemeMetal3/nine_path_panel.png`, #202).
 - **Warped City**: the Marrow side-view parallax backdrop layers
   (`assets/src/images/marrow/bg-{far,mid,near}.png`).
 

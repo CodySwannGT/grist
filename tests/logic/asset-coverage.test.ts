@@ -12,7 +12,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FX_FRAMES } from "../../src/anims";
-import { ImageKeys } from "../../src/assets";
+import { Frames, ImageKeys } from "../../src/assets";
 import {
   BATTLER_REFS,
   BattlerDirs,
@@ -69,6 +69,17 @@ describe("asset coverage — derived keys resolve in the committed atlases", () 
     const portraits = framesOf("portraits");
     for (const speaker of ["wren", "tobi", "sable", "halcyon"]) {
       expect(portraits).toContain(speaker);
+    }
+  });
+
+  it("covers every UI chrome frame the pixel 9-slice reskin draws (#202)", () => {
+    // The `panel` 9-slice frames every menu/HUD/dialogue chrome surface and the
+    // `arrow` is the selection cursor; both must resolve in the committed `ui`
+    // atlas or the reskin is a silent black square. `dialog-box`/`choice-box`
+    // are the pack's flat boxes kept available alongside them.
+    const ui = framesOf("ui");
+    for (const frame of Object.values(Frames.ui)) {
+      expect(ui).toContain(frame);
     }
   });
 
