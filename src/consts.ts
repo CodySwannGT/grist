@@ -114,8 +114,11 @@ export const BattleColors = {
  * The combat color language (art-direction §"Elemental color coding") as the
  * tints the render layer multiplies onto each element's craft-FX strip so an
  * action reads by element: Flux cyan-white, Ash grey-violet, Iron steel-orange,
- * Bloom warm green-gold, Gloom void-black. `neutral` is the un-elemental (Strike)
- * flavor and `break` is the Pressure→Break burst (grist-gold, {@link GRIST_GOLD}).
+ * Bloom warm green-gold, Gloom void-black. Because a tint MULTIPLIES the strip's
+ * pixels, a pure black (0x000000) would erase the FX — so Gloom is the darkest,
+ * most-desaturated tone (a deep violet-black) that still reads as void while
+ * keeping the strip legible. `neutral` is the un-elemental (Strike) flavor and
+ * `break` is the Pressure→Break burst (grist-gold, {@link GRIST_GOLD}).
  */
 export const FxColors: Readonly<
   Record<ElementId | "neutral" | "break", number>
@@ -124,7 +127,7 @@ export const FxColors: Readonly<
   [Elements.ash]: 0xb7a2d6,
   [Elements.iron]: 0xe0912f,
   [Elements.bloom]: 0xc4e06a,
-  [Elements.gloom]: 0x6a5a8c,
+  [Elements.gloom]: 0x3b3350,
   neutral: 0xffffff,
   break: GRIST_GOLD,
 };

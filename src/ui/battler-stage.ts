@@ -237,10 +237,20 @@ function syncBrokenState(
   combatant: Combatant,
   alive: boolean
 ): FxSelection | null {
-  if (!alive || !combatant.broken) {
+  // The downed branch owns the corpse's tint; leave it untouched here.
+  if (!alive) {
     return null;
   }
   const wasBroken = view.unit.getData(BROKEN_DATA_KEY) === true;
+  if (!combatant.broken) {
+    // Clear a STALE Broken marker (a reseed rebinds a fresh, un-Broken combatant
+    // to this pooled sprite; Broken is otherwise monotonic within a battle) so
+    // the next Break after a restart fires its burst + hitstop + fx() signal.
+    if (wasBroken) {
+      view.unit.setData(BROKEN_DATA_KEY, false).clearTint();
+    }
+    return null;
+  }
   if (justBroke(wasBroken, combatant)) {
     view.unit.setData(BROKEN_DATA_KEY, true).setTint(BattleColors.brokenTint);
     spawnFx(scene, BREAK_FX, view.unit);

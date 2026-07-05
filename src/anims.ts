@@ -43,7 +43,7 @@ export const FxAnims = {
   iron: "anim-fx-iron",
   /** Bloom craft — verdant spray (view tints it green-gold). */
   bloom: "anim-fx-bloom",
-  /** Gloom craft — void crystal (view tints it void-black). */
+  /** Gloom craft — void crystal (view tints it a deep violet-black void). */
   gloom: "anim-fx-gloom",
   /** The Break burst — the dedicated Pressure→Break visual moment. */
   break: "anim-fx-break",
