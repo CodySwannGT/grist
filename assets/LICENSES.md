@@ -27,6 +27,13 @@ evidence recorded here, and (2) an ingest entry or committed source file under
   Explosion→Break burst, #201), and UI chrome (`sprites/ui/` — the flat
   dialog/choice boxes, the arrow cursor, and the `panel` 9-slice terminal frame
   carved from `Ui/Theme/Wip/ThemeMetal3/nine_path_panel.png`, #202).
+  It also supplies the temp (demo-quality) audio (`assets/src/audio/`, #115):
+  the opening **Choir-leitmotif** fragment (`choir-leitmotif.ogg`, the pack's
+  `Audio/Musics/6 - Story (Short).ogg`) and the three resonant stingers —
+  **grist-spend** (`grist-spend.wav`, `Audio/Sounds/Bonus/Gold1.wav`), **Break**
+  (`break.wav`, `Audio/Sounds/Hit & Impact/Impact.wav`), and **Rendering**
+  (`rendering.wav`, `Audio/Sounds/Magic & Skill/Spirit.wav`). All copied verbatim
+  (no re-encode) so the pipeline stays byte-reproducible without ffmpeg.
 - **Warped City**: the Marrow side-view parallax backdrop layers
   (`assets/src/images/marrow/bg-{far,mid,near}.png`).
 

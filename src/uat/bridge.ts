@@ -20,6 +20,7 @@ import {
   type Combatant,
 } from "../logic/combat";
 import { type RegionAction } from "../logic/region";
+import { soundService } from "../services/sound-service";
 import { type FxSelection } from "../ui/battle-fx";
 import { type HudModel } from "../ui/battle-controller";
 import { autoWinView, strikeView } from "./battle-driver";
@@ -53,6 +54,10 @@ interface VerifyCombatant {
   readonly atb: number;
   readonly broken: boolean;
   readonly spent: boolean;
+  /** Pressure toward Break (0→breakThreshold) — lets a UAT watch the Break build. */
+  readonly pressure: number;
+  /** The status ids riding the combatant (e.g. `"rendering"`), for status assertions. */
+  readonly statuses: readonly string[];
 }
 
 /** A read-only snapshot of the running battle for assertions. */
@@ -156,6 +161,19 @@ interface VerifyApi extends DialogueApi, DataCellApi, RenderApi {
    * `error`) when the region threw on boot — the harness-failure state the e2e asserts.
    */
   readonly regionRun: () => VerifyRegionSceneState | null;
+  /**
+   * The append-only temp-audio cue log (#115): every cue id fired this session,
+   * oldest first (`"choir"` / `"grist-spend"` / `"break"` / `"rendering"`). Lets an
+   * e2e prove the Choir leitmotif and each stinger played at its moment — the
+   * "an agent heard it fire" definition of done, without a real audio device.
+   */
+  readonly audio: () => readonly string[];
+  /**
+   * The redundant text/icon caption for the most recent audio cue (`"<icon> <text>"`),
+   * or null before any cue. Proves every acceptance-relevant audio moment also
+   * carries a non-color/non-audio cue (#115, FR11 / the redundancy half of AC12).
+   */
+  readonly audioCaption: () => string | null;
 }
 
 declare global {
@@ -180,6 +198,8 @@ function toVerifyCombatant(combatant: Combatant): VerifyCombatant {
     atb: combatant.atb,
     broken: combatant.broken,
     spent: combatant.spent,
+    pressure: combatant.pressure,
+    statuses: combatant.statuses.map(status => status.id),
   };
 }
 
@@ -548,5 +568,10 @@ export function installVerifyBridge(): void {
     // The BOOTED Region scene snapshot (#137) — read for the active scene, the same
     // way `bench` reads its cell; null outside the Region scene.
     regionRun: () => verifyBridge.region.snapshot(verifyBridge.scene()),
+    // The temp-audio cue log + redundant caption (#115) — scene-agnostic reads over
+    // the shared SoundService, so an e2e proves each cue fired and carries a
+    // non-color/non-audio caption regardless of the active scene.
+    audio: () => soundService.recentCues(),
+    audioCaption: () => soundService.lastCaption(),
   };
 }

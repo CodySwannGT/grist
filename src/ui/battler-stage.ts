@@ -17,6 +17,8 @@ import {
   type BattleSide,
   type Combatant,
 } from "../logic/combat";
+import { AudioCues, hasRendering, justRendered } from "../logic/audio";
+import { soundService } from "../services/sound-service";
 import { BREAK_FX, fxForEvent, justBroke, type FxSelection } from "./battle-fx";
 import {
   BATTLER_KIND,
@@ -61,6 +63,15 @@ const POPUP_PARTY_HIT = "#ff8f8f";
  * the mirror stays free of direct object mutation.
  */
 const BROKEN_DATA_KEY = "broken";
+
+/**
+ * The sprite DataManager key holding the last-mirrored Rendering presence — the
+ * false→true edge that fires the Rendering stinger exactly once per application
+ * (#115), the audio counterpart of {@link BROKEN_DATA_KEY}. Cleared when the
+ * status lapses (or a reseed rebinds an un-Rendered combatant) so a later
+ * re-application fires afresh.
+ */
+const RENDERING_DATA_KEY = "rendering";
 
 /** The pooled render objects mirroring one combatant. */
 export interface UnitView {
@@ -191,6 +202,9 @@ export function syncUnitView(
   combatant: Combatant
 ): FxSelection | null {
   const alive = combatant.hp > 0;
+  if (alive) {
+    syncRenderingCue(view, combatant);
+  }
   view.hpFill.setScale(
     Phaser.Math.Clamp(combatant.hp / combatant.stats.hp, 0, 1),
     1
@@ -254,6 +268,7 @@ function syncBrokenState(
   if (justBroke(wasBroken, combatant)) {
     view.unit.setData(BROKEN_DATA_KEY, true).setTint(BattleColors.brokenTint);
     spawnFx(scene, BREAK_FX, view.unit);
+    soundService.playCue(AudioCues.break);
     hitstop(scene);
     return BREAK_FX;
   }
@@ -261,6 +276,27 @@ function syncBrokenState(
     view.unit.setTint(BattleColors.brokenTint);
   }
   return null;
+}
+
+/**
+ * Fire the Rendering stinger on the frame a living combatant first gains the
+ * Rendering DoT (#115). Edge-triggered off the sprite's stored prior presence —
+ * the {@link BROKEN_DATA_KEY} discipline — so the cue plays exactly once per
+ * application and re-arms after the status lapses or a reseed. Presentation only:
+ * the cue records + captions itself; the sim is untouched.
+ * @param view - The combatant's pooled view.
+ * @param combatant - The live (alive) combatant.
+ * @returns void
+ */
+function syncRenderingCue(view: UnitView, combatant: Combatant): void {
+  const wasRendering = view.unit.getData(RENDERING_DATA_KEY) === true;
+  const now = hasRendering(combatant.statuses);
+  if (now !== wasRendering) {
+    view.unit.setData(RENDERING_DATA_KEY, now);
+  }
+  if (justRendered(wasRendering, combatant.statuses)) {
+    soundService.playCue(AudioCues.rendering);
+  }
 }
 
 /**

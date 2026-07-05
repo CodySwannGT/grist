@@ -55,6 +55,19 @@ export const BattleEvents = {
 export const HUD_DEPTH = 100;
 
 /**
+ * Cross-cutting audio event names emitted on the EventsCenter bus (never on
+ * `game.events`). The {@link import("./services/sound-service").SoundService}
+ * publishes {@link AudioEvents.Cue} with the {@link import("./logic/audio")
+ * .AudioCueId} every time a temp-audio cue fires; the redundant on-screen caption
+ * view ({@link import("./ui/cue-caption").CueCaptionView}) subscribes and shows
+ * the cue's text/icon, so every audio moment carries a non-color/non-audio cue
+ * (FR11 / AC12) that can never drift from the sound.
+ */
+export const AudioEvents = {
+  Cue: "audio-cue",
+} as const;
+
+/**
  * The native (internal) render resolution. Locked to 384×216, integer-scaled and
  * landscape-first per decision 0006 (V2). The scene renders against these logical
  * units; the ScaleManager scales the canvas to the viewport by an integer factor.

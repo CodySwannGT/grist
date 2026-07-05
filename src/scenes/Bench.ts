@@ -35,12 +35,15 @@ import {
   type RunState,
 } from "../logic/run-state";
 import { isLearning, learningProgress } from "../logic/spell-learning";
+import { AudioCues } from "../logic/audio";
 import { eventsCenter } from "../services/events";
 import { BenchInputService } from "../services/bench-input";
 import { type BenchIntent } from "../services/bench-input-map";
 import { getRunState, setRunState } from "../services/run-store";
+import { soundService } from "../services/sound-service";
 import { isVerificationEnabled, verifyBridge } from "../uat/bridge";
 import { addPanel, enablePanelTap, PanelTint } from "../ui/chrome";
+import { CueCaptionView } from "../ui/cue-caption";
 import { type BenchView } from "../uat/bench-view";
 
 /** The shard the bench equips (the Ashling reward shard that teaches Cinder). */
@@ -63,6 +66,8 @@ export class Bench extends Phaser.Scene {
   #sinks: readonly SinkButton[] = [];
   #progressFill!: Phaser.GameObjects.Rectangle;
   #progressLabel!: Phaser.GameObjects.Text;
+  /** The redundant on-screen caption for audio cues (#115, FR11 / AC12). */
+  #cueCaption!: CueCaptionView;
 
   /** Register the scene key. */
   constructor() {
@@ -89,6 +94,8 @@ export class Bench extends Phaser.Scene {
     ];
     this.#buildProgressBar();
 
+    this.#cueCaption = new CueCaptionView(this);
+    soundService.attachUnlock(this);
     eventsCenter.on(BenchEvents.Input, this.#onIntent);
     verifyBridge.attach(SceneKeys.Bench, this.#bridgeView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
@@ -151,6 +158,9 @@ export class Bench extends Phaser.Scene {
     }
     const result = applyBenchSink(this.#run, intent.sink);
     if (result.ok) {
+      // A successful sink spends grist — fire the resonant grist-spend stinger
+      // (#115) alongside the persisted state change.
+      soundService.playCue(AudioCues.gristSpend);
       this.#commit(result.run);
     }
   };
@@ -386,6 +396,7 @@ export class Bench extends Phaser.Scene {
    */
   #shutdown(): void {
     verifyBridge.attach("", null);
+    this.#cueCaption.destroy();
     eventsCenter.off(BenchEvents.Input, this.#onIntent);
   }
 }

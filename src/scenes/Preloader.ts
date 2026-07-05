@@ -8,7 +8,7 @@
  */
 import Phaser from "phaser";
 import { registerGameAnims } from "../anims";
-import { AtlasKeys, ImageKeys } from "../assets";
+import { AtlasKeys, AudioManifest, ImageKeys } from "../assets";
 import { SceneKeys } from "../consts";
 import { verifyBridge } from "../uat/bridge";
 
@@ -41,6 +41,11 @@ export class Preloader extends Phaser.Scene {
     for (const image of Object.values(ImageKeys)) {
       const base = image.replace(/^img-/u, "");
       this.load.image(image, `${IMAGE_PATH}/${base}.png`);
+    }
+    // Temp audio (#115): each clip loads by its typed key + real-extension url from
+    // the generated manifest, so a missing/renamed clip is a compile error.
+    for (const clip of AudioManifest) {
+      this.load.audio(clip.key, clip.url);
     }
   }
 
