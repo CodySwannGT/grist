@@ -23,6 +23,7 @@
  * @module ui/dialogue
  */
 import Phaser from "phaser";
+import { AtlasKeys, Frames } from "../assets";
 import {
   DialogueColors,
   DialogueEvents,
@@ -59,6 +60,18 @@ interface ChoiceSlot {
 
 /** A pointer handler the owning scene registers for a tapped choice (by index). */
 type ChoicePointerHandler = (index: number) => void;
+
+/**
+ * Speaker id → portrait frame in the `portraits` atlas. Speakers without an
+ * entry (narration, minor voices) show the empty portrait slot — never a wrong
+ * face. Extend alongside the cast in `scripts/ingest-assets.mjs`.
+ */
+const PORTRAIT_FRAMES: Readonly<Record<string, string>> = {
+  wren: Frames.portraits.wren,
+  tobi: Frames.portraits.tobi,
+  sable: Frames.portraits.sable,
+  halcyon: Frames.portraits.halcyon,
+};
 
 /** A branch choice as the UAT bridge sees it: id + label + its on-screen hit-rect. */
 export interface DialogueChoiceModel {
@@ -102,6 +115,8 @@ export class DialoguePresenter {
 
   #box!: Phaser.GameObjects.Rectangle;
   #portrait!: Phaser.GameObjects.Rectangle;
+  /** The speaker's faceset, shown over the portrait slot for known speakers. */
+  #portraitImage!: Phaser.GameObjects.Image;
   #speaker!: GuardedText;
   #caption!: GuardedText;
   // The choice-button slot pool. Grown on demand to the largest fork seen so far
@@ -162,6 +177,16 @@ export class DialoguePresenter {
       .setOrigin(0, 0)
       .setStrokeStyle(1, DialogueColors.portraitStroke)
       .setDepth(DIALOGUE_DEPTH);
+    this.#portraitImage = add
+      .image(
+        DialogueLayout.portraitX + DialogueLayout.portraitSize / 2,
+        DialogueLayout.portraitY + DialogueLayout.portraitSize / 2,
+        AtlasKeys.portraits,
+        PORTRAIT_FRAMES["wren"]
+      )
+      .setDisplaySize(DialogueLayout.portraitSize, DialogueLayout.portraitSize)
+      .setDepth(DIALOGUE_DEPTH)
+      .setVisible(false);
     this.#speaker = this.#makeText(
       DialogueLayout.speakerX,
       DialogueLayout.speakerY,
@@ -284,6 +309,14 @@ export class DialoguePresenter {
     const visible = view.caption !== "";
     this.#box.setVisible(visible);
     this.#portrait.setVisible(visible);
+    const portraitFrame = PORTRAIT_FRAMES[view.speaker];
+    this.#portraitImage.setVisible(visible && portraitFrame !== undefined);
+    if (
+      portraitFrame !== undefined &&
+      this.#portraitImage.frame.name !== portraitFrame
+    ) {
+      this.#portraitImage.setFrame(portraitFrame);
+    }
     this.#speaker.object.setVisible(visible);
     this.#caption.object.setVisible(visible);
     this.#speaker.set(view.speaker);

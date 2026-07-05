@@ -96,13 +96,9 @@ export const BattleLayout = {
   barGap: 3,
 } as const;
 
-/** Battle placeholder-art and chrome colors (programmatic art only — no assets). */
+/** Battle chrome colors (bars, ground line, downed dim over the real art). */
 export const BattleColors = {
-  backdropSky: 0x141821,
-  backdropGround: 0x222a39,
   groundLine: 0x39455c,
-  partyTint: 0x6fd08c,
-  enemyTint: 0xd0706f,
   downedTint: 0x4a4f5a,
   hpBarBg: 0x2a2030,
   hpBarFill: 0x57c969,
@@ -176,9 +172,6 @@ export const FieldLayout = {
   /** Wren's spawn position (logical px). */
   wrenSpawnX: 60,
   wrenSpawnY: 150,
-  /** Wren placeholder body size. */
-  wrenWidth: 14,
-  wrenHeight: 22,
   /** Movement speed in logical px per second (delta-driven; no Math.random). */
   moveSpeed: 90,
   /** Inset from each edge Wren's center is clamped to (keeps her on-screen). */
@@ -209,7 +202,6 @@ export const FieldColors = {
   floor: GristPalette.floor,
   wall: GristPalette.wall,
   wallLine: GristPalette.line,
-  wren: 0x6fd08c,
   sign: GRIST_GOLD,
   signGlyph: GristPalette.base,
   loreBoxFill: 0x0d111a,

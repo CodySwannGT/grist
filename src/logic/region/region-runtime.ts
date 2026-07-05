@@ -117,21 +117,22 @@ export function regionScene(regionId: string): string {
  * of the per-region pipeline: the Region scene renders exactly this key, so the run
  * state never claims an asset identity the loader can't resolve.
  *
- * Until per-region art exists (per-region content is authored as each increment is
- * built — living docs, decision 0003), every region resolves to the single shared
- * placeholder texture the Preloader generates programmatically (`"region-backdrop"`,
- * kept in lock-step with `TextureKeys.RegionBackdrop` — a pure string const, so
- * `logic/region` stays free of any Phaser/asset import). When real per-region art
- * lands, the pipeline generates a distinct texture per region and this returns its
- * key — and because the scene renders `state.backdrop`, that flows through with **no
+ * Until distinct per-region art sets exist (per-region content is authored as each
+ * increment is built — living docs, decision 0003), every region resolves to the
+ * shared Marrow parallax set's far layer (`"img-marrow/bg-far"`, kept in lock-step
+ * with `ImageKeys.marrowBgFar` — a pure string const, so `logic/region` stays free
+ * of any Phaser/asset import). The Region scene expands the key to its full
+ * parallax stack via its layers table. When a region gains its own art set, the
+ * pipeline generates its keys and this returns that region's far layer — and
+ * because the scene renders `state.backdrop`, that flows through with **no
  * scene-code edit** (the "added by authoring data, not code" thesis). Pure.
  * @param _regionId - The region's stable id (unused until per-region art exists).
  * @returns The backdrop texture key the scene preloads + renders.
  */
 function regionBackdrop(_regionId: string): string {
-  // Mirror of `TextureKeys.RegionBackdrop` (assets.ts). A literal — not an import —
+  // Mirror of `ImageKeys.marrowBgFar` (assets.ts). A literal — not an import —
   // so the pure logic layer never depends on the asset/Phaser module graph.
-  return "region-backdrop";
+  return "img-marrow/bg-far";
 }
 
 /**

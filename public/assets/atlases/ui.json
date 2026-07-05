@@ -1,0 +1,87 @@
+{
+  "frames": {
+    "dialog-box": {
+      "frame": {
+        "x": 3,
+        "y": 3,
+        "w": 300,
+        "h": 58
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 300,
+        "h": 58
+      },
+      "sourceSize": {
+        "w": 300,
+        "h": 58
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "choice-box": {
+      "frame": {
+        "x": 3,
+        "y": 67,
+        "w": 64,
+        "h": 20
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 64,
+        "h": 20
+      },
+      "sourceSize": {
+        "w": 64,
+        "h": 20
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "arrow": {
+      "frame": {
+        "x": 73,
+        "y": 67,
+        "w": 13,
+        "h": 13
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 13,
+        "h": 13
+      },
+      "sourceSize": {
+        "w": 13,
+        "h": 13
+      },
+      "pivot": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    }
+  },
+  "meta": {
+    "app": "http://github.com/odrick/free-tex-packer-core",
+    "version": "0.3.8",
+    "image": "ui.png",
+    "format": "RGBA8888",
+    "size": {
+      "w": 306,
+      "h": 90
+    },
+    "scale": 1
+  }
+}

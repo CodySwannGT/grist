@@ -1,31 +1,23 @@
 /**
- * Preloader scene — builds the placeholder combatant texture used by the Battle
- * scene. This slice generates its art programmatically (zero binary assets); a
- * real project loads packed atlases here via the asset pipeline. Then it starts
- * the battle.
+ * Preloader scene — loads the packed runtime assets (`public/assets`, produced
+ * by `bun run assets` from the raw art in `assets/src`), registers the global
+ * animations, then starts the boot-target scene. All keys come from the
+ * generated typed module (`src/assets`), so a missing or renamed asset is a
+ * compile error backed by the asset-coverage contract test.
  * @module scenes/Preloader
  */
 import Phaser from "phaser";
-import { TextureKeys } from "../assets";
-import {
-  BattleLayout,
-  GameView,
-  RegionColors,
-  RegionLayout,
-  SceneKeys,
-} from "../consts";
+import { registerGameAnims } from "../anims";
+import { AtlasKeys, ImageKeys } from "../assets";
+import { SceneKeys } from "../consts";
 import { verifyBridge } from "../uat/bridge";
 
-const HEAD_RADIUS = 6;
-const HEAD_CENTER_Y = 8;
-const BODY_TOP = 11;
-const BODY_INSET = 4;
-const BODY_CORNER = 5;
-const UNIT_COLOR = 0xffffff;
-/** Thickness (logical px) of the region backdrop's horizon divider line. */
-const HORIZON_THICKNESS = 2;
+/** Where the packed atlases live under the static root. */
+const ATLAS_PATH = "assets/atlases";
+/** Where the standalone images live under the static root. */
+const IMAGE_PATH = "assets/images";
 
-/** Generates the placeholder unit texture, then transitions to the battle. */
+/** Loads the packed assets and starts the requested scene. */
 export class Preloader extends Phaser.Scene {
   /** Register the scene key. */
   constructor() {
@@ -33,67 +25,37 @@ export class Preloader extends Phaser.Scene {
   }
 
   /**
-   * Build the unit texture and start the next scene. Defaults to Battle (the
-   * shipped boot target) so every existing battle test is unchanged; starts the
-   * Field scene instead only when the page is loaded with `?scene=field` (or the
-   * `?start=Field` alias). Field↔Battle wiring is a follow-up (#72) — this
+   * Queue every packed atlas and standalone image. The atlas list mirrors the
+   * `assets/src/sprites/*` folders; the image list mirrors `assets/src/images`.
+   * @returns void
+   */
+  preload(): void {
+    for (const atlas of Object.values(AtlasKeys)) {
+      const base = atlas.replace(/^atlas-/u, "");
+      this.load.atlas(
+        atlas,
+        `${ATLAS_PATH}/${base}.png`,
+        `${ATLAS_PATH}/${base}.json`
+      );
+    }
+    for (const image of Object.values(ImageKeys)) {
+      const base = image.replace(/^img-/u, "");
+      this.load.image(image, `${IMAGE_PATH}/${base}.png`);
+    }
+  }
+
+  /**
+   * Register the global animations and start the next scene. Defaults to Battle
+   * (the shipped boot target) so every existing battle test is unchanged; starts
+   * the Field scene instead only when the page is loaded with `?scene=field` (or
+   * the `?start=Field` alias). Field↔Battle wiring is a follow-up (#72) — this
    * query-gated start is purely a verification entry point for the field slice.
    * @returns void
    */
   create(): void {
-    this.#makeUnitTexture();
-    this.#makeRegionBackdropTexture();
+    registerGameAnims(this);
     verifyBridge.attach(SceneKeys.Preloader, null);
     this.scene.start(startScene());
-  }
-
-  /**
-   * Generate the white, tintable combatant placeholder (a head + body). White so
-   * the Battle scene can tint it per side.
-   * @returns void
-   */
-  #makeUnitTexture(): void {
-    const width = BattleLayout.unitWidth;
-    const height = BattleLayout.unitHeight;
-    const graphics = this.add.graphics();
-    graphics.fillStyle(UNIT_COLOR, 1);
-    graphics.fillRoundedRect(
-      BODY_INSET,
-      BODY_TOP,
-      width - BODY_INSET * 2,
-      height - BODY_TOP,
-      BODY_CORNER
-    );
-    graphics.fillCircle(width / 2, HEAD_CENTER_Y, HEAD_RADIUS);
-    graphics.generateTexture(TextureKeys.Unit, width, height);
-    graphics.destroy();
-  }
-
-  /**
-   * Generate the region side-view backdrop placeholder (#137): a full-screen
-   * 384×216 texture banding a sky over a ground, split by a horizon line. Built
-   * programmatically here (the per-region asset-pipeline precedent — zero binary
-   * assets, zero licensing risk) so the Region scene renders its side-view by
-   * preloading {@link TextureKeys.RegionBackdrop} alone; when real per-region art
-   * lands, the pipeline generates this key from `assets/src` instead.
-   * @returns void
-   */
-  #makeRegionBackdropTexture(): void {
-    const { width, height } = GameView;
-    const graphics = this.add.graphics();
-    graphics.fillStyle(RegionColors.sky, 1);
-    graphics.fillRect(0, 0, width, RegionLayout.horizonY);
-    graphics.fillStyle(RegionColors.ground, 1);
-    graphics.fillRect(
-      0,
-      RegionLayout.horizonY,
-      width,
-      height - RegionLayout.horizonY
-    );
-    graphics.fillStyle(RegionColors.horizon, 1);
-    graphics.fillRect(0, RegionLayout.horizonY, width, HORIZON_THICKNESS);
-    graphics.generateTexture(TextureKeys.RegionBackdrop, width, height);
-    graphics.destroy();
   }
 }
 
