@@ -56,6 +56,7 @@ export const BoundIds = {
   velithDeepbound: "velith-deepbound",
   sylvath: "sylvath",
   korrholt: "korrholt",
+  morrath: "morrath",
 } as const;
 
 /** A Bound id (the literal-union of every defined shard key). */
@@ -199,5 +200,38 @@ export const BOUNDS: {
     growthBias: { def: 2, wrd: 1 },
     corruptionRate: 0.16,
     variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.16 } },
+  },
+  // The Cinderfen Bound DATA REFERENCE per #131: Morrath, the Cinder-bound — the one
+  // Bound of the ashlands (wiki/design/regions.md — the Cinderfen, the ashlands;
+  // wiki/design/bestiary.md — "Morrath, the Cinder-bound"). Element `ash` (the
+  // ash/gloom power of the strip-mined, magic-dead wastes — the Cinderfen is the one
+  // region that reads Ash/Gloom, the ash primary distinct from the Wrack's Gloom).
+  // Where Korrholt is the atrocity INDUSTRIALIZED (harnessed openly), Morrath is the
+  // atrocity DYING — a half-rendered power guttering out amid the dead refineries, a
+  // moral gut-punch more than a fight: the free choice is a MERCY (let the dying
+  // Bound go — karma+, corruption-free), while wielding it is desecration — draining
+  // a dying god for raw power at a heavy cost that still sits below Korrholt's
+  // openly-run reactor (Korrholt remains the heaviest authored Bound). This is a
+  // MINIMAL, data-only reference so the Cinderfen region can `site` it via
+  // `boundSite`; the free-vs-wield resolution reuses the shipped Bound-site template
+  // (#135) + Phase-2 kit (#69) verbatim. Combat stat tuning beyond the corruption
+  // rate stays deferred (decision 0003).
+  morrath: {
+    id: BoundIds.morrath,
+    name: "Morrath, the Cinder-bound",
+    element: Elements.ash,
+    bind: {
+      id: BindSpellIds.bindAsh,
+      name: "Bind: Ash",
+      element: Elements.ash,
+      apCost: 0,
+      gristCost: 15,
+      power: 19,
+      target: SpellTargets.all,
+    },
+    teaches: [SpellIds.cinder],
+    growthBias: { foc: 2, wrd: 1 },
+    corruptionRate: 0.15,
+    variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.15 } },
   },
 };
