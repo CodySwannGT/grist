@@ -8,8 +8,10 @@
  * upper Vanta's Reckoning-trigger anchor, the region that cages no Bound). Engine-free
  * and unit-testable, with zero Phaser, zero I/O, and only the seeded RNG. The bridge
  * cells (`uat/region-harness-cell`, `uat/bound-site-cell`) and the region scene
- * pipeline import from here. Re-export only — all logic lives in the per-concern
- * modules (`./region-runtime`, `./bound-site`, `./requiem-hall`, `./keystone`).
+ * pipeline import from here, plus the Ashfall transformed-map resolver (#139) that
+ * folds the whole region catalog through one world-state flag (the "one map, two
+ * states" aggregate). Re-export only — all logic lives in the per-concern modules
+ * (`./region-runtime`, `./bound-site`, `./requiem-hall`, `./keystone`, `./world-map`).
  * @module logic/region
  */
 export {
@@ -52,3 +54,11 @@ export {
   playKeystoneToCompletion,
   type KeystoneSession,
 } from "./keystone";
+export {
+  hashWorldMap,
+  resolveWorldMap,
+  type MournedPlace,
+  type WorldMap,
+  type WorldMapPalette,
+  type WorldMapRegion,
+} from "./world-map";
