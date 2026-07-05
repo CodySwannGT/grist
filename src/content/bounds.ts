@@ -57,6 +57,7 @@ export const BoundIds = {
   sylvath: "sylvath",
   korrholt: "korrholt",
   morrath: "morrath",
+  threnos: "threnos",
 } as const;
 
 /** A Bound id (the literal-union of every defined shard key). */
@@ -233,5 +234,39 @@ export const BOUNDS: {
     growthBias: { foc: 2, wrd: 1 },
     corruptionRate: 0.15,
     variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.15 } },
+  },
+  // The Wrack Bound DATA REFERENCE per #132: Threnos, the Unmade — the one Bound of
+  // the Sundering coast (wiki/design/regions.md — the Wrack, the Sundering coast;
+  // wiki/design/bestiary.md — "Threnos, the Unmade … entropy-touched; alien;
+  // foreshadows the finale"). Element `gloom` — the void-black entropy power of the
+  // Sundering's rawest wound; the most ALIEN affinity on the roster and the one that
+  // reads as pure un-writing (per wiki/design/combat.md's Gloom + the art-direction's
+  // void-black identity). Threnos is the finale foreshadow, so its free-vs-wield fork
+  // is the STARKEST authored: freeing it is quieting the wound the oblivion-cult
+  // courts (karma+, corruption-free — the mercy that refuses the end), while wielding
+  // it draws raw entropy at the HEAVIEST authored cost to date — strictly above
+  // Korrholt's openly-run reactor, because carrying the Unmade is carrying a piece of
+  // the end itself. It teaches `unmake` (Gloom), its OWN element, not a borrowed one.
+  // This is a MINIMAL, data-only reference so the Wrack region can `site` it via
+  // `boundSite`; the free-vs-wield resolution reuses the shipped Bound-site template
+  // (#135) + Phase-2 kit (#69) verbatim. Combat stat tuning beyond the corruption
+  // rate stays deferred (decision 0003).
+  threnos: {
+    id: BoundIds.threnos,
+    name: "Threnos, the Unmade",
+    element: Elements.gloom,
+    bind: {
+      id: BindSpellIds.bindGloom,
+      name: "Bind: Gloom",
+      element: Elements.gloom,
+      apCost: 0,
+      gristCost: 18,
+      power: 22,
+      target: SpellTargets.all,
+    },
+    teaches: [SpellIds.unmake],
+    growthBias: { foc: 2, spd: 1 },
+    corruptionRate: 0.18,
+    variants: { free: { corruptionRate: 0 }, wield: { corruptionRate: 0.18 } },
   },
 };

@@ -19,6 +19,12 @@ export const SpellIds = {
   spark: "spark",
   cinder: "cinder",
   render: "render",
+  // Unmake (#132): the Gloom (entropy) craft Threnos, the Unmade teaches — the most
+  // alien power on the roster, an un-writing that hollows what it touches. Gloom is
+  // its own element (distinct from the Cinderfen's Ash/Gloom primary), so its taught
+  // craft is authored here rather than reusing Ash's `cinder`. Numbers are first-pass
+  // (decision 0003); it carries the `hollowed` status — the entropy read of a Gloom hit.
+  unmake: "unmake",
 } as const;
 
 /** A castable spell id (the literal-union of every {@link SPELLS} key). */
@@ -36,6 +42,7 @@ export const BindSpellIds = {
   bindBloom: "bind-bloom",
   bindIron: "bind-iron",
   bindAsh: "bind-ash",
+  bindGloom: "bind-gloom",
 } as const;
 
 /** A Bind action id. */
@@ -93,5 +100,18 @@ export const SPELLS: {
     power: 8,
     target: SpellTargets.one,
     status: Statuses.rendering,
+  },
+  // Unmake (#132) — the Gloom craft Threnos, the Unmade teaches: entropy made a
+  // single-target strike that leaves the target `hollowed` (the entropy read of a
+  // Gloom hit). First-pass numbers (decision 0003); it exists so the Wrack's Bound
+  // teaches its OWN element rather than borrowing Ash's Cinder.
+  unmake: {
+    id: SpellIds.unmake,
+    name: "Unmake",
+    element: Elements.gloom,
+    apCost: 6,
+    power: 17,
+    target: SpellTargets.one,
+    status: Statuses.hollowed,
   },
 };
