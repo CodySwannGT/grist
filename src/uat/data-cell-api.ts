@@ -14,6 +14,11 @@ import { type ShardMode } from "../logic/save/types";
 import { type CurrentSave } from "../logic/save";
 import { type WorldState } from "../logic/world";
 import { saveService } from "../services/save-service";
+import {
+  AshfallCell,
+  type VerifyAshfallEconomyState,
+  type VerifyAshfallEnemyState,
+} from "./ashfall-cell";
 import { BoundSiteCell, type VerifyBoundSiteState } from "./bound-site-cell";
 import { BuildCell, type VerifyBuildState } from "./build-cell";
 import {
@@ -94,6 +99,15 @@ const regionCell = new RegionCell();
  * enemy-family e2e can load a family and observe its Reach block warp to Ashfall.
  */
 const enemyCell = new EnemyCell();
+
+/**
+ * The bridge-held Ashfall cell (#141): a stateless reader over the shipped
+ * `content/enemy-variants` + `content/economy` resolvers, so the Ashfall e2e can
+ * observe a recurring encounter enemy warp to its drained, Gloom-touched variant and
+ * the Act II economy tighten (leaner rewards, harsher costs) — both read through the
+ * live world-state flag, scene-agnostically, on the live built game.
+ */
+const ashfallCell = new AshfallCell();
 
 /**
  * The bridge-held encounter-ladder cell (#108): the Phase-3 escalating ATB encounter
@@ -322,6 +336,22 @@ export interface DataCellApi {
   /** The loaded family's region block resolved through the live world-state, or null. */
   readonly enemy: () => VerifyEnemyState | null;
   /**
+   * A recurring encounter enemy (#141) resolved through the live world-state flag:
+   * its base read in Act I `reach` and its warped Ashfall variant (drained palette +
+   * entropy/Gloom attack) once the Reckoning flips the flag — read straight from the
+   * shipped `content/enemy-variants` resolver, so the Ashfall e2e proves an encounter
+   * enemy warps across the world-turn with no scene live.
+   */
+  readonly ashfallEnemy: () => VerifyAshfallEnemyState;
+  /**
+   * The two-world-state economy (#141) resolved through the live world-state flag:
+   * the neutral Act I baseline (1×/1×) and the tightened Ashfall read (leaner rewards,
+   * harsher costs) with a worked reward/cost example — read straight from the shipped
+   * `content/economy` resolver, so the Ashfall e2e proves the harsher Act II economy
+   * applies versus the Act I baseline.
+   */
+  readonly ashfallEconomy: () => VerifyAshfallEconomyState;
+  /**
    * A snapshot of the Phase-3 escalating ATB encounter ladder (#108): the run's
    * ≥4 distinct encounters, their per-rung difficulty scores, and the
    * strictly-escalating verdict — read straight from the shipped content tables, so
@@ -466,6 +496,8 @@ export function dataCellApi(): DataCellApi {
     region: () => regionCell.snapshot(worldStateCell.read() ?? "reach"),
     loadEnemy: () => enemyCell.load(),
     enemy: () => enemyCell.snapshot(worldStateCell.read() ?? "reach"),
+    ashfallEnemy: () => ashfallCell.enemy(worldStateCell.read() ?? "reach"),
+    ashfallEconomy: () => ashfallCell.economy(worldStateCell.read() ?? "reach"),
     encounterLadder: () => encounterLadderCell.snapshot(),
     runState: () => runStateCell.snapshot(),
     build: () => buildCell.snapshot(),

@@ -42,6 +42,18 @@ export {
   type RegisteredFamilyId,
 } from "./enemy-families";
 export {
+  ASHFALL_ENEMY_VARIANTS,
+  ashfallVariantTableErrors,
+  hasAshfallVariant,
+  isCompleteAshfallVariantTable,
+  resolveAshfallVariant,
+  resolveEncounterEnemies,
+  resolveEncounterEnemy,
+  validateAshfallVariant,
+  type AshfallEnemyVariant,
+  type ResolvedEncounterEnemy,
+} from "./enemy-variants";
+export {
   BOUNDS,
   BoundIds,
   type BoundDef,
@@ -77,6 +89,11 @@ export {
   SLICE_ECONOMY,
   SLICE_EARN,
   SliceEarnSourceIds,
+  ECONOMY_PROFILES,
+  applyEconomyCost,
+  applyEconomyReward,
+  resolveEconomyProfile,
+  type EconomyProfile,
   type SliceEarnSource,
   type SliceEarnSourceId,
 } from "./economy";
