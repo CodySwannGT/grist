@@ -51,14 +51,47 @@ const DEFAULT_SEED = 0x9e3779b1;
  * Parallax layer stacks per backdrop key (far → near). A booted session's
  * `state.backdrop` names its FAR layer (see `regionBackdrop()` in
  * `logic/region`); when that key has an entry here the scene layers the full
- * stack, otherwise it renders the key as a single flat backdrop — so a future
- * per-region art set ships by adding images + one row here, no scene logic.
+ * stack, otherwise it renders the key as a single flat backdrop — so a per-region
+ * art set ships by adding images + one row here, no scene logic. Every live region
+ * in `content/regions` gets its own distinct set (#200, Art pass II); the keys are
+ * the generated `ImageKeys.<region>Bg{Far,Mid,Near}`, so a renamed/missing plate is
+ * a compile error, never a silent black square.
  */
 const REGION_BACKDROP_LAYERS: Readonly<Record<string, readonly string[]>> = {
   [ImageKeys.marrowBgFar]: [
     ImageKeys.marrowBgFar,
     ImageKeys.marrowBgMid,
     ImageKeys.marrowBgNear,
+  ],
+  [ImageKeys.rootsBgFar]: [
+    ImageKeys.rootsBgFar,
+    ImageKeys.rootsBgMid,
+    ImageKeys.rootsBgNear,
+  ],
+  [ImageKeys.upperVantaBgFar]: [
+    ImageKeys.upperVantaBgFar,
+    ImageKeys.upperVantaBgMid,
+    ImageKeys.upperVantaBgNear,
+  ],
+  [ImageKeys.sylvemarchBgFar]: [
+    ImageKeys.sylvemarchBgFar,
+    ImageKeys.sylvemarchBgMid,
+    ImageKeys.sylvemarchBgNear,
+  ],
+  [ImageKeys.holtspireBgFar]: [
+    ImageKeys.holtspireBgFar,
+    ImageKeys.holtspireBgMid,
+    ImageKeys.holtspireBgNear,
+  ],
+  [ImageKeys.cinderfenBgFar]: [
+    ImageKeys.cinderfenBgFar,
+    ImageKeys.cinderfenBgMid,
+    ImageKeys.cinderfenBgNear,
+  ],
+  [ImageKeys.wrackBgFar]: [
+    ImageKeys.wrackBgFar,
+    ImageKeys.wrackBgMid,
+    ImageKeys.wrackBgNear,
   ],
 };
 

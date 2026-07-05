@@ -8,7 +8,7 @@
  * square at runtime. Headless — reads the packed JSON straight from
  * `public/assets`, zero Phaser.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { FX_FRAMES } from "../../src/anims";
@@ -25,6 +25,7 @@ import {
 } from "../../src/ui/battler-view";
 
 const ATLAS_DIR = join(__dirname, "..", "..", "public", "assets", "atlases");
+const IMAGE_DIR = join(__dirname, "..", "..", "public", "assets", "images");
 
 /**
  * The frame-name set of one committed atlas.
@@ -83,9 +84,66 @@ describe("asset coverage — derived keys resolve in the committed atlases", () 
     }
   });
 
-  it("keeps the pure region-runtime backdrop mirror in lock-step with the generated key", () => {
-    // regionBackdrop() in logic/region returns a literal so the pure layer
-    // never imports asset modules; this pins the literal to the generated key.
+  it("keeps every pure region-runtime backdrop mirror in lock-step with the generated key (#200)", () => {
+    // regionBackdrop() in logic/region returns string literals so the pure layer
+    // never imports asset modules; this pins each per-region literal to its
+    // generated far-layer key. Every live region has its OWN distinct set.
     expect(ImageKeys.marrowBgFar).toBe("img-marrow/bg-far");
+    expect(ImageKeys.rootsBgFar).toBe("img-roots/bg-far");
+    expect(ImageKeys.upperVantaBgFar).toBe("img-upper-vanta/bg-far");
+    expect(ImageKeys.sylvemarchBgFar).toBe("img-sylvemarch/bg-far");
+    expect(ImageKeys.holtspireBgFar).toBe("img-holtspire/bg-far");
+    expect(ImageKeys.cinderfenBgFar).toBe("img-cinderfen/bg-far");
+    expect(ImageKeys.wrackBgFar).toBe("img-wrack/bg-far");
+  });
+
+  it("packs the full far/mid/near stack for every per-region backdrop set (#200)", () => {
+    // The scene layers far→mid→near per region; all three plates of every set must
+    // resolve as committed standalone images or the parallax is a black square.
+    const stacks: Readonly<Record<string, readonly string[]>> = {
+      marrow: [
+        ImageKeys.marrowBgFar,
+        ImageKeys.marrowBgMid,
+        ImageKeys.marrowBgNear,
+      ],
+      roots: [
+        ImageKeys.rootsBgFar,
+        ImageKeys.rootsBgMid,
+        ImageKeys.rootsBgNear,
+      ],
+      upperVanta: [
+        ImageKeys.upperVantaBgFar,
+        ImageKeys.upperVantaBgMid,
+        ImageKeys.upperVantaBgNear,
+      ],
+      sylvemarch: [
+        ImageKeys.sylvemarchBgFar,
+        ImageKeys.sylvemarchBgMid,
+        ImageKeys.sylvemarchBgNear,
+      ],
+      holtspire: [
+        ImageKeys.holtspireBgFar,
+        ImageKeys.holtspireBgMid,
+        ImageKeys.holtspireBgNear,
+      ],
+      cinderfen: [
+        ImageKeys.cinderfenBgFar,
+        ImageKeys.cinderfenBgMid,
+        ImageKeys.cinderfenBgNear,
+      ],
+      wrack: [
+        ImageKeys.wrackBgFar,
+        ImageKeys.wrackBgMid,
+        ImageKeys.wrackBgNear,
+      ],
+    };
+    for (const [region, keys] of Object.entries(stacks)) {
+      for (const key of keys) {
+        const rel = key.replace(/^img-/u, "");
+        expect(existsSync(join(IMAGE_DIR, `${rel}.png`))).toBe(true);
+      }
+      expect(new Set(keys).size).toBe(keys.length);
+      expect(region.length).toBeGreaterThan(0);
+    }
   });
 });

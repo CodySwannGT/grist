@@ -153,8 +153,9 @@ test.describe("GRIST — region-harness verification (UAT, #137)", () => {
     expect(run!.regionId).toBe("marrow");
     expect(run!.booted).toBe(true);
     expect(run!.error).toBeNull();
-    // The scene renders exactly the backdrop key the run state declares (the shared
-    // placeholder until per-region art exists) — never an asset Phaser can't load.
+    // The scene renders exactly the backdrop key the run state declares — for the
+    // default Marrow region that is its own Warped City set (#200) — never an asset
+    // Phaser can't load.
     expect(run!.backdrop).toBe("img-marrow/bg-far");
     expect(run!.hash).toMatch(/^[0-9a-f]{8}$/);
     // `__VERIFY__.hash()` dispatches to the booted region session, matching the

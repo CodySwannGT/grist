@@ -140,7 +140,10 @@ test.describe("GRIST — the Roots / the Deep region verification (UAT, #143)", 
     expect(run!.worldState).toBe("reach");
     expect(run!.booted).toBe(true);
     expect(run!.error).toBeNull();
-    expect(run!.backdrop).toBe("img-marrow/bg-far");
+    // The per-region backdrop pass (#200) gives the Roots/Deep its OWN distinct
+    // parallax set (a luminous-forest palette variant of the CC0 Warped City
+    // layers); the scene renders exactly this key, an asset the loader can resolve.
+    expect(run!.backdrop).toBe("img-roots/bg-far");
     expect(run!.hash).toMatch(/^[0-9a-f]{8}$/);
     expect(await page.evaluate(() => window.__VERIFY__!.hash())).toBe(
       run!.hash

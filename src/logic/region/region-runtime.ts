@@ -113,26 +113,48 @@ export function regionScene(regionId: string): string {
 }
 
 /**
+ * The per-region **far-layer backdrop keys** (#200, Art pass II) — each live
+ * region's OWN distinct parallax set instead of the shared Marrow plates. Every
+ * value is a pure string **mirror** of the generated `ImageKeys.<region>BgFar`
+ * (assets.ts); they are literals — never an import — so `logic/region` stays free
+ * of the Phaser/asset module graph while the asset-coverage contract test pins
+ * each mirror to its generated key. Keyed by the region ids in `content/regions`
+ * ({@link RegionIds}); an author-supplied region outside the registry falls back
+ * to the Marrow far layer (a key the loader can always resolve) in
+ * {@link regionBackdrop}.
+ */
+const REGION_BACKDROP_KEYS: Readonly<Record<string, string>> = {
+  marrow: "img-marrow/bg-far",
+  roots: "img-roots/bg-far",
+  "upper-vanta": "img-upper-vanta/bg-far",
+  sylvemarch: "img-sylvemarch/bg-far",
+  holtspire: "img-holtspire/bg-far",
+  cinderfen: "img-cinderfen/bg-far",
+  wrack: "img-wrack/bg-far",
+};
+
+/** The fallback far-layer key for a region with no registered art set. */
+const FALLBACK_BACKDROP_KEY = "img-marrow/bg-far";
+
+/**
  * The deterministic backdrop **texture key** a region boots against. The asset side
  * of the per-region pipeline: the Region scene renders exactly this key, so the run
  * state never claims an asset identity the loader can't resolve.
  *
- * Until distinct per-region art sets exist (per-region content is authored as each
- * increment is built — living docs, decision 0003), every region resolves to the
- * shared Marrow parallax set's far layer (`"img-marrow/bg-far"`, kept in lock-step
- * with `ImageKeys.marrowBgFar` — a pure string const, so `logic/region` stays free
- * of any Phaser/asset import). The Region scene expands the key to its full
- * parallax stack via its layers table. When a region gains its own art set, the
- * pipeline generates its keys and this returns that region's far layer — and
- * because the scene renders `state.backdrop`, that flows through with **no
- * scene-code edit** (the "added by authoring data, not code" thesis). Pure.
- * @param _regionId - The region's stable id (unused until per-region art exists).
+ * Each registered region resolves to its OWN parallax set's far layer via
+ * {@link REGION_BACKDROP_KEYS} (a pure string mirror of the generated
+ * `ImageKeys.<region>BgFar`, so the layer never imports the asset/Phaser module
+ * graph); the Region scene expands that far key to the full far/mid/near stack via
+ * its layers table. A region authored outside the registry (or the boot-throw
+ * `broken` fixture) falls back to the Marrow far layer — a key the loader always
+ * resolves. Because the scene renders `state.backdrop`, a new region's set flows
+ * through with **no scene-code edit** beyond one layers-table row (the "added by
+ * authoring data, not code" thesis). Pure.
+ * @param regionId - The region's stable id.
  * @returns The backdrop texture key the scene preloads + renders.
  */
-function regionBackdrop(_regionId: string): string {
-  // Mirror of `ImageKeys.marrowBgFar` (assets.ts). A literal — not an import —
-  // so the pure logic layer never depends on the asset/Phaser module graph.
-  return "img-marrow/bg-far";
+function regionBackdrop(regionId: string): string {
+  return REGION_BACKDROP_KEYS[regionId] ?? FALLBACK_BACKDROP_KEY;
 }
 
 /**
