@@ -123,6 +123,7 @@ export const RegionIds = {
   marrow: "marrow",
   roots: "roots",
   upperVanta: "upper-vanta",
+  sylvemarch: "sylvemarch",
 } as const;
 
 /** A registered region id (the literal-union of every {@link REGIONS} key). */
@@ -274,6 +275,52 @@ export const REGIONS: {
         sideStories: [
           { id: "the-founding-holiday", name: "The Founding, Mourned" },
           { id: "tobis-commission", name: "Tobi's Last Commission" },
+        ],
+      },
+    },
+  },
+  // The Sylvemarch (#129): the surviving forest, the Green Mother's march — a living
+  // Deep place where the Weave still breathes, home to the Sidhe enclave (Maren's
+  // people) and the brightest palette in the game (wiki/design/regions.md —
+  // Sylvemarch). Sites Sylvath, the Green Wyrm (Bloom), the region's one Bound and a
+  // major free-vs-wield decision (a great caged wyrm). Authored against the shipped
+  // template in BOTH world-states: the verdant Reach (the brightest, most alive place
+  // in Act I) and the ashen Ashfall (the forest greying and dying fast — by design
+  // the most painful transformation). Reach and Ashfall draw DIFFERENT encounter
+  // tables so the region reads observably differently across the Reckoning: the Reach
+  // walks the Sidhe enclave and the Weave-spring; the Ashfall replaces the enclave
+  // with the greying march as the living Weave guts out. The Sylvath Bound-site
+  // free-vs-wield interaction reuses the shipped Bound-site template (#135) + Phase-2
+  // kit (#69); this authors the region identity, key locations, per-region
+  // encounters, side-stories, and both variants (stat blocks are living docs, 0003).
+  sylvemarch: {
+    id: RegionIds.sylvemarch,
+    boundSite: BoundIds.sylvath,
+    states: {
+      reach: {
+        name: "The Sylvemarch Reach",
+        tone: "verdant",
+        keyLocations: [
+          { id: "sidhe-enclave", name: "The Sidhe Enclave" },
+          { id: "weave-spring", name: "The Weave-Spring" },
+          { id: "sundering-ruins", name: "The Overgrown Ruins" },
+        ],
+        encounters: [EncounterIds.sylvanEnclave, EncounterIds.weaveSpring],
+        sideStories: [
+          { id: "the-green-mothers-march", name: "The Green Mother's March" },
+        ],
+      },
+      ashfall: {
+        name: "The Sylvemarch Ashfall",
+        tone: "ashen",
+        keyLocations: [
+          { id: "sidhe-enclave", name: "The Sidhe Enclave (fled)" },
+          { id: "weave-spring", name: "The Weave-Spring (guttering)" },
+          { id: "sundering-ruins", name: "The Overgrown Ruins (bared)" },
+        ],
+        encounters: [EncounterIds.weaveSpring, EncounterIds.greyingMarch],
+        sideStories: [
+          { id: "the-green-mothers-march", name: "The Green Mother, Mourned" },
         ],
       },
     },

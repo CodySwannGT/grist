@@ -39,6 +39,10 @@ export const EncounterIds = {
   crownConcord: "crown-concord",
   mourneRefinery: "mourne-refinery",
   tiersMarket: "tiers-market",
+  // ── Sylvemarch — the surviving forest (#129) ────────────────────────────────
+  sylvanEnclave: "sylvan-enclave",
+  weaveSpring: "weave-spring",
+  greyingMarch: "greying-march",
 } as const;
 
 /** An encounter id (the literal-union of every defined encounter key). */
@@ -134,6 +138,32 @@ export const ENCOUNTERS: {
   "tiers-market": {
     id: EncounterIds.tiersMarket,
     enemies: [EnemyIds.marrowScrapper, EnemyIds.renderConstruct],
+    backdrop: Backdrops.marrow,
+  },
+  // ── Sylvemarch encounters (#129) ────────────────────────────────────────────
+  // The Sidhe enclave, the Weave-spring, and the greying march. Per decision 0003,
+  // new enemy families / stat blocks are authored at authoring time and are OUT OF
+  // SCOPE here; these encounters compose EXISTING enemies (the enclave's wild
+  // scavengers; the Weave-spring's render-touched wardens; the greying-march's
+  // hollowed dead as the forest dies). The backdrop reuses the shared `marrow`
+  // placeholder (per-region art is out of scope; the Region scene resolves the
+  // shared `region-backdrop` texture at boot). The Reach and Ashfall variant tables
+  // (authored in `content/regions`) draw DIFFERENT subsets so the Sylvemarch reads
+  // observably differently across the Reckoning — verdant and alive in the Reach,
+  // greying and dying in the Ashfall (by design its most painful transformation).
+  "sylvan-enclave": {
+    id: EncounterIds.sylvanEnclave,
+    enemies: [EnemyIds.marrowScrapper],
+    backdrop: Backdrops.marrow,
+  },
+  "weave-spring": {
+    id: EncounterIds.weaveSpring,
+    enemies: [EnemyIds.marrowScrapper, EnemyIds.renderConstruct],
+    backdrop: Backdrops.marrow,
+  },
+  "greying-march": {
+    id: EncounterIds.greyingMarch,
+    enemies: [EnemyIds.drownedHusk, EnemyIds.requiemWraith],
     backdrop: Backdrops.marrow,
   },
 };
