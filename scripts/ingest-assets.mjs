@@ -60,7 +60,9 @@ const CAST = [
   { ref: "requiem-wraith", kind: "monster", folder: "Actor/Monster/Spirit" },
   { ref: "deep-auditor", kind: "monster", folder: "Actor/Monster/Eye" },
   { ref: "halcyon-knight", kind: "char", folder: "Actor/Character/KnightGold" },
-]; /** @type {const} */
+];
+
+/** @type {const} */
 
 /** Non-battler portrait speakers (dialogue facesets only). */
 const PORTRAIT_ONLY = [{ ref: "sable", folder: "Actor/Character/GoldStatue" }];
