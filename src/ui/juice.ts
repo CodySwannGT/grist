@@ -46,7 +46,7 @@ const FLASH_TINT = 0xffffff;
  * (headless test) contexts, where it reports false.
  * @returns True when `prefers-reduced-motion: reduce` matches.
  */
-export function prefersReducedMotion(): boolean {
+function prefersReducedMotion(): boolean {
   if (typeof window === "undefined" || window.matchMedia === undefined) {
     return false;
   }
