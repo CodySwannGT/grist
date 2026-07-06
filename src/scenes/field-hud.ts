@@ -83,8 +83,6 @@ export class FieldHud {
   readonly #hint: Phaser.GameObjects.Text;
   /** The pause-menu opener hint (#233), stacked under the map hint, top-right. */
   readonly #menuHint: Phaser.GameObjects.Text;
-  /** The summonable-map button hit-rect (top-right), for touch summon. */
-  readonly #summonButton: Phaser.GameObjects.Rectangle;
   #mapOpen = false;
 
   /**
@@ -93,8 +91,13 @@ export class FieldHud {
    * start hidden (the prompt is contextual; the map is summonable).
    * @param scene - The owning Field scene.
    * @param onSummon - Called when the touch summon button is tapped.
+   * @param onOpenMenu - Called when the touch menu-opener button is tapped (#233).
    */
-  constructor(scene: Phaser.Scene, onSummon: () => void) {
+  constructor(
+    scene: Phaser.Scene,
+    onSummon: () => void,
+    onOpenMenu: () => void
+  ) {
     this.#grist = makeText(
       scene,
       FieldHudLayout.gristX,
@@ -104,40 +107,18 @@ export class FieldHud {
     );
     this.#grist.object.setStyle(FieldHudTextStyles.grist).setDepth(HUD_DEPTH);
 
-    this.#hint = scene.add
-      .text(
-        FieldHudLayout.hintRightX,
-        FieldHudLayout.hintY,
-        MAP_HINT,
-        FieldHudTextStyles.hint
-      )
-      .setOrigin(1, 0)
-      .setDepth(HUD_DEPTH);
-    // The pause-menu opener hint (#233), same chrome style, stacked just under the
-    // map hint so both discoverable openers sit together in the top-right corner.
-    this.#menuHint = scene.add
-      .text(
-        FieldHudLayout.hintRightX,
-        FieldHudLayout.menuHintY,
-        MENU_HINT,
-        FieldHudTextStyles.hint
-      )
-      .setOrigin(1, 0)
-      .setDepth(HUD_DEPTH);
-    // A transparent hit-rect over the hint so touch players can summon the map.
-    this.#summonButton = scene.add
-      .rectangle(
-        FieldHudLayout.hintRightX,
-        FieldHudLayout.hintY,
-        48,
-        14,
-        0x000000,
-        0
-      )
-      .setOrigin(1, 0)
-      .setDepth(HUD_DEPTH)
-      .setInteractive({ useHandCursor: true });
-    this.#summonButton.on(Phaser.Input.Events.POINTER_DOWN, onSummon);
+    // Two stacked top-right hints — "[M] map" and "[Esc] menu" (#233) — each with a
+    // matching transparent hit-rect so touch players (no keyboard) get both openers.
+    // The rects are sized to `hintHitHeight` so they never overlap, keeping each
+    // opener independently tappable; the menu tap is ignored while the map is open.
+    this.#hint = hintText(scene, FieldHudLayout.hintY, MAP_HINT);
+    this.#menuHint = hintText(scene, FieldHudLayout.menuHintY, MENU_HINT);
+    hintButton(scene, FieldHudLayout.hintY, onSummon);
+    hintButton(scene, FieldHudLayout.menuHintY, () => {
+      if (!this.#mapOpen) {
+        onOpenMenu();
+      }
+    });
 
     this.#prompt = makeText(
       scene,
@@ -303,4 +284,51 @@ export class FieldHud {
   get miniMapOpen(): boolean {
     return this.#mapOpen;
   }
+}
+
+/**
+ * Build one right-aligned top-right hint label in the shared HUD chrome style.
+ * @param scene - The owning scene.
+ * @param y - The hint's top Y (logical px).
+ * @param label - The hint text (e.g. "[M] map").
+ * @returns The hint text object.
+ */
+function hintText(
+  scene: Phaser.Scene,
+  y: number,
+  label: string
+): Phaser.GameObjects.Text {
+  return scene.add
+    .text(FieldHudLayout.hintRightX, y, label, FieldHudTextStyles.hint)
+    .setOrigin(1, 0)
+    .setDepth(HUD_DEPTH);
+}
+
+/**
+ * Build one transparent, interactive touch hit-rect over a top-right hint (#233).
+ * Sized to `hintHitHeight` so stacked hints never share a hit area.
+ * @param scene - The owning scene.
+ * @param y - The hit-rect's top Y (logical px), matching its hint.
+ * @param onTap - The pointer-down handler.
+ * @returns The interactive hit-rect.
+ */
+function hintButton(
+  scene: Phaser.Scene,
+  y: number,
+  onTap: () => void
+): Phaser.GameObjects.Rectangle {
+  const button = scene.add
+    .rectangle(
+      FieldHudLayout.hintRightX,
+      y,
+      FieldHudLayout.hintHitWidth,
+      FieldHudLayout.hintHitHeight,
+      0x000000,
+      0
+    )
+    .setOrigin(1, 0)
+    .setDepth(HUD_DEPTH)
+    .setInteractive({ useHandCursor: true });
+  button.on(Phaser.Input.Events.POINTER_DOWN, onTap);
+  return button;
 }

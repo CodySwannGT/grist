@@ -140,7 +140,9 @@ export class Field extends Phaser.Scene {
     drawFieldBackdrop(this);
     this.#buildProps();
     this.#buildHud();
-    this.#hud = new FieldHud(this, this.#toggleMiniMap);
+    this.#hud = new FieldHud(this, this.#toggleMiniMap, () =>
+      this.#input.tapOpenMenu()
+    );
     this.#wirePointer();
 
     eventsCenter.on(FieldEvents.Input, this.#onIntent);
@@ -242,7 +244,6 @@ export class Field extends Phaser.Scene {
     }
     if (intent.kind === "toggle-map") {
       this.#toggleMiniMap();
-      return;
     }
     if (intent.kind === "open-menu") {
       // Esc hands off to the pause Menu (#233), stashing the live session + Wren's

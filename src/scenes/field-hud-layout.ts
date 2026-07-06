@@ -29,7 +29,14 @@ export const FieldHudLayout = {
   hintRightX: 378,
   hintY: 6,
   /** Pause-menu opener hint ("[Esc] menu"), stacked just below the map hint (#233). */
-  menuHintY: 16,
+  menuHintY: 18,
+  /**
+   * Touch hit-rect size for each top-right hint (map summon at `hintY`, menu opener
+   * at `menuHintY`, #233). Height is bounded by the `menuHintY − hintY` gap so the
+   * two hit areas never overlap — a tap on "[Esc] menu" opens the menu, never the map.
+   */
+  hintHitWidth: 48,
+  hintHitHeight: 11,
   /** Floating context prompt anchor (centered above Wren's head height band). */
   promptX: GameView.width / 2,
   promptY: 196,
