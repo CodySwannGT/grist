@@ -45,8 +45,15 @@ export const MenuLayout = {
    */
   codexBodyY: 72,
   codexLineGap: 9,
-  /** The bottom hint line ("↑↓ move · Enter open · Esc close"). */
+  /** The bottom hint line ("↑↓ move · Enter open · Esc / tap close"). */
   hintY: 200,
+  /**
+   * The transparent hit-rect over the bottom hint (#239) that lets touch players —
+   * who reach the Menu via the Field's tappable "[Esc] menu" affordance but have no
+   * Esc key — tap to close it, so the Menu is never a pointer dead-end.
+   */
+  hintHitWidth: 220,
+  hintHitHeight: 18,
 } as const;
 
 /** Pause/main-menu placeholder-art and chrome colors (programmatic art only). */

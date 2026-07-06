@@ -225,6 +225,28 @@ export interface MenuLaunchData {
 }
 
 /**
+ * The typed scene-data the pause Menu hands to the growth/bench screen when it opens
+ * it via **Builds** (#239): the scene to return to when the Bench is closed with
+ * Back/Esc, plus the payload that return scene needs to resume ITS own caller. The
+ * Bench predates player-facing navigation, so it had no exit the moment Builds began
+ * routing players into it; this gives it the symmetric caller-handoff the Field↔Menu
+ * leg (#233) already uses. Absent when the Bench is reached standalone via the
+ * `?scene=bench` seam — that bench has no caller and Back simply stays put.
+ */
+export interface BenchLaunchData {
+  /** The caller scene key to resume on Back/Esc (e.g. {@link SceneKeys.Menu}). */
+  readonly returnTo: string;
+  /**
+   * The launch payload handed to {@link returnTo} so it can resume its own caller:
+   * opened from Builds, the Menu was itself opened over the Field, so closing the
+   * Bench re-opens the Menu with this {@link MenuLaunchData} and the Menu's own Esc
+   * then drops the player back on the Field exactly where they paused. Absent when
+   * the Menu that opened the Bench was itself standalone.
+   */
+  readonly resume?: MenuLaunchData;
+}
+
+/**
  * Field-scene layout in logical (384×216) pixels. Wren spawns near the left of
  * Room A and walks the floor band between the wall line and the bottom inset; the
  * rendering-notice sign sits to her right so a rightward walk reaches its examine
@@ -345,6 +367,17 @@ export const BenchLayout = {
   progressY: 190,
   progressWidth: 280,
   progressHeight: 8,
+  /**
+   * The tappable Back control (#239) — the pointer-first Bench's visible exit, a
+   * 9-slice button in the top-right chrome that returns to the pause Menu (which
+   * then resumes the Field). Kept clear of the top-left grist readout.
+   */
+  backX: 344,
+  backY: 15,
+  backWidth: 68,
+  backHeight: 18,
+  /** The "[Esc] back" affordance hint, centered along the bottom. */
+  hintY: 207,
 } as const;
 
 /** Bench placeholder-art and chrome colors (programmatic art only — no assets). */
@@ -361,6 +394,8 @@ export const BenchColors = {
   progressBg: 0x1d2738,
   progressFill: 0xd0706f,
   progressLabel: "#9be7c4",
+  /** The muted "[Esc] back" hint (matches the Menu/Field chrome hint tone). */
+  hint: "#5a606c",
 } as const;
 
 /**
@@ -392,6 +427,12 @@ export const BenchTextStyles = {
     fontFamily: "monospace",
     fontSize: "8px",
     color: BenchColors.progressLabel,
+  },
+  /** The bottom "[Esc] back" affordance hint (#239). */
+  hint: {
+    fontFamily: "monospace",
+    fontSize: "8px",
+    color: BenchColors.hint,
   },
 } as const;
 

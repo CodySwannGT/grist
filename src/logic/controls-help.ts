@@ -45,6 +45,10 @@ export const CONTROLS_HELP: readonly HelpSection[] = [
     ],
   },
   {
+    title: "MENUS",
+    rows: ["Back Esc / tap (menu · Bench)"],
+  },
+  {
     title: "COMMANDS & COST",
     rows: [
       "Strike free · Craft AP · Bind G",

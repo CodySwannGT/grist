@@ -26,7 +26,12 @@ import { type HudModel } from "../ui/battle-controller";
 import { autoWinView, strikeView } from "./battle-driver";
 import { type BattleSummaryModel } from "../logic/battle-summary";
 import { type BattleOnboardingSnapshot } from "../logic/battle-onboarding";
-import { BenchCell, type BenchView, type VerifyBenchState } from "./bench-view";
+import {
+  BenchCell,
+  benchApi,
+  type BenchApi,
+  type BenchView,
+} from "./bench-view";
 import {
   DialogueCell,
   dialogueApi,
@@ -117,7 +122,8 @@ export interface BattleView {
 export type { FieldView };
 
 /** The shape installed on `window.__VERIFY__`. */
-interface VerifyApi extends DialogueApi, DataCellApi, RenderApi, MenuApi {
+interface VerifyApi
+  extends DialogueApi, DataCellApi, RenderApi, MenuApi, BenchApi {
   readonly scene: () => string;
   readonly state: () => VerifyBattleState | null;
   readonly resolution: () => VerifyResolution | null;
@@ -166,18 +172,9 @@ interface VerifyApi extends DialogueApi, DataCellApi, RenderApi, MenuApi {
   readonly engage: () => void;
   /** Traverse to the next room, firing its trigger and launching the next battle. */
   readonly traverse: () => void;
-  /**
-   * A snapshot of the growth/bench screen (grist, shard, learning, build), or
-   * null outside the Bench scene. Lets the bench e2e (#86) assert the equip /
-   * spend outcomes on the live canvas.
-   */
-  readonly bench: () => VerifyBenchState | null;
-  /** Equip the Ashling shard at the bench (begins Cinder learning). */
-  readonly equipShard: () => void;
-  /** Buy Runner's Reflex at the bench (+2 SPD); a no-op if unaffordable. */
-  readonly buyRunnersReflex: () => void;
-  /** Buy Accelerate: Cinder at the bench; a no-op if unaffordable or not learning. */
-  readonly accelerateCinder: () => void;
+  // The growth/bench reads + drives (snapshot, equip/buy/accelerate, and the #239
+  // back exit) are contributed by {@link BenchApi} (composed from the bench cell),
+  // the `dialogueApi` way — keeping this file under its line budget.
   // The save / world-state / region-data / enemy-family read entries are
   // contributed by {@link DataCellApi} (composed from the bridge-held data
   // cells), the `dialogueApi` way — keeping this file under its line budget.
@@ -617,10 +614,9 @@ export function installVerifyBridge(): void {
     toggleMiniMap: () => verifyBridge.toggleMiniMap(),
     engage: () => verifyBridge.engage(),
     traverse: () => verifyBridge.traverse(),
-    bench: () => verifyBridge.bench().snapshot(verifyBridge.scene()),
-    equipShard: () => verifyBridge.bench().view()?.equipShard(),
-    buyRunnersReflex: () => verifyBridge.bench().view()?.buyRunnersReflex(),
-    accelerateCinder: () => verifyBridge.bench().view()?.accelerateCinder(),
+    // The growth/bench reads + drives (snapshot, equip/buy/accelerate, #239 back),
+    // composed over the bench cell the `dialogueApi`/`menuApi` way.
+    ...benchApi(verifyBridge.bench(), () => verifyBridge.scene()),
     ...dialogueApi(verifyBridge.dialogue, () => verifyBridge.scene()),
     // The save / world-state / region-data / enemy-family entries — composed
     // from the bridge-held data cells, the `dialogueApi` way; null outside the
