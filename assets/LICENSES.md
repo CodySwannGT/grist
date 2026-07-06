@@ -11,7 +11,12 @@ comes from **two source lanes**, each with its own rights:
    assets**, not CC0. There is no re-downloadable pack: the committed generated
    PNGs under `assets/pixellab-raw/<ref>/` ARE the provenance, and
    `assets/pixellab-manifest.json` traces every ref to its PixelLab `character_id`
-   and per-step job ids (plus the uniform trim rect applied during ingest).
+   (the provenance anchor, present for all 16 refs) plus the per-step job ids
+   where the generator captured them and the uniform trim rect applied during
+   ingest. Two refs carry a partial job log — `tobi` (recovered via
+   `GET /characters/{id}` after a mid-run download crash) and `asch` (only its
+   re-run `walk-south` job was re-logged) — noted in the manifest's `_provenance`
+   field; both retain their `character_id`.
 2. **CC0 pack lane** — battle **FX** (`sprites/fx/`), **UI chrome**
    (`sprites/ui/`), temp **audio** (`audio/`), and the per-region parallax
    **backdrops** (`images/<region>/`) remain dedicated to the public domain under
@@ -55,7 +60,7 @@ IP.
 
 | Source | Tool | Plan | Ownership | Evidence |
 |--------|------|------|-----------|----------|
-| PixelLab AI pixel-art generation | https://www.pixellab.ai | Tier 1 (active, paid) | Creator-owned per ToS ("You retain ownership…") | `assets/pixellab-manifest.json` (character_id + job ids per ref); PixelLab ToS quotes above; human approval on #203 |
+| PixelLab AI pixel-art generation | https://www.pixellab.ai | Tier 1 (active, paid) | Creator-owned per ToS ("You retain ownership…") | `assets/pixellab-manifest.json` (character_id for all refs + per-step job ids where captured; see its `_provenance` note); PixelLab ToS quotes above; human approval on #203 |
 
 ## CC0 packs (FX, UI, audio, backdrops)
 

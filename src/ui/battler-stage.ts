@@ -80,7 +80,8 @@ export interface UnitView {
   readonly atbFill: Phaser.GameObjects.Rectangle;
   readonly artRef: BattlerRef;
   readonly facing: BattlerDir;
-  /** The sprite's resting Y — restored when a floating unit is downed. */
+  /** The sprite's resting position — restored when a floating unit is downed. */
+  readonly baseX: number;
   readonly baseY: number;
 }
 
@@ -148,7 +149,7 @@ export function buildUnitView(
     // A spirit floats: a gentle looping y-bob layered on the idle (#203).
     spiritHover(scene, unit);
   }
-  return { unit, hpFill, atbFill, artRef, facing, baseY: y };
+  return { unit, hpFill, atbFill, artRef, facing, baseX: x, baseY: y };
 }
 
 /**
@@ -243,8 +244,12 @@ export function syncUnitView(
 function downUnitView(scene: Phaser.Scene, view: UnitView): void {
   view.unit.stop();
   if (battlerHovers(view.artRef)) {
+    // Kill the hover (and any in-flight lunge, since we snap the corpse home)
+    // and settle it back on BOTH axes so a spirit downed mid-lunge never sticks
+    // at an X offset. Non-floating units keep the original behavior — their
+    // lunge yoyo completes untouched.
     scene.tweens.killTweensOf(view.unit);
-    view.unit.setY(view.baseY);
+    view.unit.setPosition(view.baseX, view.baseY);
   }
   view.unit
     .setFrame(battlerDeadFrame(view.artRef, view.facing))
@@ -269,7 +274,9 @@ function reviveUnitView(scene: Phaser.Scene, view: UnitView): void {
     view.unit.play(battlerWalkAnim(view.artRef, view.facing));
   }
   if (battlerHovers(view.artRef)) {
-    view.unit.setY(view.baseY);
+    // Re-arm the float on revival (the tween was killed on downing), from the
+    // resting position on both axes.
+    view.unit.setPosition(view.baseX, view.baseY);
     spiritHover(scene, view.unit);
   }
 }

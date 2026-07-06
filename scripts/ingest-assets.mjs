@@ -70,10 +70,12 @@ const PIXELLAB_DIR = {
 };
 
 /**
- * The party refs whose PixelLab kit includes a `taking-punch` hurt template —
- * their most-collapsed hurt frame becomes the dedicated `dead` pose (#203 party
- * death). Enemies ship no hurt kit; their downed pose stays the idle frame
- * (dimmed by the scene), matching the `monster` art kind in `ui/battler-view`.
+ * The refs that ship a committed `portrait.png` — the dialogue speakers whose
+ * PixelLab bust is copied into `sprites/portraits/<ref>.png`. This gates ONLY
+ * the portrait-copy lane; the dedicated `dead` pose is chosen independently by
+ * {@link deadSourceFrame} from the presence of `hurt-south` frames (so an enemy
+ * without a hurt kit — or `sable`, a portrait-only ref with no battler frames —
+ * simply has no `dead` frame).
  */
 const PIXELLAB_PORTRAIT_REFS = new Set(["wren", "tobi", "halcyon", "sable"]);
 

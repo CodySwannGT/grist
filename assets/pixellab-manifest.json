@@ -1,4 +1,11 @@
 {
+ "_provenance": {
+  "_note": "PixelLab generation provenance. character_id is the per-ref anchor (present for all refs). per-step job ids are logged under each ref .jobs where the generator captured them.",
+  "gaps": {
+   "tobi": "jobs not individually logged: the kit was recovered via GET /characters/{id} after a mid-run download crash (0 extra spend). character_id retained.",
+   "asch": "only the re-run walk-south job is logged: the original batch per-job ids were lost when that job failed and was repaired (1 gen). character_id retained."
+  }
+ },
  "asch": {
   "character_id": "6c933f8d-b455-4a04-98a2-5cc77f384c1e",
   "sprite_size": {
