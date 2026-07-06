@@ -324,7 +324,7 @@ export class Field extends Phaser.Scene {
    * examine range and the prop has been examined (so it dismisses on walk-away),
    * and while it is up the context prompt is suppressed — the two share the bottom
    * band and overlapped, garbling both (#234). The banner text is authored on
-   * examine by {@link #renderLore}; visibility (and the prompt gate) live here.
+   * examine by {@link #examineNearest}; visibility (and the prompt gate) live here.
    * @returns void
    */
   #syncHud(): void {
