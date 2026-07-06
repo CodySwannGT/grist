@@ -1,191 +1,23 @@
 {
   "frames": {
-    "deep-auditor": {
-      "frame": {
-        "x": 3,
-        "y": 3,
-        "w": 38,
-        "h": 38
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 38,
-        "h": 38
-      },
-      "sourceSize": {
-        "w": 38,
-        "h": 38
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "drowned-husk": {
-      "frame": {
-        "x": 47,
-        "y": 3,
-        "w": 38,
-        "h": 38
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 38,
-        "h": 38
-      },
-      "sourceSize": {
-        "w": 38,
-        "h": 38
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "halcyon-knight": {
-      "frame": {
-        "x": 3,
-        "y": 47,
-        "w": 38,
-        "h": 38
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 38,
-        "h": 38
-      },
-      "sourceSize": {
-        "w": 38,
-        "h": 38
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
     "halcyon": {
       "frame": {
-        "x": 47,
-        "y": 47,
-        "w": 38,
-        "h": 38
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 38,
-        "h": 38
-      },
-      "sourceSize": {
-        "w": 38,
-        "h": 38
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "house-enforcer": {
-      "frame": {
-        "x": 91,
-        "y": 3,
-        "w": 38,
-        "h": 38
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 38,
-        "h": 38
-      },
-      "sourceSize": {
-        "w": 38,
-        "h": 38
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "marrow-scrapper": {
-      "frame": {
-        "x": 91,
-        "y": 47,
-        "w": 38,
-        "h": 38
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 38,
-        "h": 38
-      },
-      "sourceSize": {
-        "w": 38,
-        "h": 38
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "render-construct": {
-      "frame": {
         "x": 3,
-        "y": 91,
-        "w": 38,
-        "h": 38
+        "y": 3,
+        "w": 64,
+        "h": 64
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 38,
-        "h": 38
+        "w": 64,
+        "h": 64
       },
       "sourceSize": {
-        "w": 38,
-        "h": 38
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "requiem-wraith": {
-      "frame": {
-        "x": 47,
-        "y": 91,
-        "w": 38,
-        "h": 38
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 38,
-        "h": 38
-      },
-      "sourceSize": {
-        "w": 38,
-        "h": 38
+        "w": 64,
+        "h": 64
       },
       "pivot": {
         "x": 0.5,
@@ -194,46 +26,22 @@
     },
     "sable": {
       "frame": {
-        "x": 91,
-        "y": 91,
-        "w": 38,
-        "h": 38
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 38,
-        "h": 38
-      },
-      "sourceSize": {
-        "w": 38,
-        "h": 38
-      },
-      "pivot": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "the-ashling": {
-      "frame": {
-        "x": 135,
+        "x": 73,
         "y": 3,
-        "w": 38,
-        "h": 38
+        "w": 64,
+        "h": 64
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 38,
-        "h": 38
+        "w": 64,
+        "h": 64
       },
       "sourceSize": {
-        "w": 38,
-        "h": 38
+        "w": 64,
+        "h": 64
       },
       "pivot": {
         "x": 0.5,
@@ -242,22 +50,22 @@
     },
     "tobi": {
       "frame": {
-        "x": 135,
-        "y": 47,
-        "w": 38,
-        "h": 38
+        "x": 3,
+        "y": 73,
+        "w": 64,
+        "h": 64
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 38,
-        "h": 38
+        "w": 64,
+        "h": 64
       },
       "sourceSize": {
-        "w": 38,
-        "h": 38
+        "w": 64,
+        "h": 64
       },
       "pivot": {
         "x": 0.5,
@@ -266,22 +74,22 @@
     },
     "wren": {
       "frame": {
-        "x": 135,
-        "y": 91,
-        "w": 38,
-        "h": 38
+        "x": 73,
+        "y": 73,
+        "w": 64,
+        "h": 64
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 38,
-        "h": 38
+        "w": 64,
+        "h": 64
       },
       "sourceSize": {
-        "w": 38,
-        "h": 38
+        "w": 64,
+        "h": 64
       },
       "pivot": {
         "x": 0.5,
@@ -295,8 +103,8 @@
     "image": "portraits.png",
     "format": "RGBA8888",
     "size": {
-      "w": 176,
-      "h": 132
+      "w": 140,
+      "h": 140
     },
     "scale": 1
   }

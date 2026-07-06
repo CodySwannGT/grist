@@ -26,6 +26,8 @@ import {
   BattlerKinds,
   battlerAttackFrame,
   battlerDeadFrame,
+  battlerDisplayScale,
+  battlerHovers,
   battlerIdleFrame,
   battlerWalkAnim,
   type BattlerDir,
@@ -38,11 +40,9 @@ import {
   hitstop,
   JuiceTuning,
   screenShake,
+  spiritHover,
 } from "./juice";
 import { unitCenter } from "./layout";
-
-/** Integer battler display scale (16px art → 32px on the 384×216 stage). */
-const UNIT_SCALE = 2;
 /** Sprite alpha while the combatant is alive. */
 const ALIVE_ALPHA = 1;
 /** Sprite alpha once the combatant is downed (doubles as the state marker). */
@@ -80,6 +80,9 @@ export interface UnitView {
   readonly atbFill: Phaser.GameObjects.Rectangle;
   readonly artRef: BattlerRef;
   readonly facing: BattlerDir;
+  /** The sprite's resting position — restored when a floating unit is downed. */
+  readonly baseX: number;
+  readonly baseY: number;
 }
 
 /** Both sides' pooled views, index-aligned to the sim's combatant arrays. */
@@ -109,10 +112,12 @@ export function buildUnitView(
     side === BattleSides.party ? BattlerDirs.left : BattlerDirs.right;
   const unit = scene.add
     .sprite(x, y, AtlasKeys.battlers, battlerIdleFrame(artRef, facing))
-    .setScale(UNIT_SCALE);
+    .setScale(battlerDisplayScale(artRef));
+  // Float the bars off the sprite's ACTUAL top (the bespoke cast varies in
+  // height, #203) so they clear the head rather than a fixed placeholder box.
   const hpBarY =
     y -
-    BattleLayout.unitHeight / 2 -
+    unit.displayHeight / 2 -
     BattleLayout.barGap -
     BattleLayout.hpBarHeight / 2;
   const atbBarY =
@@ -140,7 +145,11 @@ export function buildUnitView(
     // A monster's idle IS its slow walk cycle — reads as a hover/bob.
     unit.play(battlerWalkAnim(artRef, facing));
   }
-  return { unit, hpFill, atbFill, artRef, facing };
+  if (battlerHovers(artRef)) {
+    // A spirit floats: a gentle looping y-bob layered on the idle (#203).
+    spiritHover(scene, unit);
+  }
+  return { unit, hpFill, atbFill, artRef, facing, baseX: x, baseY: y };
 }
 
 /**
@@ -214,23 +223,62 @@ export function syncUnitView(
     1
   );
   if (!alive && view.unit.alpha === ALIVE_ALPHA) {
-    view.unit.stop();
-    view.unit
-      .setFrame(battlerDeadFrame(view.artRef, view.facing))
-      .setTint(BattleColors.downedTint)
-      .setAlpha(DOWNED_ALPHA);
+    downUnitView(scene, view);
     return null;
   }
   if (alive && view.unit.alpha !== ALIVE_ALPHA) {
-    view.unit
-      .setFrame(battlerIdleFrame(view.artRef, view.facing))
-      .clearTint()
-      .setAlpha(ALIVE_ALPHA);
-    if (BATTLER_KIND[view.artRef] === BattlerKinds.monster) {
-      view.unit.play(battlerWalkAnim(view.artRef, view.facing));
-    }
+    reviveUnitView(scene, view);
   }
   return syncBrokenState(scene, view, combatant, alive);
+}
+
+/**
+ * The alive→downed transition: stop the idle motion, drop to the dead pose, and
+ * dim. A floating unit also has its hover tween killed and settles onto its
+ * resting Y (non-floating units keep the original behavior — an in-flight lunge
+ * yoyo completes untouched).
+ * @param scene - The owning scene (tween manager).
+ * @param view - The combatant's pooled view.
+ * @returns void
+ */
+function downUnitView(scene: Phaser.Scene, view: UnitView): void {
+  view.unit.stop();
+  if (battlerHovers(view.artRef)) {
+    // Kill the hover (and any in-flight lunge, since we snap the corpse home)
+    // and settle it back on BOTH axes so a spirit downed mid-lunge never sticks
+    // at an X offset. Non-floating units keep the original behavior — their
+    // lunge yoyo completes untouched.
+    scene.tweens.killTweensOf(view.unit);
+    view.unit.setPosition(view.baseX, view.baseY);
+  }
+  view.unit
+    .setFrame(battlerDeadFrame(view.artRef, view.facing))
+    .setTint(BattleColors.downedTint)
+    .setAlpha(DOWNED_ALPHA);
+}
+
+/**
+ * The downed→alive transition (a reseed rebinding a living combatant): restore
+ * the idle pose, replay a monster's walk-bob, and re-arm a spirit's float (its
+ * hover tween was killed when it was downed).
+ * @param scene - The owning scene (tween factory).
+ * @param view - The combatant's pooled view.
+ * @returns void
+ */
+function reviveUnitView(scene: Phaser.Scene, view: UnitView): void {
+  view.unit
+    .setFrame(battlerIdleFrame(view.artRef, view.facing))
+    .clearTint()
+    .setAlpha(ALIVE_ALPHA);
+  if (BATTLER_KIND[view.artRef] === BattlerKinds.monster) {
+    view.unit.play(battlerWalkAnim(view.artRef, view.facing));
+  }
+  if (battlerHovers(view.artRef)) {
+    // Re-arm the float on revival (the tween was killed on downing), from the
+    // resting position on both axes.
+    view.unit.setPosition(view.baseX, view.baseY);
+    spiritHover(scene, view.unit);
+  }
 }
 
 /**

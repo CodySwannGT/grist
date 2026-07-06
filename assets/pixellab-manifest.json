@@ -1,0 +1,1869 @@
+{
+ "_provenance": {
+  "_note": "PixelLab generation provenance. character_id is the per-ref anchor (present for all refs). per-step job ids are logged under each ref .jobs where the generator captured them.",
+  "gaps": {
+   "tobi": "jobs not individually logged: the kit was recovered via GET /characters/{id} after a mid-run download crash (0 extra spend). character_id retained.",
+   "asch": "only the re-run walk-south job is logged: the original batch per-job ids were lost when that job failed and was repaired (1 gen). character_id retained."
+  }
+ },
+ "asch": {
+  "character_id": "6c933f8d-b455-4a04-98a2-5cc77f384c1e",
+  "sprite_size": {
+   "width": 16,
+   "height": 24
+  },
+  "canvas": {
+   "width": 24,
+   "height": 36
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "hurricane-kick",
+  "hurtTemplate": "taking-punch",
+  "spent": 10,
+  "jobs": [
+   {
+    "step": "walk",
+    "job": "6d1aae06-f9cc-4b4a-9442-d27250eb6a76"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 490,
+   "attack-east-f01.png": 502,
+   "attack-east-f02.png": 463,
+   "attack-east-f03.png": 435,
+   "attack-east.png": 463,
+   "attack-north-f00.png": 403,
+   "attack-north-f01.png": 385,
+   "attack-north-f02.png": 408,
+   "attack-north-f03.png": 401,
+   "attack-north.png": 408,
+   "attack-south-f00.png": 531,
+   "attack-south-f01.png": 508,
+   "attack-south-f02.png": 592,
+   "attack-south-f03.png": 593,
+   "attack-south.png": 592,
+   "attack-west-f00.png": 503,
+   "attack-west-f01.png": 463,
+   "attack-west-f02.png": 490,
+   "attack-west-f03.png": 544,
+   "attack-west.png": 490,
+   "contact-sheet.png": 63120,
+   "hurt-south-f00.png": 472,
+   "hurt-south-f01.png": 504,
+   "hurt-south-f02.png": 545,
+   "hurt-south-f03.png": 506,
+   "hurt-south-f04.png": 520,
+   "hurt-south-f05.png": 506,
+   "idle-east.png": 478,
+   "idle-north.png": 444,
+   "idle-south.png": 478,
+   "idle-west.png": 434,
+   "walk-east-0.png": 518,
+   "walk-east-1.png": 525,
+   "walk-east-2.png": 527,
+   "walk-east-3.png": 518,
+   "walk-east-4.png": 555,
+   "walk-east-5.png": 510,
+   "walk-north-0.png": 520,
+   "walk-north-1.png": 494,
+   "walk-north-2.png": 479,
+   "walk-north-3.png": 454,
+   "walk-north-4.png": 481,
+   "walk-north-5.png": 493,
+   "walk-south-0.png": 561,
+   "walk-south-1.png": 581,
+   "walk-south-2.png": 609,
+   "walk-south-3.png": 544,
+   "walk-south-4.png": 608,
+   "walk-south-5.png": 611,
+   "walk-west-0.png": 495,
+   "walk-west-1.png": 546,
+   "walk-west-2.png": 537,
+   "walk-west-3.png": 518,
+   "walk-west-4.png": 552,
+   "walk-west-5.png": 509
+  },
+  "trim": {
+   "x": 4,
+   "y": 5,
+   "w": 17,
+   "h": 28
+  },
+  "trimmedSize": {
+   "width": 17,
+   "height": 28
+  }
+ },
+ "cal": {
+  "character_id": "031bb947-2e85-448a-b6d7-de2a9b3a5faa",
+  "sprite_size": {
+   "width": 16,
+   "height": 24
+  },
+  "canvas": {
+   "width": 24,
+   "height": 36
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "throw-object",
+  "hurtTemplate": "taking-punch",
+  "spent": 10,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "650719cb-1e94-434d-9116-112cb2c79a1c"
+   },
+   {
+    "step": "walk",
+    "job": "dd147214-cf0c-42f3-ab74-3c721d67f51e"
+   },
+   {
+    "step": "walk",
+    "job": "645ee99f-222b-4f66-8de2-9285b9306063"
+   },
+   {
+    "step": "walk",
+    "job": "ff4de0dd-ddb4-40d9-a7b9-d8eab6b88116"
+   },
+   {
+    "step": "walk",
+    "job": "957b0bf8-1b2e-430a-8402-090f051144e7"
+   },
+   {
+    "step": "attack",
+    "job": "3bfbf1ef-467c-4991-b883-533311f6dc92"
+   },
+   {
+    "step": "attack",
+    "job": "8d526a04-499a-4e04-8b53-64926dcc6706"
+   },
+   {
+    "step": "attack",
+    "job": "b0fbf746-ea51-411f-b217-2ed0706615d0"
+   },
+   {
+    "step": "attack",
+    "job": "92889685-e350-4e42-be7e-ae7c7599cb51"
+   },
+   {
+    "step": "hurt",
+    "job": "f7eecfdb-8642-4042-a79f-5fb1a2e4c3a3"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 499,
+   "attack-east-f01.png": 597,
+   "attack-east-f02.png": 602,
+   "attack-east-f03.png": 613,
+   "attack-east-f04.png": 589,
+   "attack-east-f05.png": 523,
+   "attack-east-f06.png": 498,
+   "attack-east.png": 602,
+   "attack-north-f00.png": 470,
+   "attack-north-f01.png": 466,
+   "attack-north-f02.png": 511,
+   "attack-north-f03.png": 450,
+   "attack-north-f04.png": 451,
+   "attack-north-f05.png": 489,
+   "attack-north-f06.png": 446,
+   "attack-north.png": 511,
+   "attack-south-f00.png": 513,
+   "attack-south-f01.png": 445,
+   "attack-south-f02.png": 560,
+   "attack-south-f03.png": 535,
+   "attack-south-f04.png": 444,
+   "attack-south-f05.png": 611,
+   "attack-south-f06.png": 572,
+   "attack-south.png": 560,
+   "attack-west-f00.png": 444,
+   "attack-west-f01.png": 524,
+   "attack-west-f02.png": 558,
+   "attack-west-f03.png": 486,
+   "attack-west-f04.png": 465,
+   "attack-west-f05.png": 443,
+   "attack-west-f06.png": 417,
+   "attack-west.png": 558,
+   "contact-sheet.png": 76043,
+   "hurt-south-f00.png": 622,
+   "hurt-south-f01.png": 594,
+   "hurt-south-f02.png": 564,
+   "hurt-south-f03.png": 617,
+   "hurt-south-f04.png": 566,
+   "hurt-south-f05.png": 584,
+   "idle-east.png": 427,
+   "idle-north.png": 437,
+   "idle-south.png": 542,
+   "idle-west.png": 426,
+   "walk-east-0.png": 475,
+   "walk-east-1.png": 538,
+   "walk-east-2.png": 486,
+   "walk-east-3.png": 500,
+   "walk-east-4.png": 512,
+   "walk-east-5.png": 502,
+   "walk-north-0.png": 427,
+   "walk-north-1.png": 414,
+   "walk-north-2.png": 419,
+   "walk-north-3.png": 437,
+   "walk-north-4.png": 383,
+   "walk-north-5.png": 393,
+   "walk-south-0.png": 567,
+   "walk-south-1.png": 512,
+   "walk-south-2.png": 580,
+   "walk-south-3.png": 566,
+   "walk-south-4.png": 575,
+   "walk-south-5.png": 545,
+   "walk-west-0.png": 488,
+   "walk-west-1.png": 555,
+   "walk-west-2.png": 564,
+   "walk-west-3.png": 496,
+   "walk-west-4.png": 577,
+   "walk-west-5.png": 523
+  },
+  "trim": {
+   "x": 5,
+   "y": 5,
+   "w": 16,
+   "h": 28
+  },
+  "trimmedSize": {
+   "width": 16,
+   "height": 28
+  }
+ },
+ "deep-auditor": {
+  "character_id": "a9489859-bb6c-4a2a-a643-a4e6baf33d04",
+  "sprite_size": {
+   "width": 24,
+   "height": 32
+  },
+  "canvas": {
+   "width": 36,
+   "height": 48
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "fireball",
+  "hurtTemplate": null,
+  "spent": 9,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "793e09a8-2704-4a2e-a381-64962d0f6029"
+   },
+   {
+    "step": "walk",
+    "job": "05fb86ce-d770-441b-9032-85962e3c0d3f"
+   },
+   {
+    "step": "walk",
+    "job": "cb4f7eff-ba77-4698-8167-f49fa4e343a0"
+   },
+   {
+    "step": "walk",
+    "job": "0a183170-6406-4a97-a28c-586c04829d9d"
+   },
+   {
+    "step": "walk",
+    "job": "3020f362-4427-4ec8-9b9e-a933574bfa4e"
+   },
+   {
+    "step": "attack",
+    "job": "818efa6a-e53b-4d78-a00a-37be1bab6c20"
+   },
+   {
+    "step": "attack",
+    "job": "ed2aca0e-960c-4654-a2ee-22ff595aec5d"
+   },
+   {
+    "step": "attack",
+    "job": "35d60c02-94df-4b73-86e8-a5ee32422fce"
+   },
+   {
+    "step": "attack",
+    "job": "4d2ac825-b5db-4353-9d5a-a2e0ec98ec88"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 655,
+   "attack-east-f01.png": 584,
+   "attack-east-f02.png": 542,
+   "attack-east-f03.png": 554,
+   "attack-east-f04.png": 620,
+   "attack-east-f05.png": 649,
+   "attack-east.png": 542,
+   "attack-north-f00.png": 454,
+   "attack-north-f01.png": 423,
+   "attack-north-f02.png": 496,
+   "attack-north-f03.png": 473,
+   "attack-north-f04.png": 435,
+   "attack-north-f05.png": 430,
+   "attack-north.png": 496,
+   "attack-south-f00.png": 546,
+   "attack-south-f01.png": 675,
+   "attack-south-f02.png": 599,
+   "attack-south-f03.png": 661,
+   "attack-south-f04.png": 538,
+   "attack-south-f05.png": 593,
+   "attack-south.png": 599,
+   "attack-west-f00.png": 744,
+   "attack-west-f01.png": 720,
+   "attack-west-f02.png": 540,
+   "attack-west-f03.png": 554,
+   "attack-west-f04.png": 674,
+   "attack-west-f05.png": 730,
+   "attack-west.png": 540,
+   "contact-sheet.png": 76155,
+   "idle-east.png": 466,
+   "idle-north.png": 368,
+   "idle-south.png": 544,
+   "idle-west.png": 465,
+   "walk-east-0.png": 522,
+   "walk-east-1.png": 588,
+   "walk-east-2.png": 559,
+   "walk-east-3.png": 503,
+   "walk-east-4.png": 605,
+   "walk-east-5.png": 617,
+   "walk-north-0.png": 443,
+   "walk-north-1.png": 448,
+   "walk-north-2.png": 441,
+   "walk-north-3.png": 452,
+   "walk-north-4.png": 436,
+   "walk-north-5.png": 449,
+   "walk-south-0.png": 612,
+   "walk-south-1.png": 617,
+   "walk-south-2.png": 611,
+   "walk-south-3.png": 652,
+   "walk-south-4.png": 624,
+   "walk-south-5.png": 639,
+   "walk-west-0.png": 484,
+   "walk-west-1.png": 576,
+   "walk-west-2.png": 526,
+   "walk-west-3.png": 477,
+   "walk-west-4.png": 550,
+   "walk-west-5.png": 496
+  },
+  "trim": {
+   "x": 10,
+   "y": 6,
+   "w": 17,
+   "h": 38
+  },
+  "trimmedSize": {
+   "width": 17,
+   "height": 38
+  }
+ },
+ "drowned-husk": {
+  "character_id": "42a29f40-53f7-4ec8-8929-0d747a31bddd",
+  "sprite_size": {
+   "width": 16,
+   "height": 24
+  },
+  "canvas": {
+   "width": 24,
+   "height": 36
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "cross-punch",
+  "hurtTemplate": null,
+  "spent": 9,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "1e52b48a-b16c-49d9-9489-a19829b853c1"
+   },
+   {
+    "step": "walk",
+    "job": "2a14bce0-2fb9-4f9a-a7c6-31882d892c71"
+   },
+   {
+    "step": "walk",
+    "job": "b8110da7-0326-4eaa-b337-e2a9bd78cd0a"
+   },
+   {
+    "step": "walk",
+    "job": "bfed85de-a891-4177-9f7f-24f063585099"
+   },
+   {
+    "step": "walk",
+    "job": "9989b16a-4c9a-4cee-a97b-c9e14424094b"
+   },
+   {
+    "step": "attack",
+    "job": "93691986-a6c4-4732-8534-9086956b79d8"
+   },
+   {
+    "step": "attack",
+    "job": "bdbb10d6-362b-4549-9f8a-0d2b90fc6eea"
+   },
+   {
+    "step": "attack",
+    "job": "3a941eba-111d-40ad-97a0-c3a17fad33c7"
+   },
+   {
+    "step": "attack",
+    "job": "9aa58910-e08b-4c65-9dc0-ab37ecb00414"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 503,
+   "attack-east-f01.png": 479,
+   "attack-east-f02.png": 498,
+   "attack-east-f03.png": 475,
+   "attack-east-f04.png": 556,
+   "attack-east-f05.png": 521,
+   "attack-east.png": 498,
+   "attack-north-f00.png": 495,
+   "attack-north-f01.png": 496,
+   "attack-north-f02.png": 514,
+   "attack-north-f03.png": 477,
+   "attack-north-f04.png": 500,
+   "attack-north-f05.png": 534,
+   "attack-north.png": 514,
+   "attack-south-f00.png": 444,
+   "attack-south-f01.png": 408,
+   "attack-south-f02.png": 432,
+   "attack-south-f03.png": 446,
+   "attack-south-f04.png": 452,
+   "attack-south-f05.png": 428,
+   "attack-south.png": 432,
+   "attack-west-f00.png": 532,
+   "attack-west-f01.png": 479,
+   "attack-west-f02.png": 565,
+   "attack-west-f03.png": 573,
+   "attack-west-f04.png": 550,
+   "attack-west-f05.png": 451,
+   "attack-west.png": 565,
+   "contact-sheet.png": 64912,
+   "idle-east.png": 408,
+   "idle-north.png": 469,
+   "idle-south.png": 496,
+   "idle-west.png": 392,
+   "walk-east-0.png": 510,
+   "walk-east-1.png": 542,
+   "walk-east-2.png": 515,
+   "walk-east-3.png": 463,
+   "walk-east-4.png": 506,
+   "walk-east-5.png": 498,
+   "walk-north-0.png": 455,
+   "walk-north-1.png": 443,
+   "walk-north-2.png": 442,
+   "walk-north-3.png": 475,
+   "walk-north-4.png": 452,
+   "walk-north-5.png": 466,
+   "walk-south-0.png": 496,
+   "walk-south-1.png": 540,
+   "walk-south-2.png": 512,
+   "walk-south-3.png": 527,
+   "walk-south-4.png": 589,
+   "walk-south-5.png": 536,
+   "walk-west-0.png": 458,
+   "walk-west-1.png": 560,
+   "walk-west-2.png": 514,
+   "walk-west-3.png": 457,
+   "walk-west-4.png": 550,
+   "walk-west-5.png": 433
+  },
+  "trim": {
+   "x": 6,
+   "y": 5,
+   "w": 13,
+   "h": 28
+  },
+  "trimmedSize": {
+   "width": 13,
+   "height": 28
+  }
+ },
+ "halcyon": {
+  "character_id": "57601571-3d0f-4af7-b1a6-d993fc3bd4fb",
+  "sprite_size": {
+   "width": 16,
+   "height": 24
+  },
+  "canvas": {
+   "width": 24,
+   "height": 36
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "surprise-uppercut",
+  "hurtTemplate": "taking-punch",
+  "spent": 10,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "cab5b00d-381d-44e1-be93-550994026585"
+   },
+   {
+    "step": "walk",
+    "job": "7096efd2-0425-4cb0-bd43-8697d8072242"
+   },
+   {
+    "step": "walk",
+    "job": "e022d74c-c41c-4293-8ad9-5712b33c76d4"
+   },
+   {
+    "step": "walk",
+    "job": "fe0cc5d6-df1c-44d3-b823-fd67618919f9"
+   },
+   {
+    "step": "walk",
+    "job": "ed06358a-a8a8-4f01-b4b8-919abbeb04a5"
+   },
+   {
+    "step": "attack",
+    "job": "c1afeb45-bf4b-40b3-86b5-a45be35e568b"
+   },
+   {
+    "step": "attack",
+    "job": "9a279af4-7082-4fe0-8095-9cb49790ba4e"
+   },
+   {
+    "step": "attack",
+    "job": "fa964e10-f91d-4775-a6c2-3f9fc7ca8787"
+   },
+   {
+    "step": "attack",
+    "job": "587fb67b-cf42-4b4c-9d52-a0c6c4be2094"
+   },
+   {
+    "step": "hurt",
+    "job": "f8127eb6-b827-47b4-9101-7e0a0444a74e"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 414,
+   "attack-east-f01.png": 489,
+   "attack-east-f02.png": 588,
+   "attack-east-f03.png": 444,
+   "attack-east-f04.png": 466,
+   "attack-east-f05.png": 490,
+   "attack-east-f06.png": 492,
+   "attack-east.png": 588,
+   "attack-north-f00.png": 419,
+   "attack-north-f01.png": 513,
+   "attack-north-f02.png": 435,
+   "attack-north-f03.png": 451,
+   "attack-north-f04.png": 481,
+   "attack-north-f05.png": 578,
+   "attack-north-f06.png": 516,
+   "attack-north.png": 435,
+   "attack-south-f00.png": 446,
+   "attack-south-f01.png": 536,
+   "attack-south-f02.png": 493,
+   "attack-south-f03.png": 500,
+   "attack-south-f04.png": 526,
+   "attack-south-f05.png": 537,
+   "attack-south-f06.png": 511,
+   "attack-south.png": 493,
+   "attack-west-f00.png": 489,
+   "attack-west-f01.png": 457,
+   "attack-west-f02.png": 593,
+   "attack-west-f03.png": 374,
+   "attack-west-f04.png": 405,
+   "attack-west-f05.png": 441,
+   "attack-west-f06.png": 465,
+   "attack-west.png": 593,
+   "contact-sheet.png": 103095,
+   "hurt-south-f00.png": 433,
+   "hurt-south-f01.png": 491,
+   "hurt-south-f02.png": 555,
+   "hurt-south-f03.png": 487,
+   "hurt-south-f04.png": 530,
+   "hurt-south-f05.png": 459,
+   "idle-east.png": 369,
+   "idle-north.png": 493,
+   "idle-south.png": 568,
+   "idle-west.png": 380,
+   "portrait.png": 3577,
+   "walk-east-0.png": 403,
+   "walk-east-1.png": 470,
+   "walk-east-2.png": 393,
+   "walk-east-3.png": 408,
+   "walk-east-4.png": 417,
+   "walk-east-5.png": 442,
+   "walk-north-0.png": 521,
+   "walk-north-1.png": 548,
+   "walk-north-2.png": 499,
+   "walk-north-3.png": 567,
+   "walk-north-4.png": 555,
+   "walk-north-5.png": 529,
+   "walk-south-0.png": 551,
+   "walk-south-1.png": 554,
+   "walk-south-2.png": 617,
+   "walk-south-3.png": 556,
+   "walk-south-4.png": 603,
+   "walk-south-5.png": 591,
+   "walk-west-0.png": 472,
+   "walk-west-1.png": 517,
+   "walk-west-2.png": 458,
+   "walk-west-3.png": 396,
+   "walk-west-4.png": 471,
+   "walk-west-5.png": 465
+  },
+  "portrait": {
+   "job": "380c6780-ed25-450a-9c2c-ed79af4a2334",
+   "spent": 20,
+   "result_size": 64
+  },
+  "trim": {
+   "x": 5,
+   "y": 5,
+   "w": 16,
+   "h": 28
+  },
+  "trimmedSize": {
+   "width": 16,
+   "height": 28
+  }
+ },
+ "halcyon-knight": {
+  "character_id": "8fa24444-c100-4faf-8a2a-9e313dc4c935",
+  "sprite_size": {
+   "width": 32,
+   "height": 32
+  },
+  "canvas": {
+   "width": 48,
+   "height": 48
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "surprise-uppercut",
+  "hurtTemplate": null,
+  "spent": 9,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "dbaee6c6-47eb-45b7-926c-064c7877e87e"
+   },
+   {
+    "step": "walk",
+    "job": "b5563735-1d36-41f3-ba19-413f8457591f"
+   },
+   {
+    "step": "walk",
+    "job": "ef290ada-45c1-41d0-bc9a-01a54b455ce8"
+   },
+   {
+    "step": "walk",
+    "job": "824ce4c0-f6bc-4f53-8410-b468be1f5898"
+   },
+   {
+    "step": "walk",
+    "job": "59df00bc-07f3-4564-a57a-6589d3e8779f"
+   },
+   {
+    "step": "attack",
+    "job": "378ab066-581c-4637-b44a-d622a35d1084"
+   },
+   {
+    "step": "attack",
+    "job": "7bdb8bf4-eceb-470e-a1eb-e675c4107f46"
+   },
+   {
+    "step": "attack",
+    "job": "4a27112b-f7ff-4c58-8804-8e243aef21fa"
+   },
+   {
+    "step": "attack",
+    "job": "51b2924e-db92-4efd-92a8-f7df92072c6b"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 795,
+   "attack-east-f01.png": 838,
+   "attack-east-f02.png": 993,
+   "attack-east-f03.png": 830,
+   "attack-east-f04.png": 835,
+   "attack-east-f05.png": 885,
+   "attack-east-f06.png": 997,
+   "attack-east.png": 993,
+   "attack-north-f00.png": 699,
+   "attack-north-f01.png": 989,
+   "attack-north-f02.png": 778,
+   "attack-north-f03.png": 835,
+   "attack-north-f04.png": 875,
+   "attack-north-f05.png": 961,
+   "attack-north-f06.png": 797,
+   "attack-north.png": 778,
+   "attack-south-f00.png": 796,
+   "attack-south-f01.png": 803,
+   "attack-south-f02.png": 603,
+   "attack-south-f03.png": 741,
+   "attack-south-f04.png": 884,
+   "attack-south-f05.png": 782,
+   "attack-south-f06.png": 679,
+   "attack-south.png": 603,
+   "attack-west-f00.png": 858,
+   "attack-west-f01.png": 834,
+   "attack-west-f02.png": 1106,
+   "attack-west-f03.png": 844,
+   "attack-west-f04.png": 749,
+   "attack-west-f05.png": 801,
+   "attack-west-f06.png": 1022,
+   "attack-west.png": 1106,
+   "contact-sheet.png": 105472,
+   "idle-east.png": 658,
+   "idle-north.png": 932,
+   "idle-south.png": 908,
+   "idle-west.png": 677,
+   "walk-east-0.png": 672,
+   "walk-east-1.png": 786,
+   "walk-east-2.png": 688,
+   "walk-east-3.png": 639,
+   "walk-east-4.png": 759,
+   "walk-east-5.png": 742,
+   "walk-north-0.png": 1030,
+   "walk-north-1.png": 973,
+   "walk-north-2.png": 942,
+   "walk-north-3.png": 986,
+   "walk-north-4.png": 1005,
+   "walk-north-5.png": 988,
+   "walk-south-0.png": 893,
+   "walk-south-1.png": 936,
+   "walk-south-2.png": 924,
+   "walk-south-3.png": 905,
+   "walk-south-4.png": 892,
+   "walk-south-5.png": 895,
+   "walk-west-0.png": 698,
+   "walk-west-1.png": 820,
+   "walk-west-2.png": 738,
+   "walk-west-3.png": 674,
+   "walk-west-4.png": 813,
+   "walk-west-5.png": 824
+  },
+  "trim": {
+   "x": 10,
+   "y": 6,
+   "w": 28,
+   "h": 37
+  },
+  "trimmedSize": {
+   "width": 28,
+   "height": 37
+  }
+ },
+ "house-enforcer": {
+  "character_id": "f73a640b-652a-4613-b854-f328d45cc2a3",
+  "sprite_size": {
+   "width": 16,
+   "height": 24
+  },
+  "canvas": {
+   "width": 24,
+   "height": 36
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "cross-punch",
+  "hurtTemplate": null,
+  "spent": 9,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "8f746259-46d6-475f-a7a8-a78bc376194c"
+   },
+   {
+    "step": "walk",
+    "job": "61a28cd8-6d0e-477d-811c-72b076be7229"
+   },
+   {
+    "step": "walk",
+    "job": "f245f434-ba3d-4dae-8dea-6723a1362657"
+   },
+   {
+    "step": "walk",
+    "job": "a58565f1-d2ee-4b1f-9534-7d828f88160d"
+   },
+   {
+    "step": "walk",
+    "job": "ad40bf38-64d8-4d91-8f84-338a3dbdbdad"
+   },
+   {
+    "step": "attack",
+    "job": "2a968d34-5a6d-42be-a93b-3964123fd321"
+   },
+   {
+    "step": "attack",
+    "job": "4e0cb234-f409-415c-89f2-85aec1d205a4"
+   },
+   {
+    "step": "attack",
+    "job": "0c8f4b1f-23da-44bb-be80-d31639263ac2"
+   },
+   {
+    "step": "attack",
+    "job": "5762cdf1-233f-4938-b171-068feeb969e7"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 465,
+   "attack-east-f01.png": 483,
+   "attack-east-f02.png": 488,
+   "attack-east-f03.png": 531,
+   "attack-east-f04.png": 515,
+   "attack-east-f05.png": 536,
+   "attack-east.png": 488,
+   "attack-north-f00.png": 506,
+   "attack-north-f01.png": 526,
+   "attack-north-f02.png": 509,
+   "attack-north-f03.png": 523,
+   "attack-north-f04.png": 509,
+   "attack-north-f05.png": 510,
+   "attack-north.png": 509,
+   "attack-south-f00.png": 514,
+   "attack-south-f01.png": 496,
+   "attack-south-f02.png": 518,
+   "attack-south-f03.png": 502,
+   "attack-south-f04.png": 493,
+   "attack-south-f05.png": 518,
+   "attack-south.png": 518,
+   "attack-west-f00.png": 513,
+   "attack-west-f01.png": 579,
+   "attack-west-f02.png": 539,
+   "attack-west-f03.png": 518,
+   "attack-west-f04.png": 580,
+   "attack-west-f05.png": 525,
+   "attack-west.png": 539,
+   "contact-sheet.png": 63128,
+   "idle-east.png": 384,
+   "idle-north.png": 486,
+   "idle-south.png": 433,
+   "idle-west.png": 397,
+   "walk-east-0.png": 458,
+   "walk-east-1.png": 504,
+   "walk-east-2.png": 503,
+   "walk-east-3.png": 478,
+   "walk-east-4.png": 532,
+   "walk-east-5.png": 516,
+   "walk-north-0.png": 489,
+   "walk-north-1.png": 508,
+   "walk-north-2.png": 476,
+   "walk-north-3.png": 541,
+   "walk-north-4.png": 496,
+   "walk-north-5.png": 505,
+   "walk-south-0.png": 468,
+   "walk-south-1.png": 428,
+   "walk-south-2.png": 496,
+   "walk-south-3.png": 462,
+   "walk-south-4.png": 502,
+   "walk-south-5.png": 488,
+   "walk-west-0.png": 482,
+   "walk-west-1.png": 550,
+   "walk-west-2.png": 553,
+   "walk-west-3.png": 472,
+   "walk-west-4.png": 552,
+   "walk-west-5.png": 497
+  },
+  "trim": {
+   "x": 6,
+   "y": 5,
+   "w": 13,
+   "h": 28
+  },
+  "trimmedSize": {
+   "width": 13,
+   "height": 28
+  }
+ },
+ "marrow-scrapper": {
+  "character_id": "4440fe26-798f-413c-a93d-96ca28c84ba7",
+  "sprite_size": {
+   "width": 16,
+   "height": 24
+  },
+  "canvas": {
+   "width": 24,
+   "height": 36
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "lead-jab",
+  "hurtTemplate": null,
+  "spent": 9,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "998a937b-2c86-482b-9e24-c109af11064d"
+   },
+   {
+    "step": "walk",
+    "job": "1a887312-bd88-41f4-ba5f-eafd6940cd4e"
+   },
+   {
+    "step": "walk",
+    "job": "76ae835c-f6a8-44ce-927c-bdd38a6b2d77"
+   },
+   {
+    "step": "walk",
+    "job": "1c7526af-be8f-4646-8f08-6daa4819c835"
+   },
+   {
+    "step": "walk",
+    "job": "8089487c-8a6b-45ca-b67c-830fe231e6f7"
+   },
+   {
+    "step": "attack",
+    "job": "b4853c3e-037c-4a7b-92ea-7c10ab739139"
+   },
+   {
+    "step": "attack",
+    "job": "5f0f12e2-7177-4861-a9b8-3cafe626832b"
+   },
+   {
+    "step": "attack",
+    "job": "59d19c5a-62f2-4e7e-85fa-75947d2ab2cc"
+   },
+   {
+    "step": "attack",
+    "job": "f212388e-fdd7-4c46-ab10-044a8cf2ea5d"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 628,
+   "attack-east-f01.png": 632,
+   "attack-east-f02.png": 626,
+   "attack-east.png": 626,
+   "attack-north-f00.png": 582,
+   "attack-north-f01.png": 505,
+   "attack-north-f02.png": 550,
+   "attack-north.png": 550,
+   "attack-south-f00.png": 466,
+   "attack-south-f01.png": 471,
+   "attack-south-f02.png": 506,
+   "attack-south.png": 506,
+   "attack-west-f00.png": 602,
+   "attack-west-f01.png": 608,
+   "attack-west-f02.png": 594,
+   "attack-west.png": 594,
+   "contact-sheet.png": 56917,
+   "idle-east.png": 480,
+   "idle-north.png": 510,
+   "idle-south.png": 526,
+   "idle-west.png": 465,
+   "walk-east-0.png": 510,
+   "walk-east-1.png": 516,
+   "walk-east-2.png": 480,
+   "walk-east-3.png": 514,
+   "walk-east-4.png": 480,
+   "walk-east-5.png": 525,
+   "walk-north-0.png": 542,
+   "walk-north-1.png": 586,
+   "walk-north-2.png": 545,
+   "walk-north-3.png": 607,
+   "walk-north-4.png": 565,
+   "walk-north-5.png": 584,
+   "walk-south-0.png": 510,
+   "walk-south-1.png": 472,
+   "walk-south-2.png": 529,
+   "walk-south-3.png": 534,
+   "walk-south-4.png": 552,
+   "walk-south-5.png": 528,
+   "walk-west-0.png": 509,
+   "walk-west-1.png": 529,
+   "walk-west-2.png": 565,
+   "walk-west-3.png": 484,
+   "walk-west-4.png": 544,
+   "walk-west-5.png": 502
+  },
+  "trim": {
+   "x": 5,
+   "y": 4,
+   "w": 18,
+   "h": 28
+  },
+  "trimmedSize": {
+   "width": 18,
+   "height": 28
+  }
+ },
+ "quietus": {
+  "character_id": "432307db-666b-449a-a385-efcb82aabd9a",
+  "sprite_size": {
+   "width": 16,
+   "height": 24
+  },
+  "canvas": {
+   "width": 24,
+   "height": 36
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "fireball",
+  "hurtTemplate": "taking-punch",
+  "spent": 10,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "d570fa61-21d4-42d3-bdfb-9db5b36b5a76"
+   },
+   {
+    "step": "walk",
+    "job": "6063d442-fc63-4cbf-a4bc-fe5bd5de8776"
+   },
+   {
+    "step": "walk",
+    "job": "2e8b4e0d-c931-4f03-a230-0a1070935975"
+   },
+   {
+    "step": "walk",
+    "job": "3866573c-dc27-4dc6-be3e-5f98f32e23b1"
+   },
+   {
+    "step": "walk",
+    "job": "aa25efec-a45a-4c66-9b65-9d335ca6c4ba"
+   },
+   {
+    "step": "attack",
+    "job": "9082ead8-027f-41ab-8a74-314a2cbb1be6"
+   },
+   {
+    "step": "attack",
+    "job": "48534f35-b54e-4452-ade4-9b34b19e9bd5"
+   },
+   {
+    "step": "attack",
+    "job": "8203b4fb-04d4-4b1c-ba23-633012b547f3"
+   },
+   {
+    "step": "attack",
+    "job": "d884435a-3274-4df2-a903-1aa33e63f917"
+   },
+   {
+    "step": "hurt",
+    "job": "de9dfd5f-f756-4819-b34e-bd4e49884208"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 441,
+   "attack-east-f01.png": 424,
+   "attack-east-f02.png": 392,
+   "attack-east-f03.png": 400,
+   "attack-east-f04.png": 402,
+   "attack-east-f05.png": 403,
+   "attack-east.png": 392,
+   "attack-north-f00.png": 388,
+   "attack-north-f01.png": 342,
+   "attack-north-f02.png": 386,
+   "attack-north-f03.png": 373,
+   "attack-north-f04.png": 413,
+   "attack-north-f05.png": 370,
+   "attack-north.png": 386,
+   "attack-south-f00.png": 362,
+   "attack-south-f01.png": 394,
+   "attack-south-f02.png": 394,
+   "attack-south-f03.png": 455,
+   "attack-south-f04.png": 365,
+   "attack-south-f05.png": 403,
+   "attack-south.png": 394,
+   "attack-west-f00.png": 441,
+   "attack-west-f01.png": 438,
+   "attack-west-f02.png": 429,
+   "attack-west-f03.png": 403,
+   "attack-west-f04.png": 376,
+   "attack-west-f05.png": 457,
+   "attack-west.png": 429,
+   "contact-sheet.png": 62633,
+   "hurt-south-f00.png": 439,
+   "hurt-south-f01.png": 488,
+   "hurt-south-f02.png": 519,
+   "hurt-south-f03.png": 477,
+   "hurt-south-f04.png": 433,
+   "hurt-south-f05.png": 438,
+   "idle-east.png": 316,
+   "idle-north.png": 378,
+   "idle-south.png": 460,
+   "idle-west.png": 381,
+   "walk-east-0.png": 402,
+   "walk-east-1.png": 456,
+   "walk-east-2.png": 436,
+   "walk-east-3.png": 383,
+   "walk-east-4.png": 434,
+   "walk-east-5.png": 451,
+   "walk-north-0.png": 409,
+   "walk-north-1.png": 338,
+   "walk-north-2.png": 352,
+   "walk-north-3.png": 381,
+   "walk-north-4.png": 368,
+   "walk-north-5.png": 362,
+   "walk-south-0.png": 453,
+   "walk-south-1.png": 465,
+   "walk-south-2.png": 444,
+   "walk-south-3.png": 482,
+   "walk-south-4.png": 509,
+   "walk-south-5.png": 458,
+   "walk-west-0.png": 361,
+   "walk-west-1.png": 373,
+   "walk-west-2.png": 368,
+   "walk-west-3.png": 346,
+   "walk-west-4.png": 387,
+   "walk-west-5.png": 390
+  },
+  "trim": {
+   "x": 6,
+   "y": 6,
+   "w": 13,
+   "h": 26
+  },
+  "trimmedSize": {
+   "width": 13,
+   "height": 26
+  }
+ },
+ "render-construct": {
+  "character_id": "aeaeea8c-877f-4b25-a737-2b9626eb0907",
+  "sprite_size": {
+   "width": 24,
+   "height": 24
+  },
+  "canvas": {
+   "width": 36,
+   "height": 36
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "fireball",
+  "hurtTemplate": null,
+  "spent": 9,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "04cb888b-a567-42ae-ae59-28d9ee34176c"
+   },
+   {
+    "step": "walk",
+    "job": "331666ab-8533-4085-91e6-96562983a66c"
+   },
+   {
+    "step": "walk",
+    "job": "d2d99a21-e8e3-49b1-b68c-a30993c1ab47"
+   },
+   {
+    "step": "walk",
+    "job": "9e475eff-3456-4bbc-91c5-c3f5cd38bc0e"
+   },
+   {
+    "step": "walk",
+    "job": "36a08dad-ee13-4f45-a39a-30ec0743e234"
+   },
+   {
+    "step": "attack",
+    "job": "f752b353-815a-4eb4-963c-44158b7b2b3b"
+   },
+   {
+    "step": "attack",
+    "job": "7ff6341c-d5be-4cca-b515-b08d9c1bee83"
+   },
+   {
+    "step": "attack",
+    "job": "cca09c90-9fc8-44ed-8968-ce8c6549b0da"
+   },
+   {
+    "step": "attack",
+    "job": "52f23336-cd31-46a6-8e2f-06778a5de36a"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 681,
+   "attack-east-f01.png": 703,
+   "attack-east-f02.png": 686,
+   "attack-east-f03.png": 763,
+   "attack-east-f04.png": 685,
+   "attack-east-f05.png": 655,
+   "attack-east.png": 686,
+   "attack-north-f00.png": 530,
+   "attack-north-f01.png": 620,
+   "attack-north-f02.png": 598,
+   "attack-north-f03.png": 608,
+   "attack-north-f04.png": 590,
+   "attack-north-f05.png": 633,
+   "attack-north.png": 598,
+   "attack-south-f00.png": 703,
+   "attack-south-f01.png": 625,
+   "attack-south-f02.png": 730,
+   "attack-south-f03.png": 751,
+   "attack-south-f04.png": 538,
+   "attack-south-f05.png": 678,
+   "attack-south.png": 730,
+   "attack-west-f00.png": 902,
+   "attack-west-f01.png": 821,
+   "attack-west-f02.png": 580,
+   "attack-west-f03.png": 555,
+   "attack-west-f04.png": 783,
+   "attack-west-f05.png": 783,
+   "attack-west.png": 580,
+   "contact-sheet.png": 74184,
+   "idle-east.png": 475,
+   "idle-north.png": 610,
+   "idle-south.png": 630,
+   "idle-west.png": 501,
+   "walk-east-0.png": 549,
+   "walk-east-1.png": 596,
+   "walk-east-2.png": 600,
+   "walk-east-3.png": 496,
+   "walk-east-4.png": 636,
+   "walk-east-5.png": 609,
+   "walk-north-0.png": 596,
+   "walk-north-1.png": 570,
+   "walk-north-2.png": 566,
+   "walk-north-3.png": 602,
+   "walk-north-4.png": 581,
+   "walk-north-5.png": 544,
+   "walk-south-0.png": 662,
+   "walk-south-1.png": 637,
+   "walk-south-2.png": 625,
+   "walk-south-3.png": 603,
+   "walk-south-4.png": 585,
+   "walk-south-5.png": 626,
+   "walk-west-0.png": 543,
+   "walk-west-1.png": 573,
+   "walk-west-2.png": 568,
+   "walk-west-3.png": 522,
+   "walk-west-4.png": 592,
+   "walk-west-5.png": 560
+  },
+  "trim": {
+   "x": 5,
+   "y": 4,
+   "w": 23,
+   "h": 29
+  },
+  "trimmedSize": {
+   "width": 23,
+   "height": 29
+  }
+ },
+ "requiem-wraith": {
+  "character_id": "5a14c4d3-f5c8-4c73-a423-8e3f89b204a4",
+  "sprite_size": {
+   "width": 24,
+   "height": 24
+  },
+  "canvas": {
+   "width": 36,
+   "height": 36
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "fireball",
+  "hurtTemplate": null,
+  "spent": 9,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "36a69c29-b005-4614-8ec0-7156e6d67469"
+   },
+   {
+    "step": "walk",
+    "job": "56f09989-ac6a-41d5-839f-6e29f15e1ec8"
+   },
+   {
+    "step": "walk",
+    "job": "313da89d-ceb5-4977-812f-eeaf8c5eb455"
+   },
+   {
+    "step": "walk",
+    "job": "c55fa65e-dcff-487a-9d03-96d4e647c084"
+   },
+   {
+    "step": "walk",
+    "job": "f9fe5946-349a-4397-9126-5eb9ec4362e6"
+   },
+   {
+    "step": "attack",
+    "job": "3f6d8c42-3fd1-4b2a-a7b1-891c0d58d1aa"
+   },
+   {
+    "step": "attack",
+    "job": "da2c16da-da07-45b4-84bf-5624a6a84d6c"
+   },
+   {
+    "step": "attack",
+    "job": "0dd6a8a8-9c70-4978-9b09-c3673600a110"
+   },
+   {
+    "step": "attack",
+    "job": "2a2a5788-c688-46c7-ac98-c445d020376d"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 550,
+   "attack-east-f01.png": 595,
+   "attack-east-f02.png": 535,
+   "attack-east-f03.png": 500,
+   "attack-east-f04.png": 518,
+   "attack-east-f05.png": 535,
+   "attack-east.png": 535,
+   "attack-north-f00.png": 300,
+   "attack-north-f01.png": 326,
+   "attack-north-f02.png": 326,
+   "attack-north-f03.png": 334,
+   "attack-north-f04.png": 341,
+   "attack-north-f05.png": 335,
+   "attack-north.png": 326,
+   "attack-south-f00.png": 423,
+   "attack-south-f01.png": 399,
+   "attack-south-f02.png": 443,
+   "attack-south-f03.png": 457,
+   "attack-south-f04.png": 373,
+   "attack-south-f05.png": 469,
+   "attack-south.png": 443,
+   "attack-west-f00.png": 422,
+   "attack-west-f01.png": 426,
+   "attack-west-f02.png": 351,
+   "attack-west-f03.png": 380,
+   "attack-west-f04.png": 380,
+   "attack-west-f05.png": 403,
+   "attack-west.png": 351,
+   "contact-sheet.png": 52358,
+   "idle-east.png": 329,
+   "idle-north.png": 238,
+   "idle-south.png": 376,
+   "idle-west.png": 322,
+   "walk-east-0.png": 301,
+   "walk-east-1.png": 318,
+   "walk-east-2.png": 303,
+   "walk-east-3.png": 319,
+   "walk-east-4.png": 306,
+   "walk-east-5.png": 338,
+   "walk-north-0.png": 250,
+   "walk-north-1.png": 241,
+   "walk-north-2.png": 256,
+   "walk-north-3.png": 251,
+   "walk-north-4.png": 228,
+   "walk-north-5.png": 226,
+   "walk-south-0.png": 385,
+   "walk-south-1.png": 361,
+   "walk-south-2.png": 385,
+   "walk-south-3.png": 402,
+   "walk-south-4.png": 397,
+   "walk-south-5.png": 402,
+   "walk-west-0.png": 279,
+   "walk-west-1.png": 326,
+   "walk-west-2.png": 316,
+   "walk-west-3.png": 278,
+   "walk-west-4.png": 327,
+   "walk-west-5.png": 338
+  },
+  "trim": {
+   "x": 10,
+   "y": 6,
+   "w": 18,
+   "h": 30
+  },
+  "trimmedSize": {
+   "width": 18,
+   "height": 30
+  }
+ },
+ "sable": {
+  "character_id": "3f77517c-f7f7-4d52-956e-ba9fe2a74181",
+  "sprite_size": {
+   "width": 16,
+   "height": 24
+  },
+  "canvas": {
+   "width": 24,
+   "height": 36
+  },
+  "walkTemplate": null,
+  "attackTemplate": null,
+  "hurtTemplate": null,
+  "spent": 1,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "2d038f42-b8c4-446b-bf85-6d76ac867b1b"
+   }
+  ],
+  "files": {
+   "contact-sheet.png": 20014,
+   "idle-east.png": 311,
+   "idle-north.png": 269,
+   "idle-south.png": 327,
+   "idle-west.png": 287,
+   "portrait-attempt2.png": 2565,
+   "portrait.png": 3190
+  },
+  "portrait": {
+   "job": "506f24b0-9af0-4320-8acf-80f854802324",
+   "spent": 20,
+   "result_size": 64
+  }
+ },
+ "shrike": {
+  "character_id": "4b6be479-dbd1-4d89-8ccd-beaac03b1f3d",
+  "sprite_size": {
+   "width": 16,
+   "height": 24
+  },
+  "canvas": {
+   "width": 24,
+   "height": 36
+  },
+  "walkTemplate": "crouched-walking",
+  "attackTemplate": "lead-jab",
+  "hurtTemplate": "taking-punch",
+  "spent": 10,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "1a0c030c-3b2b-4e54-acc2-94cd4105993a"
+   },
+   {
+    "step": "walk",
+    "job": "fec22de0-df91-49b9-9c16-420a5a7e38b3"
+   },
+   {
+    "step": "walk",
+    "job": "d91cd4e6-2811-45cf-9430-3cb06103ae55"
+   },
+   {
+    "step": "walk",
+    "job": "3caeecb3-97bf-40e0-8139-0015c48427fd"
+   },
+   {
+    "step": "walk",
+    "job": "9ed9e207-bf92-45ad-ad1c-4fa45e714e1f"
+   },
+   {
+    "step": "attack",
+    "job": "8e52b3fc-db07-4790-8679-f4530f1cc4a1"
+   },
+   {
+    "step": "attack",
+    "job": "56fa3c1f-6b28-46ee-beb3-ecb6183a70c2"
+   },
+   {
+    "step": "attack",
+    "job": "935d9641-ca49-48f8-a7ad-7c4f0a6fc942"
+   },
+   {
+    "step": "attack",
+    "job": "3bdc1a45-72ff-4604-aca5-d3704ac5b2d4"
+   },
+   {
+    "step": "hurt",
+    "job": "1bec70fb-3611-4b38-8533-b2b040328c90"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 450,
+   "attack-east-f01.png": 543,
+   "attack-east-f02.png": 471,
+   "attack-east.png": 471,
+   "attack-north-f00.png": 433,
+   "attack-north-f01.png": 422,
+   "attack-north-f02.png": 436,
+   "attack-north.png": 436,
+   "attack-south-f00.png": 415,
+   "attack-south-f01.png": 468,
+   "attack-south-f02.png": 461,
+   "attack-south.png": 461,
+   "attack-west-f00.png": 451,
+   "attack-west-f01.png": 522,
+   "attack-west-f02.png": 489,
+   "attack-west.png": 489,
+   "contact-sheet.png": 63512,
+   "hurt-south-f00.png": 504,
+   "hurt-south-f01.png": 461,
+   "hurt-south-f02.png": 489,
+   "hurt-south-f03.png": 508,
+   "hurt-south-f04.png": 510,
+   "hurt-south-f05.png": 476,
+   "idle-east.png": 473,
+   "idle-north.png": 452,
+   "idle-south.png": 549,
+   "idle-west.png": 430,
+   "walk-east-0.png": 516,
+   "walk-east-1.png": 507,
+   "walk-east-2.png": 491,
+   "walk-east-3.png": 498,
+   "walk-east-4.png": 523,
+   "walk-east-5.png": 456,
+   "walk-north-0.png": 430,
+   "walk-north-1.png": 398,
+   "walk-north-2.png": 430,
+   "walk-north-3.png": 413,
+   "walk-north-4.png": 381,
+   "walk-north-5.png": 475,
+   "walk-south-0.png": 439,
+   "walk-south-1.png": 443,
+   "walk-south-2.png": 497,
+   "walk-south-3.png": 488,
+   "walk-south-4.png": 469,
+   "walk-south-5.png": 440,
+   "walk-west-0.png": 553,
+   "walk-west-1.png": 526,
+   "walk-west-2.png": 529,
+   "walk-west-3.png": 522,
+   "walk-west-4.png": 508,
+   "walk-west-5.png": 501
+  },
+  "trim": {
+   "x": 2,
+   "y": 4,
+   "w": 20,
+   "h": 29
+  },
+  "trimmedSize": {
+   "width": 20,
+   "height": 29
+  }
+ },
+ "the-ashling": {
+  "character_id": "da69a2a4-5ff9-4616-9e77-32b4b2bb66f8",
+  "sprite_size": {
+   "width": 32,
+   "height": 32
+  },
+  "canvas": {
+   "width": 48,
+   "height": 48
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "fireball",
+  "hurtTemplate": null,
+  "spent": 9,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "663bd41e-2950-4eed-9f98-30ee985209b3"
+   },
+   {
+    "step": "walk",
+    "job": "eb5516bb-7d6e-4da4-b980-d35034429198"
+   },
+   {
+    "step": "walk",
+    "job": "8e8a00f8-6b6a-4f92-b61f-b6bc707394e0"
+   },
+   {
+    "step": "walk",
+    "job": "888a0d77-d767-4414-8042-e8b2bfa2a4c4"
+   },
+   {
+    "step": "walk",
+    "job": "389eca54-786f-470a-9cbc-ba325ab3453b"
+   },
+   {
+    "step": "attack",
+    "job": "f42e842e-cf0a-42be-a98f-35359eb3c082"
+   },
+   {
+    "step": "attack",
+    "job": "37e88038-c5e2-44a1-9d55-b6c3bcba7e62"
+   },
+   {
+    "step": "attack",
+    "job": "b79288cf-8a39-4b6a-ab65-72dfcb54d166"
+   },
+   {
+    "step": "attack",
+    "job": "24410e2d-911a-45a1-8cdf-73ec8b2e3ec3"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 895,
+   "attack-east-f01.png": 875,
+   "attack-east-f02.png": 812,
+   "attack-east-f03.png": 820,
+   "attack-east-f04.png": 892,
+   "attack-east-f05.png": 903,
+   "attack-east.png": 812,
+   "attack-north-f00.png": 628,
+   "attack-north-f01.png": 615,
+   "attack-north-f02.png": 704,
+   "attack-north-f03.png": 657,
+   "attack-north-f04.png": 610,
+   "attack-north-f05.png": 637,
+   "attack-north.png": 704,
+   "attack-south-f00.png": 766,
+   "attack-south-f01.png": 762,
+   "attack-south-f02.png": 864,
+   "attack-south-f03.png": 865,
+   "attack-south-f04.png": 770,
+   "attack-south-f05.png": 808,
+   "attack-south.png": 864,
+   "attack-west-f00.png": 1001,
+   "attack-west-f01.png": 943,
+   "attack-west-f02.png": 804,
+   "attack-west-f03.png": 802,
+   "attack-west-f04.png": 1026,
+   "attack-west-f05.png": 968,
+   "attack-west.png": 804,
+   "contact-sheet.png": 88686,
+   "idle-east.png": 675,
+   "idle-north.png": 628,
+   "idle-south.png": 809,
+   "idle-west.png": 700,
+   "walk-east-0.png": 749,
+   "walk-east-1.png": 872,
+   "walk-east-2.png": 848,
+   "walk-east-3.png": 720,
+   "walk-east-4.png": 861,
+   "walk-east-5.png": 814,
+   "walk-north-0.png": 622,
+   "walk-north-1.png": 674,
+   "walk-north-2.png": 601,
+   "walk-north-3.png": 680,
+   "walk-north-4.png": 651,
+   "walk-north-5.png": 629,
+   "walk-south-0.png": 893,
+   "walk-south-1.png": 862,
+   "walk-south-2.png": 852,
+   "walk-south-3.png": 871,
+   "walk-south-4.png": 908,
+   "walk-south-5.png": 858,
+   "walk-west-0.png": 764,
+   "walk-west-1.png": 845,
+   "walk-west-2.png": 775,
+   "walk-west-3.png": 771,
+   "walk-west-4.png": 844,
+   "walk-west-5.png": 789
+  },
+  "trim": {
+   "x": 14,
+   "y": 6,
+   "w": 20,
+   "h": 38
+  },
+  "trimmedSize": {
+   "width": 20,
+   "height": 38
+  }
+ },
+ "tobi": {
+  "character_id": "d9f5fc30-7041-4ec4-871b-23ab889855b2",
+  "sprite_size": {
+   "width": 16,
+   "height": 24
+  },
+  "canvas": {
+   "width": 24,
+   "height": 36
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "throw-object",
+  "hurtTemplate": "taking-punch",
+  "spent": 11,
+  "jobs": [],
+  "files": {
+   "attack-east-f00.png": 534,
+   "attack-east-f01.png": 677,
+   "attack-east-f02.png": 649,
+   "attack-east-f03.png": 623,
+   "attack-east-f04.png": 604,
+   "attack-east-f05.png": 588,
+   "attack-east-f06.png": 490,
+   "attack-east.png": 649,
+   "attack-north-f00.png": 554,
+   "attack-north-f01.png": 523,
+   "attack-north-f02.png": 565,
+   "attack-north-f03.png": 546,
+   "attack-north-f04.png": 545,
+   "attack-north-f05.png": 549,
+   "attack-north-f06.png": 469,
+   "attack-north.png": 565,
+   "attack-south-f00.png": 508,
+   "attack-south-f01.png": 489,
+   "attack-south-f02.png": 586,
+   "attack-south-f03.png": 520,
+   "attack-south-f04.png": 442,
+   "attack-south-f05.png": 544,
+   "attack-south-f06.png": 474,
+   "attack-south.png": 586,
+   "attack-west-f00.png": 545,
+   "attack-west-f01.png": 567,
+   "attack-west-f02.png": 609,
+   "attack-west-f03.png": 512,
+   "attack-west-f04.png": 536,
+   "attack-west-f05.png": 520,
+   "attack-west-f06.png": 482,
+   "attack-west.png": 609,
+   "contact-sheet.png": 110278,
+   "hurt-south-f00.png": 541,
+   "hurt-south-f01.png": 595,
+   "hurt-south-f02.png": 639,
+   "hurt-south-f03.png": 597,
+   "hurt-south-f04.png": 591,
+   "hurt-south-f05.png": 528,
+   "idle-east.png": 497,
+   "idle-north.png": 478,
+   "idle-south.png": 526,
+   "idle-west.png": 448,
+   "portrait.png": 2907,
+   "walk-east-0.png": 596,
+   "walk-east-1.png": 641,
+   "walk-east-2.png": 677,
+   "walk-east-3.png": 631,
+   "walk-east-4.png": 611,
+   "walk-east-5.png": 624,
+   "walk-north-0.png": 488,
+   "walk-north-1.png": 476,
+   "walk-north-2.png": 458,
+   "walk-north-3.png": 511,
+   "walk-north-4.png": 529,
+   "walk-north-5.png": 492,
+   "walk-south-0.png": 466,
+   "walk-south-1.png": 513,
+   "walk-south-2.png": 464,
+   "walk-south-3.png": 490,
+   "walk-south-4.png": 502,
+   "walk-south-5.png": 512,
+   "walk-west-0.png": 534,
+   "walk-west-1.png": 620,
+   "walk-west-2.png": 580,
+   "walk-west-3.png": 550,
+   "walk-west-4.png": 628,
+   "walk-west-5.png": 598
+  },
+  "portrait": {
+   "job": "162ca516-ce14-46b3-b914-69dbde32efa3",
+   "spent": 20,
+   "result_size": 64
+  },
+  "trim": {
+   "x": 4,
+   "y": 5,
+   "w": 17,
+   "h": 28
+  },
+  "trimmedSize": {
+   "width": 17,
+   "height": 28
+  }
+ },
+ "wren": {
+  "character_id": "bc235269-3894-4840-b11f-7003dafc81d9",
+  "sprite_size": {
+   "width": 16,
+   "height": 24
+  },
+  "canvas": {
+   "width": 24,
+   "height": 36
+  },
+  "walkTemplate": "walk",
+  "attackTemplate": "cross-punch",
+  "hurtTemplate": "taking-punch",
+  "spent": 10,
+  "jobs": [
+   {
+    "step": "base",
+    "job": "e905df2e-21d5-4354-8da4-7fc1ae54e72a"
+   },
+   {
+    "step": "walk",
+    "job": "7bc42a46-c4e7-48ce-a90c-9edcefd15caf"
+   },
+   {
+    "step": "walk",
+    "job": "4e5b6b8c-b140-4ae7-854d-282c83e3e6ac"
+   },
+   {
+    "step": "walk",
+    "job": "02cfd5c5-64c0-4c0b-af2d-f9fd6609a221"
+   },
+   {
+    "step": "walk",
+    "job": "74956638-4716-42bb-9418-ec2ffcadecd0"
+   },
+   {
+    "step": "attack",
+    "job": "d8565599-4b32-446f-b2e1-3658e1b50fa7"
+   },
+   {
+    "step": "attack",
+    "job": "1438e25c-b389-42f5-ad3c-0419950dcb28"
+   },
+   {
+    "step": "attack",
+    "job": "bd8903be-e988-4a57-af1a-758155bd8f17"
+   },
+   {
+    "step": "attack",
+    "job": "405d10a4-c307-4e0f-abd9-d8a72864a46f"
+   },
+   {
+    "step": "hurt",
+    "job": "4e7247c7-157a-423f-954a-046325bd063d"
+   }
+  ],
+  "files": {
+   "attack-east-f00.png": 523,
+   "attack-east-f01.png": 502,
+   "attack-east-f02.png": 517,
+   "attack-east-f03.png": 522,
+   "attack-east-f04.png": 530,
+   "attack-east-f05.png": 493,
+   "attack-east.png": 517,
+   "attack-north-f00.png": 502,
+   "attack-north-f01.png": 504,
+   "attack-north-f02.png": 537,
+   "attack-north-f03.png": 472,
+   "attack-north-f04.png": 449,
+   "attack-north-f05.png": 515,
+   "attack-north.png": 537,
+   "attack-south-f00.png": 541,
+   "attack-south-f01.png": 525,
+   "attack-south-f02.png": 490,
+   "attack-south-f03.png": 502,
+   "attack-south-f04.png": 533,
+   "attack-south-f05.png": 488,
+   "attack-south.png": 490,
+   "attack-west-f00.png": 560,
+   "attack-west-f01.png": 544,
+   "attack-west-f02.png": 571,
+   "attack-west-f03.png": 537,
+   "attack-west-f04.png": 559,
+   "attack-west-f05.png": 563,
+   "attack-west.png": 571,
+   "contact-sheet.png": 95302,
+   "hurt-south-f00.png": 475,
+   "hurt-south-f01.png": 465,
+   "hurt-south-f02.png": 505,
+   "hurt-south-f03.png": 473,
+   "hurt-south-f04.png": 505,
+   "hurt-south-f05.png": 538,
+   "idle-east.png": 482,
+   "idle-north.png": 512,
+   "idle-south.png": 531,
+   "idle-west.png": 429,
+   "portrait.png": 2952,
+   "walk-east-0.png": 530,
+   "walk-east-1.png": 548,
+   "walk-east-2.png": 605,
+   "walk-east-3.png": 461,
+   "walk-east-4.png": 585,
+   "walk-east-5.png": 545,
+   "walk-north-0.png": 546,
+   "walk-north-1.png": 576,
+   "walk-north-2.png": 534,
+   "walk-north-3.png": 524,
+   "walk-north-4.png": 540,
+   "walk-north-5.png": 509,
+   "walk-south-0.png": 469,
+   "walk-south-1.png": 541,
+   "walk-south-2.png": 499,
+   "walk-south-3.png": 505,
+   "walk-south-4.png": 496,
+   "walk-south-5.png": 491,
+   "walk-west-0.png": 485,
+   "walk-west-1.png": 487,
+   "walk-west-2.png": 524,
+   "walk-west-3.png": 463,
+   "walk-west-4.png": 481,
+   "walk-west-5.png": 486
+  },
+  "portrait": {
+   "job": "843e41bd-4e6d-44fe-80f3-1044aa864c99",
+   "spent": 20,
+   "result_size": 64
+  },
+  "trim": {
+   "x": 5,
+   "y": 5,
+   "w": 14,
+   "h": 28
+  },
+  "trimmedSize": {
+   "width": 14,
+   "height": 28
+  }
+ }
+}

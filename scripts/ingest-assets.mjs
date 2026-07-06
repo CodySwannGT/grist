@@ -1,30 +1,50 @@
 #!/usr/bin/env node
 /**
- * ingest-assets — one-time (re-runnable) carving of the sourced CC0 packs into
- * `assets/src`, the raw-art input tree of the asset pipeline (pack-assets.mjs).
+ * ingest-assets — the (re-runnable) carving of the sourced art into `assets/src`,
+ * the raw-art input tree of the asset pipeline (pack-assets.mjs).
  *
- * This is the PROVENANCE record for every sprite in the game: which pack, which
- * file, which cell each frame came from. The packs themselves are not committed
- * (they are large); see `assets/LICENSES.md` for the pack list, sources, and
- * license evidence. Re-running against a fresh download of the same packs
- * reproduces `assets/src` byte-for-byte (nearest-neighbor slicing only).
+ * This is the PROVENANCE record for every sprite in the game. Two source lanes
+ * feed it, and each lane's provenance lives with its evidence in
+ * `assets/LICENSES.md`:
  *
- * Layout conventions consumed here (verified empirically against the packs):
- * - Ninja Adventure character `SeparateAnim/`: `Idle.png`/`Attack.png` 64×16 =
- *   4 cells (one per direction: down, up, left, right); `Walk.png` 64×64 =
- *   4 direction columns × 4 walk-cycle rows; `Dead.png` 16×16 single cell.
- * - Ninja Adventure monster sheet (`SpriteSheet.png` or `<Name>.png`) 64×64 =
- *   4 direction columns × 4 walk-cycle rows.
+ * 1. **PixelLab (bespoke, #203)** — the party + enemy battler cast and the
+ *    dialogue portraits are AI-generated pixel art (PixelLab, art-bible-fidelity,
+ *    Option B on #203/#199). There is NO re-downloadable pack: the committed
+ *    generated PNGs under `assets/pixellab-raw/<ref>/` ARE the provenance, and
+ *    `assets/pixellab-manifest.json` traces every ref to its PixelLab
+ *    `character_id` + per-step job ids. PixelLab pads each canvas ~50% around the
+ *    character; {@link ingestPixellab} trims each ref with ONE uniform crop rect
+ *    (the union content box across all of that ref's frames — never a per-frame
+ *    auto-crop, so anchors never swim) and writes engine-named frames into
+ *    `sprites/battlers/<ref>/` + `sprites/portraits/`. Deterministic and
+ *    reproducible from the committed raw with `--pixellab` (no packs needed);
+ *    the computed rects are recorded back into the manifest.
+ * 2. **Ninja Adventure + Warped City (CC0)** — battle FX (`sprites/fx/`), UI
+ *    chrome (`sprites/ui/`), temp audio (`audio/`), and the per-region parallax
+ *    backdrops (`images/<region>/`) are still carved from the CC0 packs (verified
+ *    layout conventions below). These require `--packs <dir>` (packs are large
+ *    and not committed).
+ *
  * - FX strips: fixed-width frames left→right (frame sizes per entry below).
  *
  * The battler folder names are the game's OWN content refs (`Combatant.ref` /
  * party-member ids), so a packed frame name is `<ref>/<anim>` and the scene can
  * map a combatant to its art with zero lookup tables.
  *
- * Usage: node scripts/ingest-assets.mjs --packs <dir with the downloaded packs>
+ * Usage:
+ *   node scripts/ingest-assets.mjs --pixellab            # battlers+portraits only
+ *   node scripts/ingest-assets.mjs --packs <downloads>   # full rebuild (CC0 + pixellab)
  * @module scripts/ingest-assets
  */
-import { copyFileSync, existsSync, mkdirSync, rmSync } from "node:fs";
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Jimp } from "jimp";
@@ -32,40 +52,32 @@ import { Jimp } from "jimp";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT = join(ROOT, "assets", "src");
 
-/** Sprite cell size (px) of the Ninja Adventure character/monster grids. */
-const CELL = 16;
-/** Direction order of Ninja Adventure sheet columns / strip cells. */
-const DIRS = ["down", "up", "left", "right"];
-/** Walk-cycle frames per direction in the character/monster sheets. */
-const WALK_FRAMES = 4;
+/** Committed PixelLab raw frames (the provenance; no re-downloadable pack). */
+const PIXELLAB_RAW = join(ROOT, "assets", "pixellab-raw");
+/** The PixelLab machine record (character_id + per-step job ids per ref). */
+const PIXELLAB_MANIFEST = join(ROOT, "assets", "pixellab-manifest.json");
 
 /**
- * The cast: every battler ref in the game mapped to its Ninja Adventure actor.
- * `kind: "char"` folders carry `SeparateAnim/` strips + a `Faceset.png`;
- * `kind: "monster"` folders carry one 4×4 sheet (+ `Faceset.png`).
+ * PixelLab renders the four cardinal facings under compass names; the engine's
+ * battler frame contract (`ui/battler-view`) uses screen-relative names. This is
+ * the one place the two vocabularies meet.
  */
-const CAST = [
-  { ref: "wren", kind: "char", folder: "Actor/Character/Hunter" },
-  { ref: "tobi", kind: "char", folder: "Actor/Character/Boy" },
-  { ref: "halcyon", kind: "char", folder: "Actor/Character/Knight" },
-  { ref: "marrow-scrapper", kind: "monster", folder: "Actor/Monster/Skull" },
-  { ref: "render-construct", kind: "monster", folder: "Actor/Monster/Cyclope" },
-  { ref: "the-ashling", kind: "monster", folder: "Actor/Monster/Flam" },
-  {
-    ref: "house-enforcer",
-    kind: "char",
-    folder: "Actor/Character/GladiatorBlue",
-  },
-  { ref: "drowned-husk", kind: "monster", folder: "Actor/Monster/Octopus" },
-  { ref: "requiem-wraith", kind: "monster", folder: "Actor/Monster/Spirit" },
-  { ref: "deep-auditor", kind: "monster", folder: "Actor/Monster/Eye" },
-  { ref: "halcyon-knight", kind: "char", folder: "Actor/Character/KnightGold" },
-];
+const PIXELLAB_DIR = {
+  south: "down",
+  north: "up",
+  west: "left",
+  east: "right",
+};
 
-/** @type {const} */
-
-/** Non-battler portrait speakers (dialogue facesets only). */
-const PORTRAIT_ONLY = [{ ref: "sable", folder: "Actor/Character/GoldStatue" }];
+/**
+ * The refs that ship a committed `portrait.png` — the dialogue speakers whose
+ * PixelLab bust is copied into `sprites/portraits/<ref>.png`. This gates ONLY
+ * the portrait-copy lane; the dedicated `dead` pose is chosen independently by
+ * {@link deadSourceFrame} from the presence of `hurt-south` frames (so an enemy
+ * without a hurt kit — or `sable`, a portrait-only ref with no battler frames —
+ * simply has no `dead` frame).
+ */
+const PIXELLAB_PORTRAIT_REFS = new Set(["wren", "tobi", "halcyon", "sable"]);
 
 /**
  * Battle FX strips: name, source, frame width/height, frame count. The three
@@ -307,122 +319,171 @@ async function writeCell(sheet, x, y, w, h, outPath) {
   await sheet.clone().crop({ x, y, w, h }).write(outPath);
 }
 
+// ── PixelLab battler + portrait ingest (#203) ──────────────────────────────
+
 /**
- * Slice one character's SeparateAnim strips into per-frame PNGs under
- * `sprites/battlers/<ref>/`.
- * @param {string} actorDir - The character folder (contains SeparateAnim/).
- * @param {string} ref - The game content ref (output folder name).
- * @returns {Promise<void>} Resolves when all frames are written.
+ * The opaque-pixel bounding box of one image (min/max x,y where alpha > 0), or
+ * null when the image is fully transparent.
+ * @param {import("jimp").JimpInstance} img - The frame image.
+ * @returns {{ minX: number, minY: number, maxX: number, maxY: number } | null}
  */
-async function sliceCharacter(actorDir, ref) {
+function opaqueBox(img) {
+  const { data, width, height } = img.bitmap;
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (data[(y * width + x) * 4 + 3] > 0) {
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  return maxX < 0 ? null : { minX, minY, maxX, maxY };
+}
+
+/**
+ * The uniform crop rect for a ref: the union opaque box across EVERY frame the
+ * engine emits for it, so a single rect trims all frames identically (anchors
+ * stay put — never a per-frame auto-crop). PixelLab centers the character in a
+ * ~50%-padded canvas, so this recovers the tight character cell.
+ * @param {ReadonlyArray<import("jimp").JimpInstance>} frames - Every emitted frame.
+ * @returns {{ x: number, y: number, w: number, h: number }} The shared crop rect.
+ */
+function unionCropRect(frames) {
+  const boxes = frames.map(opaqueBox).filter(box => box !== null);
+  if (boxes.length === 0) {
+    const { width, height } = frames[0].bitmap;
+    return { x: 0, y: 0, w: width, h: height };
+  }
+  const minX = Math.min(...boxes.map(b => b.minX));
+  const minY = Math.min(...boxes.map(b => b.minY));
+  const maxX = Math.max(...boxes.map(b => b.maxX));
+  const maxY = Math.max(...boxes.map(b => b.maxY));
+  return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+}
+
+/**
+ * The engine frame name for a raw PixelLab frame file (compass facing → screen
+ * facing), or null for a raw file the engine does not consume (the full attack
+ * frame sets `attack-<dir>-fNN`, the extra hurt frames, contact sheets). The
+ * single mid-swing `attack-<dir>.png` IS consumed (the held attack pose).
+ * @param {string} file - The raw file name (e.g. `walk-south-3.png`).
+ * @returns {string | null} The engine frame file name, or null to skip.
+ */
+function engineFrameName(file) {
+  const walk = /^walk-(south|north|west|east)-([0-9]+)\.png$/u.exec(file);
+  if (walk) {
+    return `walk-${PIXELLAB_DIR[walk[1]]}-${walk[2]}.png`;
+  }
+  const idle = /^idle-(south|north|west|east)\.png$/u.exec(file);
+  if (idle) {
+    return `idle-${PIXELLAB_DIR[idle[1]]}.png`;
+  }
+  const attack = /^attack-(south|north|west|east)\.png$/u.exec(file);
+  if (attack) {
+    return `attack-${PIXELLAB_DIR[attack[1]]}.png`;
+  }
+  return null;
+}
+
+/**
+ * The chosen `dead` source frame for a party ref: its most-collapsed
+ * `hurt-south` frame (highest index), or null when the ref ships no hurt kit.
+ * @param {readonly string[]} rawFiles - The ref's raw file names.
+ * @returns {string | null} The hurt file to become `dead.png`, or null.
+ */
+function deadSourceFrame(rawFiles) {
+  const hurt = rawFiles
+    .filter(file => /^hurt-south-f[0-9]+\.png$/u.test(file))
+    .sort();
+  return hurt.length > 0 ? hurt[hurt.length - 1] : null;
+}
+
+/**
+ * Trim one PixelLab ref: read every emitted frame, compute the ref's single
+ * union crop rect, and write the cropped, engine-named frames into
+ * `sprites/battlers/<ref>/` (+ the `dead` pose from the best hurt frame for a
+ * party ref). Returns the rect + trimmed size for the manifest record.
+ * @param {string} ref - The content ref (raw folder + output folder name).
+ * @returns {Promise<{ trim: {x:number,y:number,w:number,h:number}, trimmedSize: {width:number,height:number} }>}
+ */
+async function trimBattlerRef(ref) {
+  const rawDir = join(PIXELLAB_RAW, ref);
+  const rawFiles = readdirSync(rawDir).filter(file => file.endsWith(".png"));
+  const emitted = rawFiles
+    .map(file => ({ file, engine: engineFrameName(file) }))
+    .filter(entry => entry.engine !== null);
+  const dead = deadSourceFrame(rawFiles);
+  if (dead !== null) {
+    emitted.push({ file: dead, engine: "dead.png" });
+  }
+  const images = await Promise.all(
+    emitted.map(entry => Jimp.read(join(rawDir, entry.file)))
+  );
+  const rect = unionCropRect(images);
   const out = join(OUT, "sprites", "battlers", ref);
-  const anim = join(actorDir, "SeparateAnim");
-  const idle = await Jimp.read(join(anim, "Idle.png"));
-  const attack = await Jimp.read(join(anim, "Attack.png"));
-  const walk = await Jimp.read(join(anim, "Walk.png"));
-  const dead = await Jimp.read(join(anim, "Dead.png"));
-  for (const [col, dir] of DIRS.entries()) {
-    await writeCell(
-      idle,
-      col * CELL,
-      0,
-      CELL,
-      CELL,
-      join(out, `idle-${dir}.png`)
+  mkdirSync(out, { recursive: true });
+  await Promise.all(
+    emitted.map((entry, index) =>
+      images[index].clone().crop(rect).write(join(out, entry.engine))
+    )
+  );
+  return {
+    trim: rect,
+    trimmedSize: { width: rect.w, height: rect.h },
+  };
+}
+
+/**
+ * Ingest the PixelLab cast: trim every battler ref from the committed raw frames
+ * and copy the four dialogue portraits (64×64, no trim — the dialogue slot
+ * downscales them). Rebuilds ONLY `sprites/battlers` + `sprites/portraits` (so
+ * `--pixellab` can run without the CC0 packs) and records the per-ref crop rects
+ * back into the manifest.
+ * @returns {Promise<void>} Resolves when the pixellab source tree is rebuilt.
+ */
+async function ingestPixellab() {
+  rmSync(join(OUT, "sprites", "battlers"), { recursive: true, force: true });
+  rmSync(join(OUT, "sprites", "portraits"), { recursive: true, force: true });
+  const refs = readdirSync(PIXELLAB_RAW, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
+    .sort();
+  const manifest = JSON.parse(readFileSync(PIXELLAB_MANIFEST, "utf8"));
+  for (const ref of refs) {
+    const rawDir = join(PIXELLAB_RAW, ref);
+    const hasBattlerFrames = readdirSync(rawDir).some(file =>
+      /^(idle|walk|attack)-/u.test(file)
     );
-    await writeCell(
-      attack,
-      col * CELL,
-      0,
-      CELL,
-      CELL,
-      join(out, `attack-${dir}.png`)
-    );
-    for (let row = 0; row < WALK_FRAMES; row++) {
-      await writeCell(
-        walk,
-        col * CELL,
-        row * CELL,
-        CELL,
-        CELL,
-        join(out, `walk-${dir}-${row}.png`)
-      );
+    if (hasBattlerFrames) {
+      const record = await trimBattlerRef(ref);
+      if (manifest[ref] !== undefined) {
+        manifest[ref].trim = record.trim;
+        manifest[ref].trimmedSize = record.trimmedSize;
+      }
+    }
+    if (PIXELLAB_PORTRAIT_REFS.has(ref)) {
+      const portraitOut = join(OUT, "sprites", "portraits", `${ref}.png`);
+      mkdirSync(dirname(portraitOut), { recursive: true });
+      copyFileSync(join(rawDir, "portrait.png"), portraitOut);
     }
   }
-  await writeCell(dead, 0, 0, CELL, CELL, join(out, "dead.png"));
+  writeFileSync(PIXELLAB_MANIFEST, `${JSON.stringify(manifest, null, 1)}\n`);
 }
 
 /**
- * Slice one monster's 4×4 sheet into per-frame walk PNGs under
- * `sprites/battlers/<ref>/` (monsters have no separate idle/attack strips —
- * the anim layer derives poses from walk frames).
- * @param {string} actorDir - The monster folder.
- * @param {string} ref - The game content ref (output folder name).
- * @returns {Promise<void>} Resolves when all frames are written.
+ * Carve the CC0-pack lane: FX strips, UI chrome, per-region backdrops, and temp
+ * audio (everything NOT bespoke PixelLab art). Requires the downloaded packs.
+ * @param {string} ninja - The Ninja Adventure pack root.
+ * @param {string} warped - The Warped City pack root.
+ * @returns {Promise<void>} Resolves when the CC0-derived tree is written.
  */
-async function sliceMonster(actorDir, ref) {
-  const out = join(OUT, "sprites", "battlers", ref);
-  const base = actorDir.split("/").at(-1);
-  const sheetPath = ["SpriteSheet.png", `${base}.png`]
-    .map(name => join(actorDir, name))
-    .find(existsSync);
-  if (sheetPath === undefined) {
-    throw new Error(`no sheet found in ${actorDir}`);
-  }
-  const sheet = await Jimp.read(sheetPath);
-  for (const [col, dir] of DIRS.entries()) {
-    for (let row = 0; row < WALK_FRAMES; row++) {
-      await writeCell(
-        sheet,
-        col * CELL,
-        row * CELL,
-        CELL,
-        CELL,
-        join(out, `walk-${dir}-${row}.png`)
-      );
-    }
-  }
-}
-
-/**
- * Copy an actor's dialogue faceset into `sprites/portraits/<ref>.png`.
- * @param {string} actorDir - The actor folder (contains Faceset.png).
- * @param {string} ref - The game content ref.
- * @returns {Promise<void>} Resolves when written.
- */
-async function copyFaceset(actorDir, ref) {
-  const face = await Jimp.read(join(actorDir, "Faceset.png"));
-  const outPath = join(OUT, "sprites", "portraits", `${ref}.png`);
-  mkdirSync(dirname(outPath), { recursive: true });
-  await face.write(outPath);
-}
-
-/**
- * Entry point: carve every cast member, FX strip, UI piece, and backdrop.
- * @returns {Promise<void>} Resolves when assets/src is fully written.
- */
-async function main() {
-  const flagIndex = process.argv.indexOf("--packs");
-  const packsDir = flagIndex === -1 ? null : process.argv[flagIndex + 1];
-  if (packsDir === null || packsDir === undefined) {
-    console.error("usage: node scripts/ingest-assets.mjs --packs <dir>");
-    process.exit(1);
-  }
-  const { ninja, warped } = packRoots(packsDir);
-  rmSync(OUT, { recursive: true, force: true });
-
-  for (const member of CAST) {
-    const actorDir = join(ninja, member.folder);
-    if (member.kind === "char") {
-      await sliceCharacter(actorDir, member.ref);
-    } else {
-      await sliceMonster(actorDir, member.ref);
-    }
-    await copyFaceset(actorDir, member.ref);
-  }
-  for (const { ref, folder } of PORTRAIT_ONLY) {
-    await copyFaceset(join(ninja, folder), ref);
-  }
+async function ingestPacks(ninja, warped) {
   for (const fx of FX) {
     const sheet = await Jimp.read(join(ninja, fx.file));
     for (let index = 0; index < fx.count; index++) {
@@ -458,7 +519,37 @@ async function main() {
     mkdirSync(dirname(outPath), { recursive: true });
     copyFileSync(join(ninja, clip.file), outPath);
   }
-  console.log("ingest-assets: assets/src rebuilt from packs.");
+  console.log("ingest-assets: CC0-pack lane (fx/ui/backdrops/audio) rebuilt.");
+}
+
+/**
+ * Entry point. `--pixellab` rebuilds ONLY the bespoke battler + portrait tree
+ * from the committed raw frames (no packs). `--packs <dir>` does a full rebuild:
+ * the CC0-pack lane AND the pixellab lane.
+ * @returns {Promise<void>} Resolves when assets/src is written.
+ */
+async function main() {
+  const pixellabOnly = process.argv.includes("--pixellab");
+  const flagIndex = process.argv.indexOf("--packs");
+  const packsDir = flagIndex === -1 ? null : process.argv[flagIndex + 1];
+  if (pixellabOnly && packsDir === null) {
+    await ingestPixellab();
+    console.log("ingest-assets: pixellab battlers + portraits rebuilt.");
+    return;
+  }
+  if (packsDir === null || packsDir === undefined) {
+    console.error(
+      "usage: node scripts/ingest-assets.mjs [--pixellab | --packs <dir>]"
+    );
+    process.exit(1);
+  }
+  const { ninja, warped } = packRoots(packsDir);
+  rmSync(OUT, { recursive: true, force: true });
+  await ingestPacks(ninja, warped);
+  await ingestPixellab();
+  console.log(
+    "ingest-assets: assets/src fully rebuilt (CC0 packs + pixellab)."
+  );
 }
 
 await main();
