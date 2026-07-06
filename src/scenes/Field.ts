@@ -276,7 +276,9 @@ export class Field extends Phaser.Scene {
       kind: FieldActionKinds.examine,
       propId,
     });
-    this.#renderLore(propId);
+    // Author the banner text; its visibility (shown in range, dismissed on
+    // walk-away, kept clear of the context prompt) is owned by #syncHud (#234).
+    this.#loreText.setText(loreForProp(this.#state, propId) ?? "");
     return true;
   }
 
@@ -318,15 +320,25 @@ export class Field extends Phaser.Scene {
    * context prompt for the in-range interactable, and (when open) the mini-map.
    * The pure HUD model decides what each surface shows; the scene only supplies
    * the live inputs. Called once on create and every frame from {@link update}.
+   * The lore banner is a "stand-at-the-prop" read: it shows only while Wren is in
+   * examine range and the prop has been examined (so it dismisses on walk-away),
+   * and while it is up the context prompt is suppressed — the two share the bottom
+   * band and overlapped, garbling both (#234). The banner text is authored on
+   * examine by {@link #renderLore}; visibility (and the prompt gate) live here.
    * @returns void
    */
   #syncHud(): void {
+    const inRange = this.#withinExamineRange();
+    const loreVisible = inRange && this.#loreText.text !== "";
+    this.#loreBox.setVisible(loreVisible);
+    this.#loreText.setVisible(loreVisible);
     this.#hud.sync(
       this.#state,
       this.#run.wallet.grist,
       this.#state.currentRoom,
       this.#examinablePropId(),
-      this.#withinExamineRange()
+      inRange,
+      loreVisible
     );
   }
 
@@ -444,20 +456,6 @@ export class Field extends Phaser.Scene {
    */
   #syncWren(): void {
     this.#wren.setPosition(this.#wrenX, this.#wrenY);
-  }
-
-  /**
-   * Surface (or hide) the lore banner from the sim's examine state. Reads the
-   * authored text via the pure {@link loreForProp} selector — the scene holds no
-   * copy of its own.
-   * @param propId - The examined prop whose lore to surface.
-   * @returns void
-   */
-  #renderLore(propId: string): void {
-    const lore = loreForProp(this.#state, propId);
-    const visible = lore !== null;
-    this.#loreBox.setVisible(visible);
-    this.#loreText.setVisible(visible).setText(lore ?? "");
   }
 
   /**

@@ -19,6 +19,9 @@
  *   appear on interactables" criterion.
  * - [field-hud-minimap] the mini-map can be summoned and dismissed — the #107
  *   "a mini-map can be summoned and dismissed" criterion.
+ * - [field-examine-prompt-vs-lore] the context prompt and the examine lore banner
+ *   never surface together (the prompt yields while the banner is up; the banner
+ *   re-opens on re-approach) — the #234 readability fix, proven on the bridge.
  *
  * Movement and examine are routed through the semantic field input layer (the
  * scene reads no raw keys/pointers), so a position change after a real key/pointer
@@ -349,6 +352,91 @@ test.describe("GRIST — field scene verification (UAT)", () => {
       () => window.__VERIFY__?.field()?.contextPrompt
     );
     expect(prompt).toContain("examine");
+    expect(errors).toEqual([]);
+  });
+
+  test("[field-examine-prompt-vs-lore] the context prompt and the lore banner never share the bottom band (#234)", async ({
+    page,
+  }) => {
+    // [EVIDENCE: field-examine-prompt-vs-lore] The floating "[E] examine <prop>"
+    // context prompt and the examine lore banner used to surface together in the
+    // same bottom band, overlapping and garbling each other's text (#234). This
+    // proves — empirically, off the live bridge — that the two never render at
+    // once: the prompt shows only before the beat is read, the banner takes the
+    // band once examined (prompt suppressed), the band clears on walk-away, and
+    // the banner (not the prompt) re-opens on re-approach — never both together.
+    const errors: string[] = [];
+    page.on("console", message => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
+    page.on("pageerror", error => errors.push(error.message));
+
+    await bootField(page);
+    await focusCanvas(page);
+
+    // Walk into range with a real held key: the prompt surfaces, no lore banner yet.
+    await page.keyboard.down("ArrowRight");
+    await expect
+      .poll(
+        () => page.evaluate(() => window.__VERIFY__?.field()?.contextPrompt),
+        { timeout: SEEN_TIMEOUT }
+      )
+      .not.toBeNull();
+    await page.keyboard.up("ArrowRight");
+    expect(
+      await page.evaluate(() => window.__VERIFY__?.field()?.lore)
+    ).toBeNull();
+
+    // Examine: the lore banner appears AND the context prompt is suppressed the
+    // same beat — so the two text layers can never overlap.
+    await page.evaluate(() => window.__VERIFY__?.examine());
+    await expect
+      .poll(() => page.evaluate(() => window.__VERIFY__?.field()?.lore), {
+        timeout: SEEN_TIMEOUT,
+      })
+      .not.toBeNull();
+    expect(
+      await page.evaluate(() => window.__VERIFY__?.field()?.contextPrompt)
+    ).toBeNull();
+
+    // Step out of examine range: the banner dismisses (a stand-at-the-prop read),
+    // and the prompt stays hidden too while out of range — the bottom band is
+    // fully clear.
+    await page.keyboard.down("ArrowLeft");
+    await expect
+      .poll(() => page.evaluate(() => window.__VERIFY__?.field()?.lore), {
+        timeout: SEEN_TIMEOUT,
+      })
+      .toBeNull();
+    await page.keyboard.up("ArrowLeft");
+    expect(
+      await page.evaluate(() => window.__VERIFY__?.field()?.contextPrompt)
+    ).toBeNull();
+
+    // Re-approach: the lore banner re-opens (the affordance is fulfilled by the
+    // content itself) while the context prompt stays suppressed — so the two
+    // never share the band on re-approach either.
+    await page.keyboard.down("ArrowRight");
+    await expect
+      .poll(() => page.evaluate(() => window.__VERIFY__?.field()?.lore), {
+        timeout: SEEN_TIMEOUT,
+      })
+      .not.toBeNull();
+    await page.keyboard.up("ArrowRight");
+    expect(
+      await page.evaluate(() => window.__VERIFY__?.field()?.contextPrompt)
+    ).toBeNull();
+
+    // The core invariant, proven across every step above: the context prompt and
+    // the lore banner are never both on screen at once (#234).
+    const both = await page.evaluate(() => {
+      const f = window.__VERIFY__?.field();
+      return { prompt: f?.contextPrompt ?? null, lore: f?.lore ?? null };
+    });
+    expect(both.prompt !== null && both.lore !== null).toBe(false);
+
     expect(errors).toEqual([]);
   });
 

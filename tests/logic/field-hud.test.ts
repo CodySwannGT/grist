@@ -120,26 +120,43 @@ describe("field HUD — mini-map toggle (summonable, not always-on)", () => {
 });
 
 describe("field HUD — context prompt", () => {
+  /** Room A's examinable lore prop id (shared across the prompt cases). */
+  const WARREN_SIGN = "warren-sign";
+
   it("shows the examine prompt with the prop name when in range", () => {
-    const prompt = contextPromptFor(MarrowRoomIds.a, "warren-sign", true);
+    const prompt = contextPromptFor(MarrowRoomIds.a, WARREN_SIGN, true, false);
     expect(prompt).toBe('[E] examine Faded "Warren St." sign');
   });
 
   it("shows the rendering-house prop name in Room B", () => {
-    const prompt = contextPromptFor(MarrowRoomIds.b, "render-vat", true);
+    const prompt = contextPromptFor(MarrowRoomIds.b, "render-vat", true, false);
     expect(prompt).toBe("[E] examine Rendering vat");
   });
 
   it("shows no prompt when Wren is out of range", () => {
-    expect(contextPromptFor(MarrowRoomIds.a, "warren-sign", false)).toBeNull();
+    expect(
+      contextPromptFor(MarrowRoomIds.a, WARREN_SIGN, false, false)
+    ).toBeNull();
   });
 
   it("shows no prompt when the room has no examinable prop", () => {
-    expect(contextPromptFor(MarrowRoomIds.c, null, true)).toBeNull();
+    expect(contextPromptFor(MarrowRoomIds.c, null, true, false)).toBeNull();
+  });
+
+  it("suppresses the prompt while the lore banner is on screen (#234)", () => {
+    // In range with the banner up, the prompt would sit in the banner's bottom
+    // band and garble its text — so the model hides it until the banner clears.
+    expect(
+      contextPromptFor(MarrowRoomIds.a, WARREN_SIGN, true, true)
+    ).toBeNull();
+    // The rendering-house prop is gated the same way.
+    expect(
+      contextPromptFor(MarrowRoomIds.b, "render-vat", true, true)
+    ).toBeNull();
   });
 
   it("falls back to the prop id when the prop is not in the room table", () => {
-    expect(contextPromptFor(MarrowRoomIds.a, "ghost-prop", true)).toBe(
+    expect(contextPromptFor(MarrowRoomIds.a, "ghost-prop", true, false)).toBe(
       "[E] examine ghost-prop"
     );
   });
