@@ -25,7 +25,6 @@ import { addCursor, addPanel } from "../ui/chrome";
 import {
   PAUSE_MENU_ENTRIES,
   PauseMenuEntryIds,
-  formatMoralLedger,
   moveCursor,
   newPauseMenuState,
   selectedEntry,
@@ -34,9 +33,21 @@ import {
   type PauseMenuRoute,
   type PauseMenuState,
 } from "../logic/pause-menu";
+import { projectLedgerCodex } from "../logic/narrative";
+import {
+  LEDGER_CODEX_CATALOG,
+  LEDGER_CODEX_TOTAL,
+} from "../content/ledger-codex";
 import { keyToMenuIntent, type MenuIntent } from "../services/menu-input-map";
 import { saveService } from "../services/save-service";
 import { verifyBridge } from "../uat/bridge";
+import type { MenuView } from "../uat/menu-view";
+import { LedgerCodexPanel } from "../ui/ledger-codex-panel";
+
+/** The karma summary header line count (`formatMoralLedger` returns three lines). */
+const KARMA_HEADER_LINES = 3;
+/** The codex body pool size: karma header + the tally + one line per catalog choice. */
+const CODEX_LINE_SLOTS = KARMA_HEADER_LINES + 1 + LEDGER_CODEX_TOTAL;
 
 /** The number of body lines the reusable detail panel can show at once. */
 const PANEL_LINE_SLOTS = 4;
@@ -66,6 +77,8 @@ export class Menu extends Phaser.Scene {
   #panelTitle!: Phaser.GameObjects.Text;
   /** The pooled detail-panel body lines (text set/cleared on render). */
   #panelLines: readonly Phaser.GameObjects.Text[] = [];
+  /** The Ledger codex panel (#221) — renders the recorded/pending catalog. */
+  #codexPanel!: LedgerCodexPanel;
 
   /** Register the scene key. */
   constructor() {
@@ -99,7 +112,7 @@ export class Menu extends Phaser.Scene {
       Phaser.Input.Keyboard.Events.ANY_KEY_DOWN,
       this.#onKey
     );
-    verifyBridge.attach(SceneKeys.Menu, null);
+    verifyBridge.attach(SceneKeys.Menu, this.#menuView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
 
     this.#render();
@@ -157,6 +170,22 @@ export class Menu extends Phaser.Scene {
           MenuTextStyles.panelBody
         )
     );
+    this.#codexPanel = new LedgerCodexPanel(
+      this,
+      MenuLayout.panelX + MenuLayout.panelPadX,
+      CODEX_LINE_SLOTS
+    );
+  }
+
+  /**
+   * The verification-bridge view the Menu registers (#221): it surfaces the Ledger
+   * codex the panel rendered, so an e2e can prove the panel opened and assert the
+   * recorded/pending model. Null until a Ledger panel loads (and cleared when it
+   * closes), the way the async ledger body itself resolves.
+   * @returns The menu bridge view.
+   */
+  #menuView(): MenuView {
+    return { ledgerCodex: () => this.#codexPanel.codex() };
   }
 
   /**
@@ -226,10 +255,12 @@ export class Menu extends Phaser.Scene {
   }
 
   /**
-   * Read the moral ledger from the persisted save and, while the Ledger panel is
-   * still the open one, render its summary (#98). Guarded against a panel the
-   * player has since closed or changed so a late load never clobbers the view.
-   * @returns A promise that resolves once the ledger has been read and rendered.
+   * Read the persisted save and, while the Ledger panel is still the open one, render
+   * the moral-ledger **codex** (#221): the karma summary header (#98, kept — additive)
+   * plus every catalog choice tagged recorded/pending and the `Recorded: N of M`
+   * tally, projected from the save's `scene.flags`. Guarded against a panel the player
+   * has since closed or changed so a late load never clobbers the view.
+   * @returns A promise that resolves once the codex has been read and rendered.
    */
   async #loadLedger(): Promise<void> {
     try {
@@ -237,9 +268,15 @@ export class Menu extends Phaser.Scene {
       if (this.#openPanel !== PauseMenuEntryIds.ledger) {
         return;
       }
-      this.#showPanel("Ledger", formatMoralLedger(save.moralLedger));
+      const codex = projectLedgerCodex(
+        LEDGER_CODEX_CATALOG,
+        save.scene?.flags ?? {}
+      );
+      this.#clearPanelLines();
+      this.#codexPanel.show(codex, save.moralLedger);
     } catch {
       if (this.#openPanel === PauseMenuEntryIds.ledger) {
+        this.#codexPanel.hide();
         this.#showPanel("Ledger", ["Unable to load ledger."]);
       }
     }
@@ -275,36 +312,59 @@ export class Menu extends Phaser.Scene {
       return;
     }
     if (open === PauseMenuEntryIds.ledger) {
-      // The ledger body is filled by #loadLedger; show the frame + title now.
-      this.#showPanel("Ledger", []);
+      // The codex body is filled by #loadLedger; show the frame + title now and leave
+      // the info-panel lines cleared (the ledger uses the denser codex pool instead).
+      this.#showFrame("Ledger");
+      this.#clearPanelLines();
       return;
     }
+    this.#codexPanel.hide();
     const entry = PAUSE_MENU_ENTRIES.find(candidate => candidate.id === open);
     this.#showPanel(entry?.label ?? "", PANEL_DESCRIPTIONS[open] ?? []);
   }
 
   /**
-   * Show the detail panel with a title and up to {@link PANEL_LINE_SLOTS} body
+   * Show the detail panel frame (box + title) without touching either body pool.
+   * @param title - The panel title.
+   * @returns void
+   */
+  #showFrame(title: string): void {
+    this.#panelBox.setVisible(true);
+    this.#panelTitle.setVisible(true).setText(title);
+  }
+
+  /**
+   * Hide and clear the four-slot info-panel body lines (used by the non-ledger
+   * panels; the ledger renders through the codex pool instead).
+   * @returns void
+   */
+  #clearPanelLines(): void {
+    this.#panelLines.forEach(line => line.setVisible(false).setText(""));
+  }
+
+  /**
+   * Show the detail panel with a title and up to {@link PANEL_LINE_SLOTS} info body
    * lines (extra lines are dropped; unused slots are cleared).
    * @param title - The panel title.
    * @param lines - The body lines to render.
    * @returns void
    */
   #showPanel(title: string, lines: readonly string[]): void {
-    this.#panelBox.setVisible(true);
-    this.#panelTitle.setVisible(true).setText(title);
+    this.#showFrame(title);
     this.#panelLines.forEach((line, index) => {
       line.setVisible(true).setText(lines[index] ?? "");
     });
   }
 
   /**
-   * Hide the detail panel and clear its retained text.
+   * Hide the detail panel and clear its retained text (both the info body lines and
+   * the codex panel, so the bridge's codex read goes null when the panel closes).
    * @returns void
    */
   #hidePanel(): void {
     this.#panelBox.setVisible(false);
     this.#panelTitle.setVisible(false).setText("");
+    this.#codexPanel.hide();
     this.#panelLines.forEach(line => line.setVisible(false).setText(""));
   }
 

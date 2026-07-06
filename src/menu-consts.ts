@@ -38,6 +38,13 @@ export const MenuLayout = {
   panelBodyY: 80,
   /** Vertical step between stacked body lines in the detail panel. */
   panelLineGap: 14,
+  /**
+   * The Ledger **codex** panel's denser body (#221): it stacks the karma header, the
+   * `Recorded: N of M` tally, and one line per catalog choice, so it starts just under
+   * the title and steps tighter than the four-slot info panel to fit every row.
+   */
+  codexBodyY: 72,
+  codexLineGap: 9,
   /** The bottom hint line ("↑↓ move · Enter open · Esc close"). */
   hintY: 200,
 } as const;
@@ -93,5 +100,11 @@ export const MenuTextStyles = {
     fontFamily: "monospace",
     fontSize: "8px",
     color: MenuColors.hint,
+  },
+  /** A Ledger codex line (#221) — a denser body line so every catalog row fits. */
+  codexLine: {
+    fontFamily: "monospace",
+    fontSize: "7px",
+    color: MenuColors.panelBody,
   },
 } as const;
