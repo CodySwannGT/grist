@@ -24,6 +24,7 @@ import { soundService } from "../services/sound-service";
 import { type FxSelection } from "../ui/battle-fx";
 import { type HudModel } from "../ui/battle-controller";
 import { autoWinView, strikeView } from "./battle-driver";
+import { type BattleSummaryModel } from "../logic/battle-summary";
 import { BenchCell, type BenchView, type VerifyBenchState } from "./bench-view";
 import {
   DialogueCell,
@@ -91,6 +92,13 @@ export interface BattleView {
   readonly hash: () => string | null;
   /** The last FX the stage played (element action strip or Break burst), #201. */
   readonly fx: () => FxSelection | null;
+  /**
+   * The terminal victory/defeat summary a *standalone* resolved battle is
+   * presenting, or null while the fight is live / for a field-launched battle
+   * (which returns to the Field rather than showing a summary). Lets the #225 e2e
+   * prove the summary beat holds the scene before the deliberate advance to Title.
+   */
+  readonly summary: () => BattleSummaryModel | null;
   readonly restart: (seed: number) => void;
   readonly act: (action: BattleAction) => void;
   readonly advanceTurn: () => void;
@@ -132,6 +140,12 @@ interface VerifyApi extends DialogueApi, DataCellApi, RenderApi {
    * the phase reached (`"won"` / `"lost"`). The Field↔Battle e2e driver.
    */
   readonly autoWin: (maxTurns?: number) => string;
+  /**
+   * The terminal victory/defeat summary a standalone resolved battle is showing, or
+   * null while the fight is live / outside a standalone battle (#225). The impl is
+   * spread in from {@link VerifyController.summaryApi}.
+   */
+  readonly summary: () => BattleSummaryModel | null;
   readonly field: () => VerifyFieldState | null;
   readonly examine: () => void;
   /** Summon or dismiss the field mini-map overlay (#107). No-op outside Field. */
@@ -254,6 +268,11 @@ class VerifyController {
   #sceneKey = "";
   #view: BattleView | null = null;
   #fieldView: FieldView | null = null;
+  /**
+   * The standalone terminal victory/defeat summary read (#225), spread into
+   * `__VERIFY__` — null while the fight is live / off a battle scene.
+   */
+  readonly summaryApi = { summary: () => this.#view?.summary() ?? null };
   /** The composed region-scene seam (#137), public like {@link dialogue}. */
   readonly region = new RegionSceneCell();
   readonly #bench = new BenchCell();
@@ -502,9 +521,7 @@ class VerifyController {
    * @returns void
    */
   strike(): void {
-    if (this.#view) {
-      strikeView(this.#view);
-    }
+    strikeView(this.#view);
   }
 
   /**
@@ -580,6 +597,7 @@ export function installVerifyBridge(): void {
     advanceTurn: () => verifyBridge.advanceTurn(),
     strike: () => verifyBridge.strike(),
     autoWin: (maxTurns?: number) => verifyBridge.autoWin(maxTurns),
+    ...verifyBridge.summaryApi,
     field: () => verifyBridge.field(),
     examine: () => verifyBridge.examine(),
     toggleMiniMap: () => verifyBridge.toggleMiniMap(),
