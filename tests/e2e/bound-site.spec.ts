@@ -66,7 +66,7 @@ async function waitForBridge(page: Page): Promise<void> {
  * @param page - The Playwright page.
  */
 async function bootWithBridge(page: Page): Promise<void> {
-  await page.goto("/?uat=1");
+  await page.goto("/?scene=battle&uat=1");
   await waitForBridge(page);
 }
 

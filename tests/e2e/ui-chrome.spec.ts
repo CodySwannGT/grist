@@ -104,7 +104,7 @@ test.describe("GRIST — pixel UI-chrome reskin verification (UAT, #202)", () =>
     page,
   }) => {
     const errors = trackErrors(page);
-    await page.goto(`/?uat=1&seed=${FIXED_SEED}`);
+    await page.goto(`/?scene=battle&uat=1&seed=${FIXED_SEED}`);
     await waitForScene(page, "Battle");
     await expect(page.locator("canvas")).toBeVisible();
 

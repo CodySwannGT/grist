@@ -75,7 +75,7 @@ test.describe("GRIST — bespoke PixelLab cast verification (UAT, #203)", () => 
     page,
   }) => {
     const faults = trackFrameFaults(page);
-    await page.goto(`/?uat=1&seed=${FIXED_SEED}`);
+    await page.goto(`/?scene=battle&uat=1&seed=${FIXED_SEED}`);
     await waitForScene(page, "Battle");
     // The bespoke cast is wired: both sides field combatants with content refs.
     const state = await page.evaluate(() => window.__VERIFY__?.state() ?? null);
@@ -94,7 +94,9 @@ test.describe("GRIST — bespoke PixelLab cast verification (UAT, #203)", () => 
     const faults = trackFrameFaults(page);
     // `the-cage` fields the-ashling — a spirit-hover ref: its hover tween builds on
     // spawn and is settled again when it is downed. Both paths must draw clean.
-    await page.goto(`/?uat=1&seed=${FIXED_SEED}&encounter=the-cage`);
+    await page.goto(
+      `/?scene=battle&uat=1&seed=${FIXED_SEED}&encounter=the-cage`
+    );
     await waitForScene(page, "Battle");
     const state = await page.evaluate(() => window.__VERIFY__?.state() ?? null);
     expect(state?.enemies.some(unit => unit.ref === "the-ashling")).toBe(true);

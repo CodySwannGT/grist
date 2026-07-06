@@ -274,7 +274,7 @@ test.describe("GRIST — the first hour, end to end (UAT, #117)", () => {
     );
     expect(saved).toBe(true);
 
-    await page.goto("/?uat=1");
+    await page.goto("/?scene=battle&uat=1");
     await expect
       .poll(() => page.evaluate(() => typeof window.__VERIFY__?.loadSave))
       .toBe("function");

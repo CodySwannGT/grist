@@ -383,7 +383,7 @@ test.describe("GRIST — vertical-slice E2E (UAT 1-9) + determinism gate", () =>
     // and assert the run is restored EXACTLY — the loop is resumable, closing the
     // one-sitting journey. [EVIDENCE: uats-1-9-pass]
     const snapshot = resolvedSlice("wield", carriedGrist);
-    await page.goto("/?uat=1");
+    await page.goto("/?scene=battle&uat=1");
     await waitForSliceBridge(page);
     await page.evaluate(() => window.__VERIFY__!.clearSave());
     const saved = await page.evaluate(
@@ -392,7 +392,7 @@ test.describe("GRIST — vertical-slice E2E (UAT 1-9) + determinism gate", () =>
     );
     expect(saved).toBe(true);
 
-    await page.goto("/?uat=1");
+    await page.goto("/?scene=battle&uat=1");
     await waitForSliceBridge(page);
     const restored = await page.evaluate(() => window.__VERIFY__!.loadSave());
     expect(restored).toEqual(snapshot);
@@ -407,7 +407,7 @@ test.describe("GRIST — vertical-slice E2E (UAT 1-9) + determinism gate", () =>
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
 
-    await page.goto("/?uat=1");
+    await page.goto("/?scene=battle&uat=1");
     await waitForScene(page, "Battle");
     await waitForSliceBridge(page);
 
