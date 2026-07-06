@@ -52,6 +52,7 @@ import {
   reckoningStatusFlags,
   reckoningWorldState,
   reckoningWorldTurned,
+  rosterBeforeFromFlags,
   SABLE_LOST_FLAG,
   type ReckoningSession,
 } from "../logic/narrative/reckoning";
@@ -254,15 +255,21 @@ export class ReckoningCell {
    * @returns void
    */
   adopt(save: CurrentSave): void {
-    const roster = save.party
+    const flags = save.scene?.flags ?? {};
+    const survivors = save.party
       .map(member => resolvePartyMemberId(member.id))
       .filter((id): id is PartyMemberId => id !== null);
-    const fired =
-      save.worldState === "ashfall" || savedSableLost(save.scene?.flags ?? {});
+    // Prefer the persisted pre-Reckoning roster so a reload can still surface WHO was
+    // scattered (the saved party carries only the survivor); fall back to the survivor
+    // roster when the flag is absent (a pre-turn or legacy save).
+    const persistedBefore = rosterBeforeFromFlags(flags);
+    const rosterBefore =
+      persistedBefore.length > 0 ? persistedBefore : survivors;
+    const fired = save.worldState === "ashfall" || savedSableLost(flags);
     const opened = openReckoning(
       fired,
       INITIAL_WORLD_STATE,
-      roster,
+      rosterBefore,
       DEFAULT_RECKONING_SEED
     );
     this.#session = fired ? playReckoningToCompletion(opened) : opened;

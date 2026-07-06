@@ -235,9 +235,8 @@ test.describe("GRIST — the Reckoning world-turn (UAT, #125)", () => {
     expect(after.roster).toEqual(["wren"]);
     // ...and everyone else is scattered (reassembled through the Act II reunions).
     expect(after.scattered).toEqual(["tobi", "halcyon"]);
-    // Clause 4 — Sable is lost (a flag, not a roster removal: never in the roster).
+    // Clause 4 — Sable is lost (a flag, not a roster removal).
     expect(after.sableLost).toBe(true);
-    expect(after.roster).not.toContain("sable");
 
     // ── Persist + genuine reload: the turned world survives IndexedDB ─────────
     const saved = await page.evaluate(async () => {
@@ -260,11 +259,13 @@ test.describe("GRIST — the Reckoning world-turn (UAT, #125)", () => {
     expect(restored.worldState).toBe("ashfall");
 
     // Layer 2 — the HYDRATED Reckoning read: still turned, still scattered, Sable still
-    // lost after the reload rehydrated the cell.
+    // lost after the reload rehydrated the cell. The scattered-companion list survives
+    // too (the pre-Reckoning roster is persisted, so a reload doesn't lose WHO scattered).
     const hydrated = await reckoning(page);
     expect(hydrated.worldState).toBe("ashfall");
     expect(hydrated.roster).toEqual(["wren"]);
     expect(hydrated.sableLost).toBe(true);
+    expect(hydrated.scattered).toEqual(["tobi", "halcyon"]);
 
     expect(errors).toEqual([]);
   });

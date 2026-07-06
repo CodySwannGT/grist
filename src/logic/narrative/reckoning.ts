@@ -61,6 +61,16 @@ const FNV_PRIME = 0x01000193;
 /** The scene-flag key the Sable-lost beat persists under (rides `scene.flags`). */
 export const SABLE_LOST_FLAG = "sable-lost";
 
+/**
+ * The scene-flag key the **pre-Reckoning roster** persists under (a comma-joined id
+ * list, rides `scene.flags`). Persisted so a reload can reconstruct *who was scattered*
+ * ({@link reckoningScattered} derives it from the pre-turn roster) — the saved
+ * `SaveDataV3.party` only carries the post-scatter survivor(s), so without this the
+ * scattered-companion list would be lost across a reload. Read back by
+ * {@link rosterBeforeFromFlags}.
+ */
+export const RECKONING_ROSTER_BEFORE_FLAG = "reckoning:roster-before";
+
 /** The stable id of the Reckoning set-piece scene the content script authors. */
 export const RECKONING_SCENE_ID = "reckoning-second-sundering";
 
@@ -407,12 +417,39 @@ export function reckoningDrained(session: ReckoningSession): boolean {
 export function reckoningStatusFlags(
   session: ReckoningSession
 ): Readonly<Record<string, boolean | string>> {
-  const sable = { [SABLE_LOST_FLAG]: reckoningSableLost(session) };
+  // Persist the pre-Reckoning roster so a reload can reconstruct who was scattered
+  // (the saved party carries only the survivor). Always projected — the scatter is
+  // measured against it.
+  const base = {
+    [SABLE_LOST_FLAG]: reckoningSableLost(session),
+    [RECKONING_ROSTER_BEFORE_FLAG]: session.rosterBefore.join(","),
+  };
   if (!reckoningWorldTurned(session)) {
-    return sable;
+    return base;
   }
   const board = openReunions(reckoningWorldState(session), session.seed);
-  return { ...sable, ...reunionStatusFlags(board) };
+  return { ...base, ...reunionStatusFlags(board) };
+}
+
+/**
+ * Reconstruct the pre-Reckoning roster from a persisted scene-flag ledger — the
+ * restore seam the bridge's reload path uses so {@link reckoningScattered} still
+ * surfaces the scattered companions after a reload. Reads the comma-joined
+ * {@link RECKONING_ROSTER_BEFORE_FLAG} back into a typed roster, dropping any
+ * unrecognized id defensively; returns an empty roster when the flag is absent or
+ * blank. Pure — reads nothing ambient.
+ * @param flags - The persisted scene-flag ledger (may hold non-Reckoning flags too).
+ * @returns The restored pre-Reckoning roster, in its persisted order.
+ */
+export function rosterBeforeFromFlags(
+  flags: Readonly<Record<string, unknown>>
+): readonly PartyMemberId[] {
+  const raw = flags[RECKONING_ROSTER_BEFORE_FLAG];
+  if (typeof raw !== "string" || raw.length === 0) {
+    return [];
+  }
+  const known = new Set<string>(Object.values(PartyMemberIds));
+  return raw.split(",").filter((id): id is PartyMemberId => known.has(id));
 }
 
 /**

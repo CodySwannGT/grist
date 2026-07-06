@@ -73,6 +73,7 @@ export {
 export type { ReckoningPhase, ReckoningSession } from "./reckoning";
 export {
   RECKONING_ASH_SWATH,
+  RECKONING_ROSTER_BEFORE_FLAG,
   RECKONING_SCENE_ID,
   RECKONING_SURVIVORS,
   RECKONING_TURN_NODE_ID,
@@ -93,4 +94,5 @@ export {
   reckoningStatusFlags,
   reckoningWorldState,
   reckoningWorldTurned,
+  rosterBeforeFromFlags,
 } from "./reckoning";

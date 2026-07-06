@@ -129,8 +129,10 @@ describe("the Reckoning transform — all five AC clauses (#125)", () => {
 
   it("clause 4 — Sable is lost (a flag, not a roster removal)", () => {
     expect(reckoningSableLost(done)).toBe(true);
-    // Sable is never a party member — losing her is narrative, not a roster change.
-    expect(reckoningRoster(done)).not.toContain("sable");
+    // Sable is narrative cargo, never a party member, so losing her CANNOT be a roster
+    // op — assert the structural invariant that would break if she were ever added to
+    // the roster (making "Sable is lost" ambiguous between a flag and a scatter).
+    expect(Object.values(PartyMemberIds)).not.toContain("sable");
   });
 
   it("clause 5 — the overworld's color/music drain once the world turns", () => {
