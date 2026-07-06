@@ -39,7 +39,11 @@ import { AudioCues } from "../logic/audio";
 import { eventsCenter } from "../services/events";
 import { BenchInputService } from "../services/bench-input";
 import { type BenchIntent } from "../services/bench-input-map";
-import { getRunState, setRunState } from "../services/run-store";
+import {
+  getRunState,
+  persistRunEconomy,
+  setRunState,
+} from "../services/run-store";
 import { soundService } from "../services/sound-service";
 import { isVerificationEnabled, verifyBridge } from "../uat/bridge";
 import { addPanel, enablePanelTap, PanelTint } from "../ui/chrome";
@@ -174,6 +178,10 @@ export class Bench extends Phaser.Scene {
   #commit(run: RunState): void {
     this.#run = run;
     setRunState(this.registry, run);
+    // Write the bench-changed economy THROUGH to the save (#235) so a spent wallet,
+    // a bought augment, and an equipped shard survive a reload and Continue restores
+    // them — best-effort/fire-and-forget so a storage write never blocks the render.
+    void persistRunEconomy(run);
     this.#render();
   }
 

@@ -29,6 +29,7 @@ import {
 import { applyBattleResult, type RunState } from "../logic/run-state";
 import {
   getFieldState,
+  persistRunEconomy,
   setFieldState,
   setFieldViewSnapshot,
   takeFieldViewSnapshot,
@@ -119,6 +120,10 @@ export function resumeFieldSession(
   const nextRun = result === null ? run : applyBattleResult(run, result);
   if (result !== null) {
     setRunState(registry, nextRun);
+    // Write the battle-earned economy THROUGH to the save (#235) so the credited
+    // grist (and any build change) survives a reload and Continue restores it —
+    // best-effort and fire-and-forget so it never stalls the return to the Field.
+    void persistRunEconomy(nextRun);
   }
   return {
     state: advanceAfterBattle(stashed),
