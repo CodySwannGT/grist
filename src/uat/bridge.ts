@@ -25,6 +25,7 @@ import { type FxSelection } from "../ui/battle-fx";
 import { type HudModel } from "../ui/battle-controller";
 import { autoWinView, strikeView } from "./battle-driver";
 import { type BattleSummaryModel } from "../logic/battle-summary";
+import { type BattleOnboardingSnapshot } from "../logic/battle-onboarding";
 import { BenchCell, type BenchView, type VerifyBenchState } from "./bench-view";
 import {
   DialogueCell,
@@ -39,13 +40,12 @@ import {
   type VerifyFieldState,
 } from "./field-view";
 import { RenderCell, renderApi, type RenderApi } from "./render-cell";
-import { MenuCell, type MenuView } from "./menu-view";
+import { MenuCell, menuApi, type MenuApi, type MenuView } from "./menu-view";
 import {
   RegionSceneCell,
   type RegionView,
   type VerifyRegionSceneState,
 } from "./region-scene-view";
-import { type LedgerCodexView } from "../logic/narrative";
 
 /** A read-only snapshot of one combatant for assertions. */
 interface VerifyCombatant {
@@ -93,6 +93,12 @@ export interface BattleView {
   /** The last FX the stage played (element action strip or Break burst), #201. */
   readonly fx: () => FxSelection | null;
   /**
+   * The first-battle onboarding snapshot (#228) — the hint machine's live state, or
+   * null outside a battle. Present even when hints are disabled (`enabled: false`),
+   * so an e2e can prove a bridge-driven battle surfaces no beats.
+   */
+  readonly onboarding: () => BattleOnboardingSnapshot | null;
+  /**
    * The terminal victory/defeat summary a *standalone* resolved battle is
    * presenting, or null while the fight is live / for a field-launched battle
    * (which returns to the Field rather than showing a summary). Lets the #225 e2e
@@ -111,7 +117,7 @@ export interface BattleView {
 export type { FieldView };
 
 /** The shape installed on `window.__VERIFY__`. */
-interface VerifyApi extends DialogueApi, DataCellApi, RenderApi {
+interface VerifyApi extends DialogueApi, DataCellApi, RenderApi, MenuApi {
   readonly scene: () => string;
   readonly state: () => VerifyBattleState | null;
   readonly resolution: () => VerifyResolution | null;
@@ -146,6 +152,12 @@ interface VerifyApi extends DialogueApi, DataCellApi, RenderApi {
    * spread in from {@link VerifyController.summaryApi}.
    */
   readonly summary: () => BattleSummaryModel | null;
+  /**
+   * The first-battle onboarding snapshot (#228) — the hint machine's live state, or
+   * null outside a battle. `enabled` is false for a plain bridge-driven battle
+   * (hints suppressed under `?uat=1`); a spec opts the beats in with `?hints=1`.
+   */
+  readonly battleOnboarding: () => BattleOnboardingSnapshot | null;
   readonly field: () => VerifyFieldState | null;
   readonly examine: () => void;
   /** Summon or dismiss the field mini-map overlay (#107). No-op outside Field. */
@@ -197,7 +209,9 @@ interface VerifyApi extends DialogueApi, DataCellApi, RenderApi {
    * scene or before a Ledger panel has opened and loaded — an e2e polls it until it
    * resolves to prove the panel opened and the model it shows.
    */
-  readonly menuLedgerCodex: () => LedgerCodexView | null;
+  // The pause/main-menu reads (`menuLedgerCodex` #221, `menuHelpControls` #228) are
+  // contributed by {@link MenuApi}, composed from the menu cell the `dialogueApi`
+  // way — keeping this file under its line budget.
 }
 
 declare global {
@@ -273,12 +287,21 @@ class VerifyController {
    * `__VERIFY__` — null while the fight is live / off a battle scene.
    */
   readonly summaryApi = { summary: () => this.#view?.summary() ?? null };
+  /**
+   * The first-battle onboarding snapshot (#228) — null outside a battle scene.
+   * @returns The onboarding snapshot, or null.
+   */
+  readonly battleOnboarding = () => this.#view?.onboarding() ?? null;
   /** The composed region-scene seam (#137), public like {@link dialogue}. */
   readonly region = new RegionSceneCell();
   readonly #bench = new BenchCell();
   readonly dialogue = new DialogueCell();
-  /** The composed pause/main-menu seam (#221) — holds the Ledger codex view. */
-  readonly #menu = new MenuCell();
+  /**
+   * The composed pause/main-menu seam — holds the Ledger codex (#221) and the
+   * controls & help reference (#228). Public like {@link region} / {@link dialogue}
+   * so `installVerifyBridge` reads it directly, no forwarding methods.
+   */
+  readonly menu = new MenuCell();
   #pendingSeed: number | null = null;
 
   /**
@@ -310,7 +333,7 @@ class VerifyController {
     this.region.attach(null);
     this.#bench.attach(null);
     this.dialogue.attach(null);
-    this.#menu.attach(null);
+    this.menu.attach(null);
     if (view === null) {
       return;
     }
@@ -323,20 +346,10 @@ class VerifyController {
     } else if (DialogueCell.claims(view)) {
       this.dialogue.attach(view);
     } else if (MenuCell.claims(view)) {
-      this.#menu.attach(view);
+      this.menu.attach(view);
     } else {
       this.#view = view;
     }
-  }
-
-  /**
-   * The moral-ledger codex the open Ledger menu panel rendered (#221), or null
-   * outside the Menu scene / before a Ledger panel has loaded. Read by
-   * `menuLedgerCodex()` on the bridge.
-   * @returns The codex view, or null.
-   */
-  menuLedgerCodex(): LedgerCodexView | null {
-    return this.#menu.ledgerCodex();
   }
 
   /**
@@ -597,6 +610,7 @@ export function installVerifyBridge(): void {
     advanceTurn: () => verifyBridge.advanceTurn(),
     strike: () => verifyBridge.strike(),
     autoWin: (maxTurns?: number) => verifyBridge.autoWin(maxTurns),
+    battleOnboarding: () => verifyBridge.battleOnboarding(),
     ...verifyBridge.summaryApi,
     field: () => verifyBridge.field(),
     examine: () => verifyBridge.examine(),
@@ -624,8 +638,9 @@ export function installVerifyBridge(): void {
     // non-color/non-audio caption regardless of the active scene.
     audio: () => soundService.recentCues(),
     audioCaption: () => soundService.lastCaption(),
-    // The Ledger codex the open menu panel rendered (#221) — projected from the
-    // persisted save's `scene.flags`; null until a Ledger panel opens and loads.
-    menuLedgerCodex: () => verifyBridge.menuLedgerCodex(),
+    // The pause/main-menu reads — the Ledger codex the open panel rendered (#221) and
+    // the System/Settings controls & help reference (#228) — composed over the menu
+    // cell, the `dialogueApi` way; each null outside the Menu scene / its open panel.
+    ...menuApi(verifyBridge.menu),
   };
 }

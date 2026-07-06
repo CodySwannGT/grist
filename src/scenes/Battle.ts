@@ -35,6 +35,7 @@ import { BattleRunner } from "../game/battle-runner";
 import {
   ActionKinds,
   BattleSides,
+  enemyTelegraph,
   hashState,
   isResolved,
   type BattleSide,
@@ -51,6 +52,8 @@ import { StandaloneResolution } from "./standalone-resolution";
 import { setLastBattleResult } from "../services/run-store";
 import { BattleController } from "../ui/battle-controller";
 import { BattleHud } from "../ui/battle-hud";
+import { BattleOnboardingController } from "../ui/battle-onboarding-controller";
+import { type BattleHintSignal } from "../logic/battle-onboarding";
 import {
   buildUnitView,
   playEventJuice,
@@ -121,6 +124,8 @@ export class Battle extends Phaser.Scene {
   #enemyViews: readonly UnitView[] = [];
   /** The redundant on-screen caption for audio cues (#115, FR11 / AC12). */
   #cueCaption!: CueCaptionView;
+  /** The first-battle onboarding beats (#228) — inert unless eligible + unseen. */
+  #onboarding!: BattleOnboardingController;
   /**
    * The grist pool as of the last frame — the prior value the grist-spend stinger
    * edge-detects a strict decrease against (a Bind or any spend, #115). Reset on
@@ -214,6 +219,11 @@ export class Battle extends Phaser.Scene {
     this.#wireEnemyTargets();
     this.#hud = new BattleHud(this, this.#input, PARTY_LINEUP);
     this.#cueCaption = new CueCaptionView(this);
+    // The first-battle onboarding beats (#228): inert unless this is an eligible,
+    // not-yet-seen battle (a real player, or a `?hints=1` opt-in). `begin()` decides
+    // eligibility asynchronously (it reads the save) and mounts the hint band itself.
+    this.#onboarding = new BattleOnboardingController(this);
+    void this.#onboarding.begin();
     this.#lastGrist = state.grist;
     soundService.attachUnlock(this);
     // The standalone terminal-resolution controller: on a non-field boot it presents
@@ -261,10 +271,31 @@ export class Battle extends Phaser.Scene {
     this.#consumeLogEvents();
     this.#hud.render(this.#runner.state(), this.#controller);
     this.#fireGristSpendCue();
+    this.#onboarding.update(this.#hintSignal());
     this.#maybeReturnToField();
     if (!this.#fromField) {
       this.#resolution.update();
     }
+  }
+
+  /**
+   * The live per-frame onboarding signal (#228): whether the ready actor's command
+   * menu is open, the highlighted command id (for the AP-vs-Grist beat), and whether
+   * an enemy is telegraphing. A cheap read of the controller + sim; the pure hint
+   * machine decides what — if anything — to surface from it.
+   * @returns The onboarding signal for this frame.
+   */
+  #hintSignal(): BattleHintSignal {
+    const state = this.#runner.state();
+    const menuOpen = this.#controller.activeActor(state) !== null;
+    const order = this.#controller.commandOrder(state);
+    return {
+      menuOpen,
+      highlightedCommand: menuOpen
+        ? (order[this.#controller.highlight] ?? null)
+        : null,
+      telegraphPresent: enemyTelegraph(state) !== null,
+    };
   }
 
   /**
@@ -432,6 +463,7 @@ export class Battle extends Phaser.Scene {
       hud: () => this.#controller.model(),
       hash: () => hashState(this.#runner.state()),
       fx: () => this.#lastFx,
+      onboarding: () => this.#onboarding.snapshot(),
       summary: () => this.#resolution.summary(),
       restart: (seed: number) => {
         this.#runner.restart(seed);
@@ -456,6 +488,7 @@ export class Battle extends Phaser.Scene {
     // documented out-of-battle contract) instead of reading disposed objects.
     verifyBridge.attach("", null);
     this.#resolution.dispose();
+    this.#onboarding.dispose();
     this.#cueCaption.destroy();
     this.#hud.destroy();
     this.#controller.dispose();

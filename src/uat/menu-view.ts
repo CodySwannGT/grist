@@ -25,6 +25,12 @@ import type { LedgerCodexView } from "../logic/narrative";
 export interface MenuView {
   /** The codex the open Ledger panel rendered, or null when none is open/loaded. */
   readonly ledgerCodex: () => LedgerCodexView | null;
+  /**
+   * The controls & help reference the open System/Settings panel rendered (#228),
+   * or null when that panel is not open. Lets an e2e prove the persistent controls
+   * list (the real bindings + the AP/Grist legend) is reachable from the pause menu.
+   */
+  readonly helpControls: () => readonly string[] | null;
 }
 
 /**
@@ -62,4 +68,35 @@ export class MenuCell {
   ledgerCodex(): LedgerCodexView | null {
     return this.#view?.ledgerCodex() ?? null;
   }
+
+  /**
+   * The controls & help reference the open System/Settings panel rendered (#228), or
+   * null outside the Menu scene / before that panel has opened.
+   * @returns The reference lines, or null.
+   */
+  helpControls(): readonly string[] | null {
+    return this.#view?.helpControls() ?? null;
+  }
+}
+
+/** The pause/main-menu slice of the `__VERIFY__` surface, spread into it. */
+export interface MenuApi {
+  /** The Ledger codex the open Ledger panel rendered (#221), or null. */
+  readonly menuLedgerCodex: () => LedgerCodexView | null;
+  /** The controls & help reference the open System/Settings panel rendered (#228). */
+  readonly menuHelpControls: () => readonly string[] | null;
+}
+
+/**
+ * Build the pause/main-menu `__VERIFY__` reads over a {@link MenuCell}, the
+ * `dialogueApi` way — keeping the bridge under its line budget. Each read is null
+ * outside the Menu scene / before its panel has opened.
+ * @param menu - The menu cell the reads dispatch through.
+ * @returns The menu slice of the verification surface.
+ */
+export function menuApi(menu: MenuCell): MenuApi {
+  return {
+    menuLedgerCodex: () => menu.ledgerCodex(),
+    menuHelpControls: () => menu.helpControls(),
+  };
 }

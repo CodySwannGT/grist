@@ -43,6 +43,7 @@ import { saveService } from "../services/save-service";
 import { verifyBridge } from "../uat/bridge";
 import type { MenuView } from "../uat/menu-view";
 import { LedgerCodexPanel } from "../ui/ledger-codex-panel";
+import { HelpPanel } from "../ui/help-panel";
 
 /** The karma summary header line count (`formatMoralLedger` returns three lines). */
 const KARMA_HEADER_LINES = 3;
@@ -61,7 +62,8 @@ const PANEL_DESCRIPTIONS: Readonly<Record<string, readonly string[]>> = {
   [PauseMenuEntryIds.party]: ["Your party roster and bonds."],
   [PauseMenuEntryIds.items]: ["Carried items and key relics."],
   [PauseMenuEntryIds.map]: ["The world map and waypoints."],
-  [PauseMenuEntryIds.system]: ["Settings, save, and audio."],
+  // System/Settings opens the controls & help reference (#228) via the dense
+  // HelpPanel instead of a one-line description — so it is keyed nowhere here.
 };
 
 /** Renders the pause/main menu from the pure model and routes confirmed entries. */
@@ -79,6 +81,8 @@ export class Menu extends Phaser.Scene {
   #panelLines: readonly Phaser.GameObjects.Text[] = [];
   /** The Ledger codex panel (#221) — renders the recorded/pending catalog. */
   #codexPanel!: LedgerCodexPanel;
+  /** The controls & help panel (#228) — the System/Settings controls reference. */
+  #helpPanel!: HelpPanel;
 
   /** Register the scene key. */
   constructor() {
@@ -175,6 +179,10 @@ export class Menu extends Phaser.Scene {
       MenuLayout.panelX + MenuLayout.panelPadX,
       CODEX_LINE_SLOTS
     );
+    this.#helpPanel = new HelpPanel(
+      this,
+      MenuLayout.panelX + MenuLayout.panelPadX
+    );
   }
 
   /**
@@ -185,7 +193,10 @@ export class Menu extends Phaser.Scene {
    * @returns The menu bridge view.
    */
   #menuView(): MenuView {
-    return { ledgerCodex: () => this.#codexPanel.codex() };
+    return {
+      ledgerCodex: () => this.#codexPanel.codex(),
+      helpControls: () => this.#helpPanel.lines(),
+    };
   }
 
   /**
@@ -311,6 +322,13 @@ export class Menu extends Phaser.Scene {
       this.#hidePanel();
       return;
     }
+    if (open === PauseMenuEntryIds.system) {
+      // System/Settings opens the persistent controls & help reference (#228) — the
+      // dense HelpPanel, not a one-line description.
+      this.#showHelp(open);
+      return;
+    }
+    this.#helpPanel.hide();
     if (open === PauseMenuEntryIds.ledger) {
       // The codex body is filled by #loadLedger; show the frame + title now and leave
       // the info-panel lines cleared (the ledger uses the denser codex pool instead).
@@ -321,6 +339,23 @@ export class Menu extends Phaser.Scene {
     this.#codexPanel.hide();
     const entry = PAUSE_MENU_ENTRIES.find(candidate => candidate.id === open);
     this.#showPanel(entry?.label ?? "", PANEL_DESCRIPTIONS[open] ?? []);
+  }
+
+  /**
+   * Show the controls & help reference (#228) under the System/Settings entry: the
+   * panel frame titled by the entry, its info/codex bodies cleared, and the dense
+   * HelpPanel filled with the field + battle controls and the AP/Grist legend.
+   * @param entryId - The System entry id (its label titles the panel).
+   * @returns void
+   */
+  #showHelp(entryId: PauseMenuEntryId): void {
+    this.#codexPanel.hide();
+    const entry = PAUSE_MENU_ENTRIES.find(
+      candidate => candidate.id === entryId
+    );
+    this.#showFrame(entry?.label ?? "");
+    this.#clearPanelLines();
+    this.#helpPanel.show();
   }
 
   /**
@@ -365,6 +400,7 @@ export class Menu extends Phaser.Scene {
     this.#panelBox.setVisible(false);
     this.#panelTitle.setVisible(false).setText("");
     this.#codexPanel.hide();
+    this.#helpPanel.hide();
     this.#panelLines.forEach(line => line.setVisible(false).setText(""));
   }
 
