@@ -38,11 +38,13 @@ import {
   type VerifyFieldState,
 } from "./field-view";
 import { RenderCell, renderApi, type RenderApi } from "./render-cell";
+import { MenuCell, type MenuView } from "./menu-view";
 import {
   RegionSceneCell,
   type RegionView,
   type VerifyRegionSceneState,
 } from "./region-scene-view";
+import { type LedgerCodexView } from "../logic/narrative";
 
 /** A read-only snapshot of one combatant for assertions. */
 interface VerifyCombatant {
@@ -174,6 +176,14 @@ interface VerifyApi extends DialogueApi, DataCellApi, RenderApi {
    * carries a non-color/non-audio cue (#115, FR11 / the redundancy half of AC12).
    */
   readonly audioCaption: () => string | null;
+  /**
+   * The moral-ledger **codex** the open Ledger menu panel rendered (#221): every
+   * catalog choice in authored order tagged recorded/pending plus the `Recorded: N of
+   * M` tally, projected from the persisted save's `scene.flags`. Null outside the Menu
+   * scene or before a Ledger panel has opened and loaded — an e2e polls it until it
+   * resolves to prove the panel opened and the model it shows.
+   */
+  readonly menuLedgerCodex: () => LedgerCodexView | null;
 }
 
 declare global {
@@ -228,7 +238,8 @@ function toVerifyState(scene: string, state: BattleState): VerifyBattleState {
  * @returns True when the view is a field view.
  */
 function isFieldView(
-  view: BattleView | FieldView | BenchView | DialogueView | RegionView
+  view:
+    BattleView | FieldView | BenchView | DialogueView | RegionView | MenuView
 ): view is FieldView {
   return "room" in view;
 }
@@ -247,6 +258,8 @@ class VerifyController {
   readonly region = new RegionSceneCell();
   readonly #bench = new BenchCell();
   readonly dialogue = new DialogueCell();
+  /** The composed pause/main-menu seam (#221) — holds the Ledger codex view. */
+  readonly #menu = new MenuCell();
   #pendingSeed: number | null = null;
 
   /**
@@ -263,7 +276,14 @@ class VerifyController {
    */
   attach(
     sceneKey: string,
-    view: BattleView | FieldView | BenchView | DialogueView | RegionView | null
+    view:
+      | BattleView
+      | FieldView
+      | BenchView
+      | DialogueView
+      | RegionView
+      | MenuView
+      | null
   ): void {
     this.#sceneKey = sceneKey;
     this.#view = null;
@@ -271,6 +291,7 @@ class VerifyController {
     this.region.attach(null);
     this.#bench.attach(null);
     this.dialogue.attach(null);
+    this.#menu.attach(null);
     if (view === null) {
       return;
     }
@@ -282,9 +303,21 @@ class VerifyController {
       this.#bench.attach(view);
     } else if (DialogueCell.claims(view)) {
       this.dialogue.attach(view);
+    } else if (MenuCell.claims(view)) {
+      this.#menu.attach(view);
     } else {
       this.#view = view;
     }
+  }
+
+  /**
+   * The moral-ledger codex the open Ledger menu panel rendered (#221), or null
+   * outside the Menu scene / before a Ledger panel has loaded. Read by
+   * `menuLedgerCodex()` on the bridge.
+   * @returns The codex view, or null.
+   */
+  menuLedgerCodex(): LedgerCodexView | null {
+    return this.#menu.ledgerCodex();
   }
 
   /**
@@ -573,5 +606,8 @@ export function installVerifyBridge(): void {
     // non-color/non-audio caption regardless of the active scene.
     audio: () => soundService.recentCues(),
     audioCaption: () => soundService.lastCaption(),
+    // The Ledger codex the open menu panel rendered (#221) — projected from the
+    // persisted save's `scene.flags`; null until a Ledger panel opens and loads.
+    menuLedgerCodex: () => verifyBridge.menuLedgerCodex(),
   };
 }
