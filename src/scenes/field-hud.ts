@@ -219,6 +219,8 @@ export class FieldHud {
    * @param room - The room Wren is currently in.
    * @param examinableProp - The current room's examinable prop id, or null.
    * @param inRange - Whether Wren is within the prop's examine radius.
+   * @param loreVisible - Whether the examine lore banner is currently on screen
+   *   (the context prompt is suppressed while it is, so the two never overlap — #234).
    * @returns void
    */
   sync(
@@ -226,11 +228,12 @@ export class FieldHud {
     grist: number,
     room: MarrowRoomId,
     examinableProp: string | null,
-    inRange: boolean
+    inRange: boolean,
+    loreVisible: boolean
   ): void {
     this.#grist.set(gristReadoutLabel(grist));
 
-    const prompt = contextPromptFor(room, examinableProp, inRange);
+    const prompt = contextPromptFor(room, examinableProp, inRange, loreVisible);
     this.#prompt.object.setVisible(prompt !== null);
     if (prompt !== null) {
       this.#prompt.set(prompt);

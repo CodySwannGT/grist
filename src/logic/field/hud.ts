@@ -99,20 +99,27 @@ const EXAMINE_VERB = "examine";
 /**
  * The context-prompt string the HUD shows for the current room, or `null` when
  * there is no interactable affordance to surface. A prompt is shown only when
- * the room has an examinable lore prop AND Wren is reported in range of it — the
- * "context" in context prompt. The prop's name is read from {@link MARROW_MAP}
- * so the label always matches the authored content.
+ * the room has an examinable lore prop AND Wren is reported in range of it AND
+ * the examine lore banner is not already on screen — the "context" in context
+ * prompt. The last gate is the fix for #234: the floating "[E] examine <prop>"
+ * prompt and the examine lore banner share the bottom band, so surfacing both at
+ * once overlapped their text; once the banner shows, the prompt's job is done, so
+ * it is suppressed until the banner clears (Wren steps out of range). The prop's
+ * name is read from {@link MARROW_MAP} so the label always matches the authored
+ * content.
  * @param room - The room Wren is currently in.
  * @param propId - The room's examinable prop id, or null when it has none.
  * @param inRange - Whether Wren is within the prop's examine radius.
+ * @param loreVisible - Whether the examine lore banner is currently on screen.
  * @returns The prompt string, or null when no prompt should show.
  */
 export function contextPromptFor(
   room: MarrowRoomId,
   propId: string | null,
-  inRange: boolean
+  inRange: boolean,
+  loreVisible: boolean
 ): string | null {
-  if (propId === null || !inRange) {
+  if (propId === null || !inRange || loreVisible) {
     return null;
   }
   const prop = MARROW_MAP[room].props.find(

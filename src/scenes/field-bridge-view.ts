@@ -72,10 +72,7 @@ export function makeFieldView(accessors: FieldViewAccessors): FieldView {
     room: () => accessors.state().currentRoom,
     phase: () => accessors.state().phase,
     wren: () => accessors.wren(),
-    lore: () => {
-      const propId = accessors.examinableProp();
-      return propId ? loreForProp(accessors.state(), propId) : null;
-    },
+    lore: () => loreOnScreen(accessors),
     grist: () => accessors.grist(),
     shards: () => accessors.shards(),
     pendingChoiceShard: () => accessors.pendingChoiceShard(),
@@ -83,7 +80,8 @@ export function makeFieldView(accessors: FieldViewAccessors): FieldView {
       contextPromptFor(
         accessors.state().currentRoom,
         accessors.examinableProp(),
-        accessors.inExamineRange()
+        accessors.inExamineRange(),
+        loreOnScreen(accessors) !== null
       ),
     miniMapOpen: () => accessors.miniMapOpen(),
     toggleMiniMap: () => accessors.toggleMiniMap(),
@@ -91,4 +89,22 @@ export function makeFieldView(accessors: FieldViewAccessors): FieldView {
     engage: () => accessors.engage(),
     traverse: () => accessors.traverse(),
   };
+}
+
+/**
+ * The lore text currently surfaced on the field's examine banner, or null when
+ * nothing is shown. Mirrors the scene's own visibility rule (#234): the banner
+ * is a "stand-at-the-prop" read, so it shows only while Wren is in examine range
+ * AND the prop has an authored, examined beat — it dismisses on walk-away even
+ * though the prop stays examined. Deriving it here (rather than reading the
+ * banner object) keeps the bridge in lockstep with the scene without a new seam.
+ * @param accessors - The scene's live-state reads.
+ * @returns The on-screen lore text, or null.
+ */
+function loreOnScreen(accessors: FieldViewAccessors): string | null {
+  const propId = accessors.examinableProp();
+  if (propId === null || !accessors.inExamineRange()) {
+    return null;
+  }
+  return loreForProp(accessors.state(), propId);
 }
