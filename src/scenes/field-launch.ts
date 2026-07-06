@@ -10,7 +10,11 @@
  * @module scenes/field-launch
  */
 import type Phaser from "phaser";
-import { SceneKeys, type BattleLaunchData } from "../consts";
+import {
+  SceneKeys,
+  type BattleLaunchData,
+  type MenuLaunchData,
+} from "../consts";
 import { CH1_AMBUSH_ENCOUNTER } from "../content";
 import {
   FieldActionKinds,
@@ -26,8 +30,11 @@ import { applyBattleResult, type RunState } from "../logic/run-state";
 import {
   getFieldState,
   setFieldState,
+  setFieldViewSnapshot,
+  takeFieldViewSnapshot,
   setRunState,
   takeLastBattleResult,
+  type FieldViewSnapshot,
 } from "../services/run-store";
 import { transitionToScene } from "./scene-transition";
 
@@ -39,6 +46,12 @@ interface FieldSession {
   readonly run: RunState;
   /** The seed the session is running under. */
   readonly seed: number;
+  /**
+   * Wren's exact render position to restore, present only on a pause-menu resume
+   * (#233) — a fresh boot / post-battle resume omits it and the scene spawns her at
+   * the room entrance, so only a pause drops her back at the pixel she paused on.
+   */
+  readonly wren?: FieldViewSnapshot | undefined;
 }
 
 /**
@@ -111,6 +124,60 @@ export function resumeFieldSession(
     state: advanceAfterBattle(stashed),
     run: nextRun,
     seed: stashed.seed,
+  };
+}
+
+/**
+ * Open the pause Menu over the live Field (#233): stash the current session and
+ * Wren's exact render position on the registry, then start the Menu telling it to
+ * return to the Field on close. It reuses the same registry round-trip as the
+ * Field↔Battle leg — the Menu is a full-screen overlay reached by a real
+ * `scene.start`, and closing it re-enters the Field via {@link resumeFieldFromMenu}
+ * with the stashed session + position restored byte-for-byte. No menu rules live
+ * here (those are the pure `logic/pause-menu`); this is only the launch payload.
+ * @param scene - The Field scene (used to start the Menu scene).
+ * @param registry - The scene registry.
+ * @param state - The live field session state to stash for the resume.
+ * @param view - Wren's render position + facing to restore on return.
+ * @returns void
+ */
+export function openPauseMenu(
+  scene: Phaser.Scene,
+  registry: Phaser.Data.DataManager,
+  state: FieldState,
+  view: FieldViewSnapshot
+): void {
+  const launch: MenuLaunchData = { returnTo: SceneKeys.Field };
+  setFieldState(registry, state);
+  setFieldViewSnapshot(registry, view);
+  scene.scene.start(SceneKeys.Menu, launch);
+}
+
+/**
+ * Resume the Field from the pause Menu (#233): restore the stashed session exactly
+ * as it was — no battle result to consume, no post-battle room advance — so the
+ * player drops back into the same room/phase they paused in. Wren's exact position
+ * is restored separately by the scene from the stashed field-view snapshot. Falls back
+ * to a fresh descent under `fallbackSeed` if nothing was stashed (defensive).
+ * @param registry - The scene registry.
+ * @param run - The current run progression (unchanged by a pause).
+ * @param fallbackSeed - The seed to start a fresh descent under if none stashed.
+ * @returns The restored (or fresh) session.
+ */
+export function resumeFieldFromMenu(
+  registry: Phaser.Data.DataManager,
+  run: RunState,
+  fallbackSeed: number
+): FieldSession {
+  const stashed = getFieldState(registry);
+  if (!stashed) {
+    return beginFieldSession(run, fallbackSeed);
+  }
+  return {
+    state: stashed,
+    run,
+    seed: stashed.seed,
+    wren: takeFieldViewSnapshot(registry) ?? undefined,
   };
 }
 

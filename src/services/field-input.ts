@@ -136,6 +136,17 @@ export class FieldInputService {
   }
 
   /**
+   * Publish a touch/pointer open-menu (tapping the HUD's "[Esc] menu" affordance),
+   * so touch players — who have no Esc key — can open the pause menu too (#233), at
+   * parity with the map-summon button. The Field scene handles the intent identically
+   * to the keyboard Esc.
+   * @returns void
+   */
+  tapOpenMenu(): void {
+    this.#emit({ kind: "open-menu" }, InputDevices.pointer);
+  }
+
+  /**
    * Emit a device-tagged field intent on the EventsCenter bus.
    * @param intent - The semantic field intent.
    * @param device - The originating device.

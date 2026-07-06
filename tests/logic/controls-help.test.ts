@@ -32,6 +32,13 @@ describe("controls & help reference (#228)", () => {
     expect(BLOB).not.toContain("Tab");
   });
 
+  it("[EVIDENCE: controls-help-lists-pause-menu-opener] lists the Esc pause-menu opener (#233)", () => {
+    // The reference the pause menu itself renders must teach how to open it —
+    // the FIELD section names the real Esc opener wired in field-input-map.
+    expect(BLOB).toContain("Menu");
+    expect(BLOB).toContain("Esc");
+  });
+
   it("[EVIDENCE: controls-help-lists-real-bindings] glosses the AP and Grist resources the command menu prices in", () => {
     expect(BLOB).toContain("AP");
     expect(BLOB).toContain("Grist");

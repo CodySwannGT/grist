@@ -143,6 +143,58 @@ export function selectedEntry(state: PauseMenuState): PauseMenuEntry {
 }
 
 /**
+ * Close an open detail panel (Ledger / System-Help / …) back to the entry list —
+ * the first press of Cancel/Back when a panel is showing.
+ */
+interface MenuCancelClosePanel {
+  readonly kind: "close-panel";
+}
+
+/**
+ * Return to the caller gameplay scene the menu was opened over (#233): the Field
+ * (or another surface) resumes exactly where the player left it. Carries the scene
+ * key so the adapter starts it without a second lookup.
+ */
+interface MenuCancelReturn {
+  readonly kind: "return";
+  readonly scene: string;
+}
+
+/** Stay in the menu — Cancel with no panel open and no caller (the standalone seam). */
+interface MenuCancelStay {
+  readonly kind: "stay";
+}
+
+/** What a Cancel/Back press resolves to, given the open panel and the caller. */
+type MenuCancelOutcome =
+  MenuCancelClosePanel | MenuCancelReturn | MenuCancelStay;
+
+/**
+ * Resolve a Cancel/Back press purely from the two pieces of live state the menu
+ * holds: which detail panel (if any) is open, and which gameplay scene the menu
+ * was opened over. Back peels one layer at a time — an open panel closes first;
+ * only once the entry list is bare does Cancel return to the caller scene (#233).
+ * A menu with no caller (reached standalone via `?scene=menu`) stays put, so the
+ * verification seam is preserved. Pure and total — the {@link import("../scenes/Menu").Menu}
+ * scene is a thin dispatcher over this decision.
+ * @param openPanel - The entry whose detail panel is open, or null when none is.
+ * @param returnTo - The caller scene key to resume, or null when opened standalone.
+ * @returns The Cancel outcome the scene applies.
+ */
+export function resolveMenuCancel(
+  openPanel: PauseMenuEntryId | null,
+  returnTo: string | null
+): MenuCancelOutcome {
+  if (openPanel !== null) {
+    return { kind: "close-panel" };
+  }
+  if (returnTo !== null) {
+    return { kind: "return", scene: returnTo };
+  }
+  return { kind: "stay" };
+}
+
+/**
  * Format a {@link MoralLedger} into the human-readable lines the **Ledger** panel
  * renders (#98): the net karma with its lean, and the per-mode resolution tally.
  * Pure — the scene reads the live ledger (from the save) and renders these lines;

@@ -19,7 +19,12 @@
  * @module scenes/Menu
  */
 import Phaser from "phaser";
-import { GameView, SceneKeys } from "../consts";
+import {
+  GameView,
+  SceneKeys,
+  type FieldResumeData,
+  type MenuLaunchData,
+} from "../consts";
 import { MenuColors, MenuLayout, MenuTextStyles } from "../menu-consts";
 import { addCursor, addPanel } from "../ui/chrome";
 import {
@@ -27,6 +32,7 @@ import {
   PauseMenuEntryIds,
   moveCursor,
   newPauseMenuState,
+  resolveMenuCancel,
   selectedEntry,
   type PauseMenuEntry,
   type PauseMenuEntryId,
@@ -72,6 +78,12 @@ export class Menu extends Phaser.Scene {
   #state: PauseMenuState = newPauseMenuState();
   /** The entry whose detail panel is open, or null when the panel is hidden. */
   #openPanel: PauseMenuEntryId | null = null;
+  /**
+   * The caller gameplay scene to resume when the menu is closed with Cancel/Back
+   * (#233), or null when the menu was reached standalone via `?scene=menu` (the
+   * verification seam) — a standalone menu has no caller and Cancel stays put.
+   */
+  #returnTo: string | null = null;
   /** The pooled per-entry label texts, parallel to {@link PAUSE_MENU_ENTRIES}. */
   #entryLabels: readonly Phaser.GameObjects.Text[] = [];
   #caret!: Phaser.GameObjects.Image;
@@ -92,10 +104,19 @@ export class Menu extends Phaser.Scene {
   /**
    * Build the static chrome (title, the six stacked entry labels, the cursor
    * caret, the detail panel, the controls hint), subscribe the keyboard, register
-   * the scene with the verification bridge, and render the initial state.
+   * the scene with the verification bridge, and render the initial state. A
+   * {@link MenuLaunchData} caller (#233) is remembered so Cancel/Back resumes that
+   * gameplay scene; absent (the `?scene=menu` seam) the menu has no caller.
+   * @param data - The launch payload naming the caller scene, or undefined standalone.
    * @returns void
    */
-  create(): void {
+  create(data?: MenuLaunchData): void {
+    this.#returnTo = data?.returnTo ?? null;
+    // The Phaser SceneManager reuses this scene instance across opens, so reset the
+    // cursor + open-panel each time the menu is (re)entered (#233): a pause always
+    // opens fresh on Party with no panel showing, never the last session's cursor.
+    this.#state = newPauseMenuState();
+    this.#openPanel = null;
     this.cameras.main.setBackgroundColor(MenuColors.backdrop);
     this.#buildTitle();
     this.#entryLabels = PAUSE_MENU_ENTRIES.map((entry, row) =>
@@ -234,12 +255,31 @@ export class Menu extends Phaser.Scene {
       return;
     }
     if (intent.kind === "cancel") {
-      this.#openPanel = null;
-      this.#render();
+      this.#cancel();
       return;
     }
     this.#confirm(selectedEntry(this.#state));
   };
+
+  /**
+   * Apply a Cancel/Back press via the pure {@link resolveMenuCancel} decision (#233):
+   * an open detail panel closes first; once the entry list is bare, Cancel resumes
+   * the caller gameplay scene (the Field, restored exactly where the player paused)
+   * or — standalone (`?scene=menu`) — simply stays in the menu. A `fromMenu` resume
+   * tells the Field to restore the stashed session + Wren position, not respawn her.
+   * @returns void
+   */
+  #cancel(): void {
+    const outcome = resolveMenuCancel(this.#openPanel, this.#returnTo);
+    if (outcome.kind === "return") {
+      const resume: FieldResumeData = { resumed: false, fromMenu: true };
+      this.scene.start(outcome.scene, resume);
+      return;
+    }
+    // close-panel and stay both collapse to the bare entry list.
+    this.#openPanel = null;
+    this.#render();
+  }
 
   /**
    * Dispatch a confirmed entry's route: **growth** opens the existing Phase-2

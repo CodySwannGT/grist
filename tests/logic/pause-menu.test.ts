@@ -14,9 +14,11 @@ import {
   formatMoralLedger,
   moveCursor,
   newPauseMenuState,
+  resolveMenuCancel,
   selectedEntry,
 } from "../../src/logic/pause-menu";
 import { type MoralLedger } from "../../src/logic/save/types";
+import { SceneKeys } from "../../src/consts";
 
 describe("pause/main-menu entries — the six entries, in order (AC9)", () => {
   it("exposes exactly the six entries Party, Builds, Items, Ledger, Map, System/Settings", () => {
@@ -95,6 +97,33 @@ describe("pause/main-menu cursor — ring navigation", () => {
     const state = newPauseMenuState();
     moveCursor(state, 1);
     expect(state.cursor).toBe(0);
+  });
+});
+
+describe("resolveMenuCancel — Cancel/Back peels one layer at a time (#233)", () => {
+  it("closes an open detail panel first, even when a caller is present", () => {
+    // Back with a panel open returns to the entry list, not out of the menu.
+    expect(
+      resolveMenuCancel(PauseMenuEntryIds.ledger, SceneKeys.Field)
+    ).toEqual({ kind: "close-panel" });
+  });
+
+  it("returns to the caller scene once the entry list is bare", () => {
+    expect(resolveMenuCancel(null, SceneKeys.Field)).toEqual({
+      kind: "return",
+      scene: SceneKeys.Field,
+    });
+  });
+
+  it("stays put standalone (no panel, no caller — the ?scene=menu seam)", () => {
+    expect(resolveMenuCancel(null, null)).toEqual({ kind: "stay" });
+  });
+
+  it("closes the panel before returning even without a caller", () => {
+    // A standalone menu with a panel open still peels the panel first.
+    expect(resolveMenuCancel(PauseMenuEntryIds.system, null)).toEqual({
+      kind: "close-panel",
+    });
   });
 });
 
