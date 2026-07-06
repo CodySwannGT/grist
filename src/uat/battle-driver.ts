@@ -18,13 +18,13 @@ const DEFAULT_MAX_TURNS = 400;
 
 /**
  * Drive a Strike from the front party member at the first standing enemy — the
- * canonical "an agent landed a hit" verification action. No-op when there is no
- * battle state or no standing enemy.
- * @param view - The attached battle view to act on.
+ * canonical "an agent landed a hit" verification action. No-op when no view is
+ * attached (off a battle scene), there is no battle state, or no standing enemy.
+ * @param view - The attached battle view to act on, or null off a battle scene.
  * @returns void
  */
-export function strikeView(view: BattleView): void {
-  const state = view.state();
+export function strikeView(view: BattleView | null): void {
+  const state = view?.state();
   if (!state) {
     return;
   }
@@ -32,7 +32,7 @@ export function strikeView(view: BattleView): void {
   if (targetIndex < 0) {
     return;
   }
-  view.act({
+  view?.act({
     kind: "strike",
     actor: { side: BattleSides.party, index: 0 },
     target: { side: BattleSides.enemies, index: targetIndex },

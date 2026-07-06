@@ -47,6 +47,7 @@ import { soundService } from "../services/sound-service";
 import { InputService } from "../services/input";
 import { CueCaptionView } from "../ui/cue-caption";
 import { fadeSceneIn, transitionToScene } from "./scene-transition";
+import { StandaloneResolution } from "./standalone-resolution";
 import { setLastBattleResult } from "../services/run-store";
 import { BattleController } from "../ui/battle-controller";
 import { BattleHud } from "../ui/battle-hud";
@@ -148,6 +149,12 @@ export class Battle extends Phaser.Scene {
   #launchSeed: number | null = null;
   /** Set once the terminal outcome has been consumed, so it fires exactly once. */
   #resolutionHandled = false;
+  /**
+   * Presents the terminal Victory/Defeat summary and routes to the Title on a
+   * *standalone* battle's resolution (#225) — the standalone counterpart of
+   * {@link #maybeReturnToField}. Only driven when this is not a field launch.
+   */
+  #resolution!: StandaloneResolution;
 
   /** Register the scene key. */
   constructor() {
@@ -209,6 +216,14 @@ export class Battle extends Phaser.Scene {
     this.#cueCaption = new CueCaptionView(this);
     this.#lastGrist = state.grist;
     soundService.attachUnlock(this);
+    // The standalone terminal-resolution controller: on a non-field boot it presents
+    // the Victory/Defeat summary and routes to the Title on a deliberate advance
+    // (#225). A field-launched battle returns to the Field instead and never drives it.
+    this.#resolution = new StandaloneResolution(
+      this,
+      () => this.#runner.state(),
+      this.#encounter
+    );
 
     verifyBridge.attach(SceneKeys.Battle, this.#bridgeView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
@@ -247,6 +262,9 @@ export class Battle extends Phaser.Scene {
     this.#hud.render(this.#runner.state(), this.#controller);
     this.#fireGristSpendCue();
     this.#maybeReturnToField();
+    if (!this.#fromField) {
+      this.#resolution.update();
+    }
   }
 
   /**
@@ -414,6 +432,7 @@ export class Battle extends Phaser.Scene {
       hud: () => this.#controller.model(),
       hash: () => hashState(this.#runner.state()),
       fx: () => this.#lastFx,
+      summary: () => this.#resolution.summary(),
       restart: (seed: number) => {
         this.#runner.restart(seed);
         this.#controller.reset();
@@ -436,6 +455,7 @@ export class Battle extends Phaser.Scene {
     // Detach the bridge first so __VERIFY__.state()/hud() return null (their
     // documented out-of-battle contract) instead of reading disposed objects.
     verifyBridge.attach("", null);
+    this.#resolution.dispose();
     this.#cueCaption.destroy();
     this.#hud.destroy();
     this.#controller.dispose();
