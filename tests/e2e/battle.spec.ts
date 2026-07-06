@@ -442,6 +442,10 @@ test.describe("GRIST — battle scene verification (UAT)", () => {
       () => window.__VERIFY__?.hud()?.log ?? []
     );
     expect(logAfter.some(line => line.includes("Strike"))).toBe(true);
+    // #227: log lines name the combatants — the struck enemy shows its display
+    // name and no player-facing line leaks a raw actor ID (P1/P2/E1/E2).
+    expect(logAfter.some(line => line.includes("Marrow scrapper"))).toBe(true);
+    expect(logAfter.every(line => !/\b[PE]\d\b/.test(line))).toBe(true);
 
     // The enemy telegraph eventually warns of a pending enemy turn as gauges fill.
     const telegraphed = await page.evaluate(async () => {
