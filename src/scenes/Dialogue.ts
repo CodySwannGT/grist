@@ -254,19 +254,19 @@ export class Dialogue extends Phaser.Scene {
   }
 
   /**
-   * The `?scene=` value from the URL, or "" for a non-browser (test) context where
-   * `window` is absent — the verification-seam fallback when no init selector is
-   * passed. A tiny helper so {@link #selectScript} stays lean.
-   * @returns The lowercased `?scene=` value, or "".
+   * The `?scene=` value from the URL (honoring the `?start=` alias the same way
+   * {@link import("./Preloader").Preloader} routes to this scene), or "" for a
+   * non-browser (test) context where `window` is absent — the verification-seam
+   * fallback when no init selector is passed. A tiny helper so {@link #selectScript}
+   * stays lean.
+   * @returns The lowercased `?scene=`/`?start=` value, or "".
    */
   #urlScene(): string {
     if (typeof window === "undefined") {
       return "";
     }
-    return (
-      new URLSearchParams(window.location.search).get("scene")?.toLowerCase() ??
-      ""
-    );
+    const params = new URLSearchParams(window.location.search);
+    return (params.get("scene") ?? params.get("start") ?? "").toLowerCase();
   }
 
   /**

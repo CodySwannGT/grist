@@ -312,16 +312,23 @@ export class Title extends Phaser.Scene {
    * Continue: load the persisted save, rebuild the live run from it
    * ({@link runStateFromSave} — wallet, build, roster), seed the registry, and start
    * the Field so the player resumes with their saved run. Guarded against a torn-down
-   * scene so a slow load never starts the Field after the player left.
+   * scene so a slow load never starts the Field after the player left. Fully guarded:
+   * a load/projection/start failure keeps the player on the Title rather than becoming
+   * an unhandled rejection (the confirm path drives this as `void #startContinue()`) —
+   * mirroring {@link #resolveSave}'s fail-safe (`saveService.load()` is itself total).
    * @returns A promise that resolves once the Field has been started (or skipped).
    */
   async #startContinue(): Promise<void> {
-    const save = await saveService.load();
-    if (!this.#alive) {
-      return;
+    try {
+      const save = await saveService.load();
+      if (!this.#alive) {
+        return;
+      }
+      setRunState(this.registry, runStateFromSave(save));
+      this.scene.start(SceneKeys.Field);
+    } catch {
+      // A failed Continue leaves the player on the Title — never a broken transition.
     }
-    setRunState(this.registry, runStateFromSave(save));
-    this.scene.start(SceneKeys.Field);
   }
 
   /**
