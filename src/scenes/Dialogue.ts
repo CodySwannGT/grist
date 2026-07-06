@@ -32,11 +32,18 @@ import {
   CH1_OPENING_SCENE_ID,
   CH1_REVEAL_NODE_ID,
   CH1_SCRIPT,
+  MILL_RENDER_CHOICE_ID,
+  MILL_RENDERED_SCENE_ID,
+  MILL_SPARE_CHOICE_ID,
+  MILL_SPARED_SCENE_ID,
   SABLE_REVEALED_FLAG,
   SIDE_MILL_SCENE_ID,
   SIDE_MILL_SCRIPT,
 } from "../content";
+import { MILL_RENDERED_FLAG } from "../content/ledger-codex";
 import type { DialoguePresenterInput, SceneDef } from "../logic/narrative";
+import { foldSceneProgress, type SceneProgress } from "../logic/save";
+import { saveService } from "../services/save-service";
 import {
   beginRevealBeat,
   canAdvancePastReveal,
@@ -81,6 +88,27 @@ interface DialogueMount {
   readonly opening: string;
   /** True for the authored Ch.1 opening (drives the reveal-flag + ambush handoff). */
   readonly ch1: boolean;
+  /** True for Wren's mill side-story (drives the render-or-not ledger fold, #223). */
+  readonly mill: boolean;
+}
+
+/**
+ * Map the mill terminal outcome scene the presenter has crossed into to the
+ * render-or-not choice value the {@link MILL_RENDERED_FLAG} ledger flag records
+ * (#223) — the render or spare choice id, both truthy so the codex records either
+ * branch. Returns `null` while the cursor is still in the discovery walk / at the
+ * fork (no outcome yet). A pure module helper so the after-step stays lean.
+ * @param sceneId - The presenter's current scene id.
+ * @returns The choice value to record, or `null` when no outcome is reached yet.
+ */
+function millChoiceValue(sceneId: string): string | null {
+  if (sceneId === MILL_RENDERED_SCENE_ID) {
+    return MILL_RENDER_CHOICE_ID;
+  }
+  if (sceneId === MILL_SPARED_SCENE_ID) {
+    return MILL_SPARE_CHOICE_ID;
+  }
+  return null;
 }
 
 /** Hosts the reusable dialogue presenter over a (demo) script and bridges it. */
@@ -91,6 +119,10 @@ export class Dialogue extends Phaser.Scene {
   #cueCaption!: CueCaptionView;
   /** True when this scene is hosting the authored Ch.1 opening (`?scene=opening`). */
   #ch1 = false;
+  /** True when this scene is hosting Wren's mill side-story (`?scene=mill`, #223). */
+  #mill = false;
+  /** Latches the mill render-or-not ledger fold so it persists exactly once (#223). */
+  #millResolved = false;
   /** Latches the reveal-flag fold so it happens exactly once at the reveal node. */
   #revealed = false;
   /** Latches the reveal→ambush handoff so the Battle is launched exactly once. */
@@ -120,6 +152,8 @@ export class Dialogue extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(DialogueColors.boxFill);
     const mount = this.#selectScript();
     this.#ch1 = mount.ch1;
+    this.#mill = mount.mill;
+    this.#millResolved = false;
     this.#revealed = false;
     this.#launchedAmbush = false;
     this.#revealBeat = null;
@@ -180,23 +214,31 @@ export class Dialogue extends Phaser.Scene {
             .get("scene")
             ?.toLowerCase() ?? "");
     if (requested === OPENING_SCENE_PARAM) {
-      return { table: CH1_SCRIPT, opening: CH1_OPENING_SCENE_ID, ch1: true };
+      return {
+        table: CH1_SCRIPT,
+        opening: CH1_OPENING_SCENE_ID,
+        ch1: true,
+        mill: false,
+      };
     }
     if (requested === MILL_SCENE_PARAM) {
       // The mill side-story beat (#111): a plain authored script with no Ch.1
-      // reveal/ambush handoff, so `ch1` is false (the after-step is a no-op). Its
-      // render-or-not fork's PERSISTED consequence rides the bridge's mill-beat cell
-      // (the `MoralLedger` the save layer writes), not this presenter's flags.
+      // reveal/ambush handoff, so `ch1` is false. Its render-or-not fork writes the
+      // `mill-rendered` narrative flag THROUGH to the persisted save (#223) so the
+      // Ledger codex records the choice in live play — alongside the persisted
+      // `MoralLedger` the bridge's mill-beat cell already folds.
       return {
         table: SIDE_MILL_SCRIPT,
         opening: SIDE_MILL_SCENE_ID,
         ch1: false,
+        mill: true,
       };
     }
     return {
       table: demoDialogueScript(),
       opening: DEMO_DIALOGUE_OPENING,
       ch1: false,
+      mill: false,
     };
   }
 
@@ -269,7 +311,68 @@ export class Dialogue extends Phaser.Scene {
    */
   #emit(input: DialoguePresenterInput): void {
     eventsCenter.emit(DialogueEvents.Input, input);
-    this.#afterCh1Step();
+    this.#afterStep();
+  }
+
+  /**
+   * The authored-scene after-step: once the presenter has folded the just-emitted
+   * input, run the Ch.1 reveal/ambush handoff (`?scene=opening`) or the mill
+   * render-or-not ledger fold (`?scene=mill`, #223). A no-op for the verification demo
+   * script (neither authored scene is mounted). Both arms latch so their persisted
+   * write fires exactly once.
+   * @returns void
+   */
+  #afterStep(): void {
+    if (this.#ch1) {
+      this.#afterCh1Step();
+    } else if (this.#mill) {
+      this.#afterMillStep();
+    }
+  }
+
+  /**
+   * The mill after-step (#223): the instant the presenter crosses into a render/spare
+   * outcome scene, fold the {@link MILL_RENDERED_FLAG} narrative flag (the chosen
+   * branch id — both truthy, so the Ledger codex records either choice) into the
+   * presenter AND write it THROUGH to the persisted save, so the moral choice survives
+   * a genuine reload and the codex records it in live play (the pre-existing #116
+   * persistence gap this bug closes). Latched so it fires exactly once. A no-op while
+   * the cursor is still in the discovery walk or parked at the fork.
+   * @returns void
+   */
+  #afterMillStep(): void {
+    if (this.#millResolved) {
+      return;
+    }
+    const narrative = this.#presenter.state.narrative;
+    const value = millChoiceValue(narrative.sceneId);
+    if (value === null) {
+      return;
+    }
+    this.#millResolved = true;
+    this.#presenter.writeFlag(MILL_RENDERED_FLAG, value);
+    void this.#persistNarrative(this.#presenter.state.narrative);
+  }
+
+  /**
+   * Write the dialogue scene's live narrative flags THROUGH to the persisted save
+   * (#223): load the current save, fold the presenter's cursor + flag ledger into its
+   * `scene.flags` via the pure {@link foldSceneProgress} projection (merging over any
+   * flags other beats already wrote), and persist it via the shared {@link saveService}
+   * — the same `SaveDataV3.scene.flags` seam the Reckoning/reunion beats persist
+   * through. Best-effort: a storage failure is swallowed so it never breaks play
+   * (mirroring `SaveService`'s own fail-safe reads); the in-memory ledger still holds
+   * the flag for the rest of the session.
+   * @param progress - The narrative cursor + flags snapshot to persist.
+   * @returns A promise that resolves once the write is attempted.
+   */
+  async #persistNarrative(progress: SceneProgress): Promise<void> {
+    try {
+      const save = await saveService.load();
+      await saveService.save(foldSceneProgress(save, progress));
+    } catch {
+      // Persistence is best-effort; the folded flag remains in the live ledger.
+    }
   }
 
   /**
@@ -284,12 +387,13 @@ export class Dialogue extends Phaser.Scene {
    * @returns void
    */
   #afterCh1Step(): void {
-    if (!this.#ch1) {
-      return;
-    }
     if (!this.#revealed && this.#presenter.nodeId === CH1_REVEAL_NODE_ID) {
       this.#revealed = true;
       this.#presenter.writeFlag(SABLE_REVEALED_FLAG, true);
+      // Write the reveal flag THROUGH to the persisted save (#223) so the Ledger codex
+      // records "The Delivery" after a genuine reload — the same scene.flags seam the
+      // Reckoning/reunion beats persist through.
+      void this.#persistNarrative(this.#presenter.state.narrative);
       // Seed the quiet beat the instant the reveal lands (#114 AC3): the next advance
       // is gated by canAdvancePastReveal until update() has folded the full beat.
       this.#revealBeat = beginRevealBeat();
