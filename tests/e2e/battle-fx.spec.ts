@@ -32,7 +32,7 @@ async function waitForScene(page: Page, key: string): Promise<void> {
  * @param page - The Playwright page.
  */
 async function bootBattle(page: Page): Promise<void> {
-  await page.goto(`/?uat=1&seed=${FIXED_SEED}`);
+  await page.goto(`/?scene=battle&uat=1&seed=${FIXED_SEED}`);
   await waitForScene(page, "Battle");
 }
 

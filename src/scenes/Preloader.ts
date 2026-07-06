@@ -50,11 +50,11 @@ export class Preloader extends Phaser.Scene {
   }
 
   /**
-   * Register the global animations and start the next scene. Defaults to Battle
-   * (the shipped boot target) so every existing battle test is unchanged; starts
-   * the Field scene instead only when the page is loaded with `?scene=field` (or
-   * the `?start=Field` alias). Field↔Battle wiring is a follow-up (#72) — this
-   * query-gated start is purely a verification entry point for the field slice.
+   * Register the global animations and start the next scene. Defaults to the Title
+   * front door (#226) — a plain URL lands on the main menu — while the `?scene=`/
+   * `?start=` seams still route directly to any gameplay scene (they are the DEV/UAT
+   * verification entry points, not the player path). Notably `?scene=battle` keeps
+   * booting the standalone battle so every existing battle test is unchanged.
    * @returns void
    */
   create(): void {
@@ -70,18 +70,20 @@ export class Preloader extends Phaser.Scene {
  * `?scene=bench`, the Dialogue presenter scene when it carries `?scene=dialogue`,
  * `?scene=opening` (the Ch.1 opening — the Dialogue scene selects the Ch.1 script
  * over the demo for `opening`; #105), or `?scene=mill` (Wren's "What the mill took"
- * side-story beat; #111), case-insensitive, with the `?start=<Scene>` alias, else
- * the default Battle.
- * Reading the query here (not in `gameConfig`) keeps the scene registry static and
- * the default boot — every existing battle test — unchanged. The bench and dialogue
- * starts are verification entry points (growth slice #86; dialogue presenter #104),
- * the field counterpart of the existing `?scene=field` start. Guarded for
- * non-browser (test) contexts where `window` is absent.
+ * side-story beat; #111), the standalone Battle when it carries `?scene=battle`,
+ * case-insensitive, with the `?start=<Scene>` alias, else the default Title front
+ * door (#226).
+ * Reading the query here (not in `gameConfig`) keeps the scene registry static. The
+ * `?scene=`/`?start=` values are the DEV/UAT verification entry points (growth slice
+ * #86; dialogue presenter #104; the field counterpart of `?scene=field`); the
+ * explicit `?scene=battle` keeps every existing battle test booting Battle even
+ * though the no-param default is now Title. Guarded for non-browser (test) contexts
+ * where `window` is absent.
  * @returns The scene key to start.
  */
 function startScene(): string {
   if (typeof window === "undefined") {
-    return SceneKeys.Battle;
+    return SceneKeys.Title;
   }
   const params = new URLSearchParams(window.location.search);
   const requested = (
@@ -111,5 +113,8 @@ function startScene(): string {
   if (requested === "menu") {
     return SceneKeys.Menu;
   }
-  return SceneKeys.Battle;
+  if (requested === "battle") {
+    return SceneKeys.Battle;
+  }
+  return SceneKeys.Title;
 }

@@ -242,7 +242,7 @@ test.describe("GRIST — upper Vanta increment verification (UAT, #128)", () => 
     });
     page.on("pageerror", error => errors.push(error.message));
 
-    await page.goto("/?uat=1");
+    await page.goto("/?scene=battle&uat=1");
     await waitForKeystoneBridge(page);
 
     // Before opening: no keystone is held — the cell cannot fabricate one.
@@ -285,7 +285,7 @@ test.describe("GRIST — upper Vanta increment verification (UAT, #128)", () => 
     expect(new Set(firstHashes).size).toBeGreaterThan(1);
 
     // A GENUINE full reload + same sequence reproduces a byte-identical progression.
-    await page.goto("/?uat=1");
+    await page.goto("/?scene=battle&uat=1");
     await waitForKeystoneBridge(page);
     const secondHashes = await sample();
     expect(secondHashes).toEqual(firstHashes);

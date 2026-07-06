@@ -167,7 +167,7 @@ test.describe("GRIST — play-to-victory + determinism gate (UAT)", () => {
     });
     page.on("pageerror", error => errors.push(error.message));
 
-    await page.goto("/?uat=1");
+    await page.goto("/?scene=battle&uat=1");
     await waitForBattle(page);
 
     const { steps, finalPhase } = await playEncounter(page, SEED_A);
@@ -193,7 +193,7 @@ test.describe("GRIST — play-to-victory + determinism gate (UAT)", () => {
   test("determinism state-hash gate: identical progression on the same seed, divergent on another", async ({
     page,
   }) => {
-    await page.goto("/?uat=1");
+    await page.goto("/?scene=battle&uat=1");
     await waitForBattle(page);
 
     const first = await playEncounter(page, SEED_A);

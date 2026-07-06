@@ -29,6 +29,14 @@ import {
 export const SceneKeys = {
   Boot: "Boot",
   Preloader: "Preloader",
+  /**
+   * The Title / main-menu front door (#226) — the DEFAULT cold-boot target for a
+   * plain URL. It offers New Game (→ the Ch.1 opening → Field) and a save-gated
+   * Continue (→ the Field with the saved run). The `?scene=`/`?start=` seams still
+   * route directly to any scene below (they are the DEV/UAT verification entry
+   * points, not the player path); only the no-param default changed from Battle.
+   */
+  Title: "Title",
   Battle: "Battle",
   Field: "Field",
   Bench: "Bench",

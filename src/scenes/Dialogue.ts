@@ -80,6 +80,18 @@ const MILL_SCENE_PARAM = "mill";
 /** Fallback field seed for the Ch.1 ambush when no `?seed=`/bridge seed is set. */
 const CH1_AMBUSH_SEED = 0x9e3779b1;
 
+/**
+ * The optional init data the Dialogue scene accepts (#226): a `script` selector the
+ * Title's **New Game** passes (`"opening"`) to mount the Ch.1 opening WITHOUT a
+ * `?scene=opening` URL — the player path, distinct from the verification seam. When
+ * absent (the `?scene=` boots), the scene falls back to reading the URL, so every
+ * existing dialogue/opening/mill e2e is unchanged.
+ */
+interface DialogueStart {
+  /** The script to mount (`"opening"` / `"mill"` / `"dialogue"`); URL if omitted. */
+  readonly script?: string;
+}
+
 /** One mounted dialogue script: its scene table + the scene id to open it at. */
 interface DialogueMount {
   /** The scene-definition table to play through. */
@@ -143,14 +155,16 @@ export class Dialogue extends Phaser.Scene {
 
   /**
    * Mount the presenter over the selected script (the demo by default; the authored
-   * Ch.1 opening under `?scene=opening` — #105), wire the live input service + the
-   * semantic-intent bus subscription, make the choice buttons clickable, attach the
-   * verification bridge, and free every subscription on shutdown.
+   * Ch.1 opening under `?scene=opening` or `data.script === "opening"` from the Title's
+   * New Game — #105/#226), wire the live input service + the semantic-intent bus
+   * subscription, make the choice buttons clickable, attach the verification bridge,
+   * and free every subscription on shutdown.
+   * @param data - Optional init selector from the Title (`{ script }`); URL if absent.
    * @returns void
    */
-  create(): void {
+  create(data?: DialogueStart): void {
     this.cameras.main.setBackgroundColor(DialogueColors.boxFill);
-    const mount = this.#selectScript();
+    const mount = this.#selectScript(data);
     this.#ch1 = mount.ch1;
     this.#mill = mount.mill;
     this.#millResolved = false;
@@ -198,21 +212,18 @@ export class Dialogue extends Phaser.Scene {
   }
 
   /**
-   * Resolve which script the scene mounts from the URL: the authored Ch.1 opening
-   * under `?scene=opening` (case-insensitive, matching how the Preloader reads the
-   * query), else the verification-only demo script the dialogue UAT (#104) drives.
-   * Keeping `?scene=dialogue` on the demo means the existing dialogue e2e stays
-   * green; only `?scene=opening` selects the real opening. Guarded for non-browser
-   * (test) contexts where `window` is absent. A tiny helper so `create()` stays lean.
+   * Resolve which script the scene mounts: the authored Ch.1 opening for `"opening"`,
+   * Wren's mill side-story for `"mill"`, else the verification-only demo script the
+   * dialogue UAT (#104) drives. The selector comes from the init `data.script` first
+   * (the Title's **New Game** player path, #226) and falls back to the `?scene=` URL
+   * (the verification seam) — so `?scene=opening`/`?scene=mill`/`?scene=dialogue` all
+   * stay green while New Game can mount the opening without a URL. Case-insensitive,
+   * matching how the Preloader reads the query.
+   * @param data - The optional init selector the Title passes; URL used if absent.
    * @returns The script table + opening scene id + whether it is the Ch.1 opening.
    */
-  #selectScript(): DialogueMount {
-    const requested =
-      typeof window === "undefined"
-        ? ""
-        : (new URLSearchParams(window.location.search)
-            .get("scene")
-            ?.toLowerCase() ?? "");
+  #selectScript(data?: DialogueStart): DialogueMount {
+    const requested = (data?.script ?? this.#urlScene()).toLowerCase();
     if (requested === OPENING_SCENE_PARAM) {
       return {
         table: CH1_SCRIPT,
@@ -240,6 +251,22 @@ export class Dialogue extends Phaser.Scene {
       ch1: false,
       mill: false,
     };
+  }
+
+  /**
+   * The `?scene=` value from the URL (honoring the `?start=` alias the same way
+   * {@link import("./Preloader").Preloader} routes to this scene), or "" for a
+   * non-browser (test) context where `window` is absent — the verification-seam
+   * fallback when no init selector is passed. A tiny helper so {@link #selectScript}
+   * stays lean.
+   * @returns The lowercased `?scene=`/`?start=` value, or "".
+   */
+  #urlScene(): string {
+    if (typeof window === "undefined") {
+      return "";
+    }
+    const params = new URLSearchParams(window.location.search);
+    return (params.get("scene") ?? params.get("start") ?? "").toLowerCase();
   }
 
   /**

@@ -129,7 +129,9 @@ test.describe("Temp audio at its moments + redundancy (UAT, #115)", () => {
   }) => {
     const errors = captureErrors(page);
 
-    await page.goto(`/?uat=1&seed=${FIXED_SEED}&encounter=${TANKY_ENCOUNTER}`);
+    await page.goto(
+      `/?scene=battle&uat=1&seed=${FIXED_SEED}&encounter=${TANKY_ENCOUNTER}`
+    );
     await waitForScene(page, "Battle");
 
     // Render lands the Rendering DoT on the tanky construct → the `rendering`
