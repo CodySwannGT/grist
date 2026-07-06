@@ -75,6 +75,9 @@ export class BattleSummaryView {
     const px = cx - PANEL.width / 2;
     const py = GameView.height / 2 - PANEL.height / 2;
 
+    // The scrim is interactive so the WHOLE screen is a tap-to-advance target and —
+    // sitting at OVERLAY_DEPTH above the battlers/HUD — it also intercepts stray taps
+    // that would otherwise bleed through to the resolved fight's UI objects.
     const scrim = scene.add
       .rectangle(
         0,
@@ -85,7 +88,9 @@ export class BattleSummaryView {
         SCRIM_ALPHA
       )
       .setOrigin(0, 0)
-      .setDepth(OVERLAY_DEPTH);
+      .setDepth(OVERLAY_DEPTH)
+      .setInteractive({ useHandCursor: true });
+    scrim.on(Phaser.Input.Events.POINTER_DOWN, onAdvance);
     const panel = addPanel(scene, px, py, PANEL.width, PANEL.height)
       .setOrigin(0, 0)
       .setDepth(OVERLAY_DEPTH);
