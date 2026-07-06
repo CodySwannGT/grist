@@ -28,6 +28,8 @@ export const FieldHudLayout = {
   /** Mini-map summon hint, top-right. */
   hintRightX: 378,
   hintY: 6,
+  /** Pause-menu opener hint ("[Esc] menu"), stacked just below the map hint (#233). */
+  menuHintY: 16,
   /** Floating context prompt anchor (centered above Wren's head height band). */
   promptX: GameView.width / 2,
   promptY: 196,

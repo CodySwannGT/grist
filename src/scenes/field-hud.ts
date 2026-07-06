@@ -62,6 +62,8 @@ const NODE_TEXT: Readonly<Record<RoomVisitState, string>> = {
 
 /** The summon-hint label (advertises the mini-map toggle key). */
 const MAP_HINT = "[M] map";
+/** The pause-menu opener hint (advertises the Esc opener, #233). */
+const MENU_HINT = "[Esc] menu";
 /** The mini-map overlay title. */
 const MAP_TITLE = "Marrow";
 
@@ -79,6 +81,8 @@ export class FieldHud {
   readonly #nodeRows: readonly NodeRow[];
   /** The summon hint (kept so it can be hidden while the map is open). */
   readonly #hint: Phaser.GameObjects.Text;
+  /** The pause-menu opener hint (#233), stacked under the map hint, top-right. */
+  readonly #menuHint: Phaser.GameObjects.Text;
   /** The summonable-map button hit-rect (top-right), for touch summon. */
   readonly #summonButton: Phaser.GameObjects.Rectangle;
   #mapOpen = false;
@@ -105,6 +109,17 @@ export class FieldHud {
         FieldHudLayout.hintRightX,
         FieldHudLayout.hintY,
         MAP_HINT,
+        FieldHudTextStyles.hint
+      )
+      .setOrigin(1, 0)
+      .setDepth(HUD_DEPTH);
+    // The pause-menu opener hint (#233), same chrome style, stacked just under the
+    // map hint so both discoverable openers sit together in the top-right corner.
+    this.#menuHint = scene.add
+      .text(
+        FieldHudLayout.hintRightX,
+        FieldHudLayout.menuHintY,
+        MENU_HINT,
         FieldHudTextStyles.hint
       )
       .setOrigin(1, 0)
@@ -274,6 +289,7 @@ export class FieldHud {
     this.#mapPanel.setVisible(open);
     this.#mapTitle.setVisible(open);
     this.#hint.setVisible(!open);
+    this.#menuHint.setVisible(!open);
     this.#nodeRows.forEach(row => {
       row.marker.setVisible(open);
       row.label.object.setVisible(open);

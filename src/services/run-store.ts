@@ -23,7 +23,24 @@ const RunKeys = {
   run: "grist:run-state",
   lastResult: "grist:last-battle-result",
   fieldState: "grist:field-state",
+  fieldView: "grist:field-view",
 } as const;
+
+/**
+ * Wren's adapter-level render position when the Field handed off to the pause menu
+ * (#233). The pure {@link FieldState} deliberately does not model Wren's continuous
+ * position *within* a room (it is render state, not sim state), so the pause round-
+ * trip stashes it here to restore her exactly where she stood — unlike the post-
+ * battle resume, which respawns her at the room entrance on purpose.
+ */
+export interface FieldViewSnapshot {
+  /** Wren's logical (384×216) center X. */
+  readonly x: number;
+  /** Wren's logical (384×216) center Y. */
+  readonly y: number;
+  /** Wren's facing (a `BattlerDir` string), so her idle pose is restored too. */
+  readonly facing: string;
+}
 
 /**
  * Read the current run-state from the registry, lazily seeding a fresh run on
@@ -104,4 +121,38 @@ export function setFieldState(registry: Registry, state: FieldState): void {
  */
 export function getFieldState(registry: Registry): FieldState | null {
   return (registry.get(RunKeys.fieldState) as FieldState | undefined) ?? null;
+}
+
+/**
+ * Stash Wren's live render position (#233) so a pause-menu round-trip restores her
+ * exactly where she stood. The Field writes this immediately before opening the
+ * Menu; it reads and clears it via {@link takeFieldViewSnapshot} on the resume.
+ * @param registry - The scene registry.
+ * @param view - Wren's position + facing to stash.
+ * @returns void
+ */
+export function setFieldViewSnapshot(
+  registry: Registry,
+  view: FieldViewSnapshot
+): void {
+  registry.set(RunKeys.fieldView, view);
+}
+
+/**
+ * Read and clear the stashed Wren render position (one-shot): returns the snapshot
+ * the Field stored before opening the pause menu, or null when none is pending.
+ * Clearing on read means a menu return consumes it exactly once, so a later post-
+ * battle resume never wrongly restores a stale pause position.
+ * @param registry - The scene registry.
+ * @returns The stashed snapshot, or null.
+ */
+export function takeFieldViewSnapshot(
+  registry: Registry
+): FieldViewSnapshot | null {
+  const view = registry.get(RunKeys.fieldView) as FieldViewSnapshot | undefined;
+  if (!view) {
+    return null;
+  }
+  registry.remove(RunKeys.fieldView);
+  return view;
 }

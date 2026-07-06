@@ -63,6 +63,12 @@ describe("field key -> intent map", () => {
     expect(keyToFieldIntent("KeyM")).toEqual({ kind: "toggle-map" });
   });
 
+  it("maps the pause-menu opener to Escape (#233)", () => {
+    // Esc is the universal pause/menu opener from the Field, the primary gameplay
+    // surface — the Menu's own Esc closes back to where the player was.
+    expect(keyToFieldIntent("Escape")).toEqual({ kind: "open-menu" });
+  });
+
   it("leaves Tab unbound so it cannot blur the canvas", () => {
     // Tab is the browser's focus-navigation key; binding it without a capture
     // path would move focus off the canvas and stop later keyboard input.

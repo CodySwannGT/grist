@@ -203,6 +203,25 @@ export interface BattleLaunchData {
 export interface FieldResumeData {
   /** True when the Field is being re-entered after a battle (restore the session). */
   readonly resumed: boolean;
+  /**
+   * True when the Field is being re-entered from the pause Menu (#233): restore the
+   * stashed session AND Wren's exact render position (no battle result to consume,
+   * no room advance), so closing the menu drops the player back exactly where they
+   * paused — distinct from `resumed`, which respawns Wren after a fight.
+   */
+  readonly fromMenu?: boolean;
+}
+
+/**
+ * The typed scene-data a gameplay surface hands to the pause Menu when it opens it
+ * (#233): the scene key to return to when the menu is closed with Cancel/Back, so
+ * the Menu resumes the caller exactly where the player was rather than cold-starting
+ * anything. Absent when the Menu is reached standalone via the `?scene=menu` seam —
+ * that menu has no caller and Cancel simply stays put.
+ */
+export interface MenuLaunchData {
+  /** The caller scene key to resume on close (e.g. {@link SceneKeys.Field}). */
+  readonly returnTo: string;
 }
 
 /**

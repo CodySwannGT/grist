@@ -17,7 +17,6 @@ import {
   FieldColors,
   FieldEvents,
   FieldLayout,
-  GameView,
   SceneKeys,
   type FieldResumeData,
 } from "../consts";
@@ -48,11 +47,14 @@ import { getRunState } from "../services/run-store";
 import { drawFieldBackdrop, drawFieldChrome } from "./field-chrome";
 import { FieldHud } from "./field-hud";
 import { makeFieldView } from "./field-bridge-view";
+import { clampUnit, clampWrenToFloor, stepWren } from "./field-motion";
 import {
   advanceToNextRoom,
   beginFieldSession,
   engageEncounter,
   launchPendingBattle,
+  openPauseMenu,
+  resumeFieldFromMenu,
   resumeFieldSession,
 } from "./field-launch";
 import { fadeSceneIn } from "./scene-transition";
@@ -108,17 +110,24 @@ export class Field extends Phaser.Scene {
   create(data?: Partial<FieldResumeData>): void {
     const run = getRunState(this.registry);
     const seed = verifyBridge.takeSeed() ?? DEFAULT_SEED;
-    this.#wrenX = FieldLayout.wrenSpawnX;
-    this.#wrenY = FieldLayout.wrenSpawnY;
     this.#moveTo = null;
     this.#miniMapOpen = false;
     this.#input = new FieldInputService(this);
 
-    const session = data?.resumed
-      ? resumeFieldSession(this.registry, run, seed)
-      : beginFieldSession(run, seed);
+    const session = data?.fromMenu
+      ? resumeFieldFromMenu(this.registry, run, seed)
+      : data?.resumed
+        ? resumeFieldSession(this.registry, run, seed)
+        : beginFieldSession(run, seed);
     this.#state = session.state;
     this.#run = session.run;
+    // A pause-menu return (#233) carries Wren's exact stashed position — she was
+    // paused, not sent to battle — so closing the menu drops her back precisely
+    // where she stood; every other entry spawns her at the room entrance.
+    this.#wrenX = session.wren?.x ?? FieldLayout.wrenSpawnX;
+    this.#wrenY = session.wren?.y ?? FieldLayout.wrenSpawnY;
+    this.#facing =
+      (session.wren?.facing as BattlerDir | undefined) ?? this.#facing;
 
     // A post-battle resume enters behind the incoming half of the readable return
     // cut (#114 AC2): fade the Field in from black so it reveals rather than snaps. A
@@ -160,14 +169,13 @@ export class Field extends Phaser.Scene {
     const dir = this.#activeDirection();
     const len = Math.hypot(dir.dx, dir.dy);
     if (len > 0) {
-      // Normalize the direction before scaling so every heading — single-axis,
-      // a held keyboard diagonal (dx=±1,dy=±1), or a fractional tap-to-move
-      // vector — walks at the same `moveSpeed`. Without this a held diagonal
-      // would move ~41% faster than a straight walk.
-      const stepPx = (FieldLayout.moveSpeed * delta) / 1000;
-      this.#wrenX += (dir.dx / len) * stepPx;
-      this.#wrenY += (dir.dy / len) * stepPx;
-      this.#clampWren();
+      // Step (normalized so every heading walks at the same speed — a raw held
+      // diagonal would move ~41% faster) then clamp to the walkable floor band.
+      const next = clampWrenToFloor(
+        stepWren(this.#wrenX, this.#wrenY, dir, len, delta)
+      );
+      this.#wrenX = next.x;
+      this.#wrenY = next.y;
       this.#syncWren();
     }
     this.#syncWrenAnim(dir, len > 0);
@@ -234,6 +242,18 @@ export class Field extends Phaser.Scene {
     }
     if (intent.kind === "toggle-map") {
       this.#toggleMiniMap();
+      return;
+    }
+    if (intent.kind === "open-menu") {
+      // Esc hands off to the pause Menu (#233), stashing the live session + Wren's
+      // exact position so closing it resumes the Field byte-for-byte. The Menu is a
+      // full-screen surface reached by a real scene.start (mirroring Field↔Battle),
+      // so the bridge's scene()/view swaps cleanly for the e2e.
+      openPauseMenu(this, this.registry, this.#state, {
+        x: this.#wrenX,
+        y: this.#wrenY,
+        facing: this.#facing,
+      });
     }
   };
 
@@ -418,25 +438,6 @@ export class Field extends Phaser.Scene {
   }
 
   /**
-   * Clamp Wren's center to the walkable floor band (below the wall line, inside
-   * the edge inset on every side) so she can never leave the room.
-   * @returns void
-   */
-  #clampWren(): void {
-    const { edgeInset } = FieldLayout;
-    this.#wrenX = Phaser.Math.Clamp(
-      this.#wrenX,
-      edgeInset,
-      GameView.width - edgeInset
-    );
-    this.#wrenY = Phaser.Math.Clamp(
-      this.#wrenY,
-      FieldLayout.wallY + edgeInset,
-      GameView.height - edgeInset
-    );
-  }
-
-  /**
    * Mirror Wren's logical position onto her sprite. Allocation-free.
    * @returns void
    */
@@ -518,15 +519,4 @@ export class Field extends Phaser.Scene {
     eventsCenter.off(FieldEvents.Input, this.#onIntent);
     this.#input.dispose();
   }
-}
-
-/**
- * Clamp a signed scalar to the -1..1 range used as a fractional step component
- * for tap-to-move; preserves sub-unit magnitude so diagonal approach stays
- * smooth while keeping each axis within a unit step.
- * @param value - The raw axis component.
- * @returns The clamped component in [-1, 1].
- */
-function clampUnit(value: number): number {
-  return Math.max(-1, Math.min(1, value));
 }
