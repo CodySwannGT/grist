@@ -8,12 +8,16 @@
  * in the committed atlas, keeping "a missing frame is a failing test" true even
  * though the names are derived.
  *
- * Two art kinds exist: `char` actors ship idle / attack / dead poses plus walk
- * cycles; `monster` actors ship only the 4×4 walk sheet, so their idle *is* a
- * slow walk-cycle bob and their attack pose is a walk frame. The exhaustive
- * {@link BATTLER_KIND} table is compile-checked against the content id unions —
- * registering a new party member or enemy without casting its art is a type
- * error, not a silent white box.
+ * Two art kinds exist. Since the bespoke PixelLab cast (#203) every ref ships a
+ * real idle pose, a real attack pose, and a full walk cycle per facing — so the
+ * kind now only decides the DOWNED pose: `char` (the party) ships a dedicated
+ * `dead` frame (its most-collapsed hurt pose); `monster` (enemies) ships no hurt
+ * kit, so its downed pose is its idle frame, dimmed by the scene. Monsters also
+ * keep playing their walk cycle as a slow idle bob (a hovering read), which the
+ * spirit refs layer a gentle float on top of ({@link SPIRIT_HOVER_REFS}). The
+ * exhaustive {@link BATTLER_KIND} table is compile-checked against the content id
+ * unions — registering a new party member or enemy without casting its art is a
+ * type error, not a silent white box.
  * @module ui/battler-view
  */
 import type { EnemyId, PartyMemberId } from "../content";
@@ -41,22 +45,58 @@ export const BattlerDirs = {
 /** A battler facing direction. */
 export type BattlerDir = (typeof BattlerDirs)[keyof typeof BattlerDirs];
 
-/** Walk-cycle frames per direction in every battler's sheet. */
-export const WALK_FRAME_COUNT = 4;
+/**
+ * Walk-cycle frame count per direction, per ref. The PixelLab cast (#203) renders
+ * 6-frame walk cycles (a few mannequin templates yield 4); this table is the
+ * single source of truth for anim registration and the asset-coverage contract,
+ * so a ref whose committed cycle length changes is a one-line edit here (and the
+ * contract test proves the count matches the committed atlas frames). Defaulted
+ * via {@link battlerWalkFrameCount} so an un-listed ref falls back to the common
+ * 6-frame cycle.
+ */
+const WALK_FRAMES: Readonly<Record<BattlerRef, number>> = {
+  wren: 6,
+  tobi: 6,
+  halcyon: 6,
+  quietus: 6,
+  asch: 6,
+  cal: 6,
+  shrike: 6,
+  "marrow-scrapper": 6,
+  "render-construct": 6,
+  "the-ashling": 6,
+  "house-enforcer": 6,
+  "drowned-husk": 6,
+  "requiem-wraith": 6,
+  "deep-auditor": 6,
+  "halcyon-knight": 6,
+} as const;
+
+/** The common walk-cycle length when a ref is not listed in {@link WALK_FRAMES}. */
+const DEFAULT_WALK_FRAMES = 6;
+
+/**
+ * The walk-cycle frame count for a ref (its {@link WALK_FRAMES} entry, or the
+ * common {@link DEFAULT_WALK_FRAMES}).
+ * @param ref - A cast battler ref.
+ * @returns The number of walk frames per direction.
+ */
+export function battlerWalkFrameCount(ref: BattlerRef): number {
+  return WALK_FRAMES[ref] ?? DEFAULT_WALK_FRAMES;
+}
 
 /**
  * The exhaustive ref → art-kind cast table. Compile-checked: adding a new
- * content id without an entry here fails the build.
+ * content id without an entry here fails the build. `char` = the party (ships a
+ * dedicated `dead` pose); `monster` = enemies (downed pose is the dimmed idle).
  */
 export const BATTLER_KIND: Readonly<Record<BattlerRef, BattlerKind>> = {
   wren: BattlerKinds.char,
   tobi: BattlerKinds.char,
   halcyon: BattlerKinds.char,
-  // The Act II reunion roster (#140) — `char` actors like the rest of the party. Their
-  // dedicated battler art is authored with their reunion content (a living doc, decision
-  // 0003); until that art lands they are ART-PENDING (see `ART_PENDING_REFS` /
-  // `battlerArtRef`'s fallback), so the cast is registered here (satisfying the
-  // compile-checked exhaustiveness) without a committed atlas frame yet.
+  // The Act II reunion roster (#140) — now fully cast as bespoke PixelLab `char`
+  // actors (#203), each with real idle/attack/walk plus a `dead` pose carved from
+  // its hurt kit. No longer ART-PENDING.
   quietus: BattlerKinds.char,
   asch: BattlerKinds.char,
   cal: BattlerKinds.char,
@@ -64,29 +104,24 @@ export const BATTLER_KIND: Readonly<Record<BattlerRef, BattlerKind>> = {
   "marrow-scrapper": BattlerKinds.monster,
   "render-construct": BattlerKinds.monster,
   "the-ashling": BattlerKinds.monster,
-  "house-enforcer": BattlerKinds.char,
+  // Enemies: no hurt kit, so `monster` (downed = dimmed idle). The gladiator and
+  // frame-knight bosses were `char` under the Ninja Adventure stand-ins (which had
+  // Dead.png); their PixelLab kits ship no hurt frames, so they are `monster` now.
+  "house-enforcer": BattlerKinds.monster,
   "drowned-husk": BattlerKinds.monster,
   "requiem-wraith": BattlerKinds.monster,
   "deep-auditor": BattlerKinds.monster,
-  "halcyon-knight": BattlerKinds.char,
+  "halcyon-knight": BattlerKinds.monster,
 } as const;
 
 /**
- * Cast refs whose dedicated battler art has not yet been authored — the Act II reunion
- * roster (#140), whose art ships with their reunion content (a living doc, decision
- * 0003). They are registered in {@link BATTLER_KIND} so the exhaustive, compile-checked
- * cast type stays satisfied, but are held out of the art-iteration seams below until
- * their frames land: {@link BATTLER_REFS} (anim registration + the asset-coverage
- * contract) excludes them, and {@link battlerArtRef} falls them back to stand-in art —
- * so an art-pending member never registers a missing-frame anim or renders a white box.
- * Remove a ref here the moment its `<ref>/…` frames are committed to the atlas.
+ * Cast refs whose dedicated battler art has not yet been authored. Empty since the
+ * full bespoke cast landed (#203): every ref in {@link BATTLER_KIND} owns committed
+ * atlas frames. Kept as the seam (with {@link battlerArtRef}'s fallback) so a
+ * future ref registered ahead of its art never renders a white box — add it here
+ * and it is held out of {@link BATTLER_REFS} until its `<ref>/…` frames land.
  */
-const ART_PENDING_REFS: ReadonlySet<BattlerRef> = new Set<BattlerRef>([
-  "quietus",
-  "asch",
-  "cal",
-  "shrike",
-]);
+const ART_PENDING_REFS: ReadonlySet<BattlerRef> = new Set<BattlerRef>([]);
 
 /**
  * Every cast battler ref that owns committed art (iteration order = table order) — the
@@ -116,28 +151,25 @@ export function battlerArtRef(ref: string): BattlerRef {
 }
 
 /**
- * The battler's standing pose frame for a facing.
+ * The battler's standing pose frame for a facing. Every ref ships a real idle
+ * pose since the bespoke cast (#203).
  * @param ref - A cast battler ref.
  * @param dir - The facing direction.
  * @returns The atlas frame name.
  */
 export function battlerIdleFrame(ref: BattlerRef, dir: BattlerDir): string {
-  return BATTLER_KIND[ref] === BattlerKinds.char
-    ? `${ref}/idle-${dir}`
-    : `${ref}/walk-${dir}-0`;
+  return `${ref}/idle-${dir}`;
 }
 
 /**
- * The battler's attack pose frame for a facing (a mid-stride walk frame for
- * monsters, which have no dedicated attack art).
+ * The battler's attack pose frame for a facing (the mid-swing pose). Every ref
+ * ships a real attack pose since the bespoke cast (#203).
  * @param ref - A cast battler ref.
  * @param dir - The facing direction.
  * @returns The atlas frame name.
  */
 export function battlerAttackFrame(ref: BattlerRef, dir: BattlerDir): string {
-  return BATTLER_KIND[ref] === BattlerKinds.char
-    ? `${ref}/attack-${dir}`
-    : `${ref}/walk-${dir}-2`;
+  return `${ref}/attack-${dir}`;
 }
 
 /**
@@ -157,7 +189,7 @@ export function battlerDeadFrame(ref: BattlerRef, dir: BattlerDir): string {
  * One walk-cycle frame name.
  * @param ref - A cast battler ref.
  * @param dir - The facing direction.
- * @param frame - The cycle index (0..{@link WALK_FRAME_COUNT}-1).
+ * @param frame - The cycle index (0..{@link battlerWalkFrameCount}(ref)-1).
  * @returns The atlas frame name.
  */
 export function battlerWalkFrame(
@@ -191,4 +223,54 @@ export function facingForMove(dx: number, dy: number): BattlerDir {
     return dx < 0 ? BattlerDirs.left : BattlerDirs.right;
   }
   return dy < 0 ? BattlerDirs.up : BattlerDirs.down;
+}
+
+/**
+ * The spirit/wraith refs that should FLOAT in battle (#203): a gentle looping
+ * y-bob layered on top of the idle, since the PixelLab mannequin rig has no
+ * floating template so these spirits *step* rather than glide. Quietus (the
+ * spectral party defector), the requiem-wraith, and the-ashling read as
+ * un-tethered — the hover sells it. Reduced-motion-aware at the call site
+ * (`ui/juice` `spiritHover`).
+ */
+const SPIRIT_HOVER_REFS: ReadonlySet<BattlerRef> = new Set<BattlerRef>([
+  "quietus",
+  "requiem-wraith",
+  "the-ashling",
+]);
+
+/**
+ * Whether a ref floats in battle (a gentle looping hover bob).
+ * @param ref - A cast battler ref.
+ * @returns True for the spirit refs in {@link SPIRIT_HOVER_REFS}.
+ */
+export function battlerHovers(ref: BattlerRef): boolean {
+  return SPIRIT_HOVER_REFS.has(ref);
+}
+
+/**
+ * Per-ref battle display scale. The bespoke cast (#203) trims to varied cell
+ * sizes (party ~14-20×26-29, up to ~28×38 bosses); the default integer
+ * {@link DEFAULT_DISPLAY_SCALE} of 2 keeps the 16-wide refs at their shipped
+ * 2× read, while the tallest bosses scale down so they stay proportionate and
+ * do not overflow their battle row. Field placement is unaffected (Wren renders
+ * at native scale on the field).
+ */
+const DISPLAY_SCALE: Readonly<Partial<Record<BattlerRef, number>>> = {
+  "the-ashling": 1.5,
+  "deep-auditor": 1.5,
+  "halcyon-knight": 1.5,
+};
+
+/** The default battle display scale for a ref not listed in {@link DISPLAY_SCALE}. */
+const DEFAULT_DISPLAY_SCALE = 2;
+
+/**
+ * The battle display scale for a ref (its {@link DISPLAY_SCALE} override, or the
+ * {@link DEFAULT_DISPLAY_SCALE}).
+ * @param ref - A cast battler ref.
+ * @returns The scale to apply to the battler sprite on the battle stage.
+ */
+export function battlerDisplayScale(ref: BattlerRef): number {
+  return DISPLAY_SCALE[ref] ?? DEFAULT_DISPLAY_SCALE;
 }

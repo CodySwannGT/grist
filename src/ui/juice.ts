@@ -32,6 +32,10 @@ export const JuiceTuning = {
   popupMs: 550,
   /** Break hitstop duration (ms) — the brief tween freeze on a Break. */
   hitstopMs: 120,
+  /** Spirit hover bob amplitude (logical px, each way from rest). */
+  hoverPx: 2,
+  /** Spirit hover bob duration (ms) for one up (or down) leg. */
+  hoverMs: 900,
 } as const;
 
 /** Damage-popup text style (monospace chrome, matching the HUD). */
@@ -131,6 +135,33 @@ export function screenShake(scene: Phaser.Scene): void {
     return;
   }
   scene.cameras.main.shake(JuiceTuning.shakeMs, JuiceTuning.shakeIntensity);
+}
+
+/**
+ * Start a gentle, endless up-and-down hover bob on `sprite` — the float for the
+ * spirit battlers (#203), which the PixelLab rig can only make *step*. Yoyos
+ * around the sprite's current y so its rest position is unchanged, and returns
+ * the tween so the caller can stop it (e.g. when the unit is downed). A no-op
+ * that returns null under reduced motion.
+ * @param scene - The owning scene (tween factory).
+ * @param sprite - The floating unit's sprite.
+ * @returns The looping hover tween, or null under reduced motion.
+ */
+export function spiritHover(
+  scene: Phaser.Scene,
+  sprite: Phaser.GameObjects.Sprite
+): Phaser.Tweens.Tween | null {
+  if (prefersReducedMotion()) {
+    return null;
+  }
+  return scene.tweens.add({
+    targets: sprite,
+    y: sprite.y - JuiceTuning.hoverPx,
+    duration: JuiceTuning.hoverMs,
+    yoyo: true,
+    repeat: -1,
+    ease: "Sine.easeInOut",
+  });
 }
 
 /**

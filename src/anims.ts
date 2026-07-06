@@ -14,9 +14,9 @@ import {
   BATTLER_REFS,
   BattlerDirs,
   BattlerKinds,
-  WALK_FRAME_COUNT,
   battlerWalkAnim,
   battlerWalkFrame,
+  battlerWalkFrameCount,
   type BattlerDir,
 } from "./ui/battler-view";
 
@@ -173,6 +173,7 @@ function registerBattlerAnims(scene: Phaser.Scene): void {
       BATTLER_KIND[ref] === BattlerKinds.char
         ? CHAR_WALK_FPS
         : MONSTER_HOVER_FPS;
+    const frameCount = battlerWalkFrameCount(ref);
     for (const dir of Object.values(BattlerDirs) as readonly BattlerDir[]) {
       const key = battlerWalkAnim(ref, dir);
       if (scene.anims.exists(key)) {
@@ -180,7 +181,7 @@ function registerBattlerAnims(scene: Phaser.Scene): void {
       }
       scene.anims.create({
         key,
-        frames: Array.from({ length: WALK_FRAME_COUNT }, (_unused, index) => ({
+        frames: Array.from({ length: frameCount }, (_unused, index) => ({
           key: AtlasKeys.battlers,
           frame: battlerWalkFrame(ref, dir, index),
         })),

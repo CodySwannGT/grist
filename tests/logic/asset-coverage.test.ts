@@ -16,11 +16,11 @@ import { Frames, ImageKeys } from "../../src/assets";
 import {
   BATTLER_REFS,
   BattlerDirs,
-  WALK_FRAME_COUNT,
   battlerAttackFrame,
   battlerDeadFrame,
   battlerIdleFrame,
   battlerWalkFrame,
+  battlerWalkFrameCount,
   type BattlerDir,
 } from "../../src/ui/battler-view";
 
@@ -46,11 +46,12 @@ describe("asset coverage — derived keys resolve in the committed atlases", () 
 
   it("covers every battler pose and walk cycle for every cast ref", () => {
     for (const ref of BATTLER_REFS) {
+      const walkFrames = battlerWalkFrameCount(ref);
       for (const dir of DIRS) {
         expect(battlers).toContain(battlerIdleFrame(ref, dir));
         expect(battlers).toContain(battlerAttackFrame(ref, dir));
         expect(battlers).toContain(battlerDeadFrame(ref, dir));
-        for (let frame = 0; frame < WALK_FRAME_COUNT; frame++) {
+        for (let frame = 0; frame < walkFrames; frame++) {
           expect(battlers).toContain(battlerWalkFrame(ref, dir, frame));
         }
       }
