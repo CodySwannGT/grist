@@ -21,9 +21,9 @@
  * @module scenes/Title
  */
 import Phaser from "phaser";
-import { AtlasKeys, ImageKeys } from "../assets";
+import { ImageKeys } from "../assets";
 import { GameView, SceneKeys } from "../consts";
-import { Frames } from "../assets";
+import { addCursor } from "../ui/chrome";
 import { HudColors } from "../ui/layout";
 import {
   TITLE_MENU_ENTRIES,
@@ -124,11 +124,9 @@ export class Title extends Phaser.Scene {
     this.#entryLabels = TITLE_MENU_ENTRIES.map((entry, row) =>
       this.#buildEntry(entry, row)
     );
-    this.#caret = this.add
-      .image(0, 0, AtlasKeys.ui, Frames.ui.arrow)
-      .setTint(0xffd166)
-      .setRotation(-Math.PI / 2)
-      .setOrigin(0.5);
+    // The shared grist-gold `arrow` cursor, rotated a quarter-turn to point right at
+    // the focused entry (the pack art points down) — the same helper the Menu uses.
+    this.#caret = addCursor(this, 0, 0, -Math.PI / 2).setOrigin(0.5);
     this.#buildHint();
 
     this.input.keyboard?.on(
