@@ -53,6 +53,11 @@ import {
   type OpenReunionOptions,
   type VerifyReunionState,
 } from "./reunion-cell";
+import {
+  ReckoningCell,
+  type OpenReckoningOptions,
+  type VerifyReckoningState,
+} from "./reckoning-cell";
 import { type ReunionId } from "../content";
 import {
   EndingsCell,
@@ -184,6 +189,18 @@ const defectionCell = new DefectionCell();
 const reunionCell = new ReunionCell();
 
 /**
+ * The bridge-held Reckoning cell (#125): Sallow's Second Sundering world-turn — the
+ * Act I → Act II hinge. Keystone-gated (it derives its trigger from the Ch.5 Mourne
+ * keystone) and resolved through the pure `logic/narrative/reckoning` set-piece, so the
+ * Reckoning e2e can trigger the turn and observe all five AC clauses at once — the
+ * world flips `reach → ashfall`, lower Vanta + a whole region render to ash, the party
+ * scatters, Sable is lost, and the overworld's color/music drain — reading before/after
+ * state + a determinism hash, and persisting/reloading them through the existing save
+ * path — scene-agnostically, without a live scene attached.
+ */
+const reckoningCell = new ReckoningCell();
+
+/**
  * The bridge-held endings cell (#142): the Act II ending-gate resolver + finale
  * set-piece, gated on the world having turned to Ashfall and resolved through the pure
  * `logic/narrative/endings` + `logic/narrative/finale` kit, so the endings e2e can load
@@ -254,6 +271,11 @@ function adoptIntoCells(save: CurrentSave): void {
   // from save.scene.flags, so a reload's loadSave() rehydrates the reunion read to the
   // *restored* roster + completed/missed statuses (#140), not a fresh Ashfall board.
   reunionCell.adopt(save);
+  // reckoningCell.adopt rebuilds the world-turn from save.worldState + the sable-lost
+  // scene flag, so a reload's loadSave() rehydrates the Reckoning read to the *restored*
+  // turned world (Ashfall, party scattered, Sable lost) (#125), not a fresh un-turned
+  // set-piece.
+  reckoningCell.adopt(save);
   // buildCell.adopt holds save.build so the post-reload battle snapshot fields the
   // *restored* grown build (the persisted stat augments), not the empty starting
   // build — the battle-hydration path the save-reload e2e asserts after reload (#116).
@@ -310,6 +332,10 @@ async function clearAndReset(): Promise<void> {
   // completed/missed) alongside the others so a clearSave leaves reunions() reading the
   // starting roster with an untouched board, not a stale post-reunion state (#140).
   reunionCell.reset();
+  // Reset the Reckoning cell back to a fresh un-triggered set-piece (an un-turned world,
+  // the full Act I party, Sable held) alongside the others so a clearSave leaves
+  // reckoning() reading the pre-Reckoning world, not a stale turned one (#125).
+  reckoningCell.reset();
   // Reset the endings cell back to the neutral damning-default floor so a clearSave
   // leaves endings() reading the fresh standing, not a stale post-choice finale (#142).
   endingsCell.reset();
@@ -464,6 +490,22 @@ export interface DataCellApi {
   readonly advanceReunions: () => void;
   /** The reunion snapshot (active roster with stats + kit, per-reunion statuses, reachability, hash). */
   readonly reunions: () => VerifyReunionState;
+  /**
+   * Open the Reckoning world-turn set-piece (#125). Defaults to a keystone-triggered
+   * set-piece (the trigger derived from the Ch.5 Mourne keystone) in Act I `reach` over
+   * the full Act I party; pass `{ triggered: false }` to open the soft-gated set-piece
+   * so firing before the keystone never turns the world, or `worldState`/`roster`/`seed`
+   * to vary the fork.
+   */
+  readonly openReckoning: (options?: OpenReckoningOptions) => void;
+  /** Advance the Reckoning set-piece one authored beat (no-op when gated/complete). */
+  readonly playReckoning: () => void;
+  /** Drive the Reckoning set-piece to its terminal phase — the world tips into Ashfall (no-op when gated). */
+  readonly playReckoningToCompletion: () => void;
+  /** The Reckoning snapshot (world-flip + ash-swath + scatter + Sable-lost + drain + hash) — all five AC clauses. */
+  readonly reckoning: () => VerifyReckoningState;
+  /** Project the turned world + scattered roster + Sable-lost + seeded reunions into a CurrentSave the `save` path persists. */
+  readonly reckoningSave: () => CurrentSave;
   /** Load a standing profile the ending gates resolve through (#142). */
   readonly openEndings: (options?: OpenEndingsOptions) => void;
   /** Commit one of the finale's reachable endings (#142). */
@@ -555,6 +597,12 @@ export function dataCellApi(): DataCellApi {
     advanceReunions: () => reunionCell.advance(),
     reunions: () => reunionCell.snapshot(),
     reunionsSave: () => reunionCell.toSave(),
+    openReckoning: (options?: OpenReckoningOptions) =>
+      reckoningCell.open(options),
+    playReckoning: () => reckoningCell.play(),
+    playReckoningToCompletion: () => reckoningCell.playToCompletion(),
+    reckoning: () => reckoningCell.snapshot(),
+    reckoningSave: () => reckoningCell.toSave(),
     openEndings: (options?: OpenEndingsOptions) => endingsCell.open(options),
     chooseEnding: (id: EndingId) => endingsCell.choose(id),
     endings: () => endingsCell.snapshot(),
