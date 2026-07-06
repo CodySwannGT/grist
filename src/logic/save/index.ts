@@ -27,3 +27,4 @@ export {
 } from "./types";
 export { asCurrentSave, deserialize, freshSave, serialize } from "./serialize";
 export { migrate } from "./migrate";
+export { foldSceneProgress, type SceneProgress } from "./scene-progress";
