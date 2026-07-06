@@ -22,6 +22,7 @@ import Phaser from "phaser";
 import {
   GameView,
   SceneKeys,
+  type BenchLaunchData,
   type FieldResumeData,
   type MenuLaunchData,
 } from "../consts";
@@ -229,10 +230,25 @@ export class Menu extends Phaser.Scene {
       .text(
         GameView.width / 2,
         MenuLayout.hintY,
-        "↑↓ move   ·   Enter open   ·   Esc close",
+        "↑↓ move   ·   Enter open   ·   Esc / tap close",
         MenuTextStyles.hint
       )
       .setOrigin(0.5);
+    // A transparent hit-rect over the hint (#239): touch players reach the Menu via
+    // the Field's tappable "[Esc] menu" affordance but have no Esc key, so tapping the
+    // hint runs the same Cancel/Back peel — the Menu is never a pointer dead-end.
+    this.add
+      .rectangle(
+        GameView.width / 2,
+        MenuLayout.hintY,
+        MenuLayout.hintHitWidth,
+        MenuLayout.hintHitHeight,
+        0x000000,
+        0
+      )
+      .setOrigin(0.5)
+      .setInteractive({ useHandCursor: true })
+      .on(Phaser.Input.Events.POINTER_DOWN, () => this.#cancel());
   }
 
   /**
@@ -292,7 +308,16 @@ export class Menu extends Phaser.Scene {
   #confirm(entry: PauseMenuEntry): void {
     const route: PauseMenuRoute = entry.route;
     if (route.kind === "growth") {
-      this.scene.start(SceneKeys.Bench);
+      // Hand the Bench a return path (#239): it closes back to THIS menu, carrying the
+      // menu's own caller so the re-opened menu's Esc then resumes the Field exactly
+      // where the player paused. A standalone menu (no caller) passes no resume payload.
+      const launch: BenchLaunchData = {
+        returnTo: SceneKeys.Menu,
+        ...(this.#returnTo !== null
+          ? { resume: { returnTo: this.#returnTo } }
+          : {}),
+      };
+      this.scene.start(SceneKeys.Bench, launch);
       return;
     }
     if (route.kind === "ledger") {

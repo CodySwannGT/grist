@@ -23,7 +23,9 @@ import {
   BenchTextStyles,
   GameView,
   SceneKeys,
+  type BenchLaunchData,
 } from "../consts";
+import { resolveBenchBack } from "../logic/bench-nav";
 import { BenchSinkIds, BENCH_SINKS, type BenchSinkId } from "../content/bench";
 import { BoundIds } from "../content/bounds";
 import { SpellIds } from "../content/spells";
@@ -72,6 +74,13 @@ export class Bench extends Phaser.Scene {
   #progressLabel!: Phaser.GameObjects.Text;
   /** The redundant on-screen caption for audio cues (#115, FR11 / AC12). */
   #cueCaption!: CueCaptionView;
+  /**
+   * The launch payload naming the caller to resume when the Bench is closed with
+   * Back/Esc (#239) — the pause Menu when opened from Builds, plus the resume payload
+   * that re-opened Menu needs — or undefined when the Bench was reached standalone via
+   * `?scene=bench` (no caller, so Back stays put, preserving the verification seam).
+   */
+  #launch: BenchLaunchData | undefined = undefined;
 
   /** Register the scene key. */
   constructor() {
@@ -79,15 +88,18 @@ export class Bench extends Phaser.Scene {
   }
 
   /**
-   * Read the run-state, build the static growth-screen chrome (title, grist
-   * readout, equip button, sink buttons, Cinder progress bar), wire the semantic
-   * input service + bus subscription, attach the verification bridge, and render
-   * the initial state.
+   * Read the run-state, build the static growth-screen chrome (title, grist readout,
+   * equip button, sink buttons, Cinder progress bar, Back control), wire the semantic
+   * input service + bus subscription, attach the verification bridge, and render the
+   * initial state. A {@link BenchLaunchData} caller (#239) is remembered so Back/Esc
+   * resumes it (the pause Menu, via Builds); absent (`?scene=bench`) Back stays put.
+   * @param data - The launch payload naming the caller scene, or undefined standalone.
    * @returns void
    */
-  create(): void {
+  create(data?: BenchLaunchData): void {
+    this.#launch = data;
     this.#run = this.#seedWallet(getRunState(this.registry));
-    this.#input = new BenchInputService();
+    this.#input = new BenchInputService(this);
 
     this.cameras.main.setBackgroundColor(BenchColors.backdrop);
     this.#buildChrome();
@@ -97,6 +109,7 @@ export class Bench extends Phaser.Scene {
       this.#buildSinkButton(BenchSinkIds.accelerateCinder, 1),
     ];
     this.#buildProgressBar();
+    this.#buildBackControl();
 
     this.#cueCaption = new CueCaptionView(this);
     soundService.attachUnlock(this);
@@ -156,6 +169,10 @@ export class Bench extends Phaser.Scene {
    * @returns void
    */
   readonly #onIntent = (intent: BenchIntent, _device: string): void => {
+    if (intent.kind === "back") {
+      this.#back();
+      return;
+    }
     if (intent.kind === "equip") {
       this.#commit(equipShardAtBench(this.#run, intent.shard));
       return;
@@ -183,6 +200,57 @@ export class Bench extends Phaser.Scene {
     // them — best-effort/fire-and-forget so a storage write never blocks the render.
     void persistRunEconomy(run);
     this.#render();
+  }
+
+  /**
+   * Close the Bench (#239): resolve the pure {@link resolveBenchBack} decision and, when
+   * there is a caller, hand control back to it — the pause Menu (via Builds), re-opened
+   * with the same resume payload so ITS own Esc then drops the player back on the Field
+   * where they paused. A standalone bench (`?scene=bench`, no caller) stays put. The run
+   * economy is persisted on every commit, so the wallet/build grown here survives the exit.
+   * @returns void
+   */
+  #back(): void {
+    const outcome = resolveBenchBack(this.#launch?.returnTo ?? null);
+    if (outcome.kind === "return") {
+      this.scene.start(outcome.scene, this.#launch?.resume);
+    }
+  }
+
+  /**
+   * Build the Bench's exit affordances (#239): a tappable "‹ Back" button in the top-
+   * right 9-slice chrome (the pointer-first Bench's pointer exit) and a bottom "[Esc]
+   * back" hint for the keyboard binding — the symmetric return the Bench lacked the
+   * moment Builds routed players into it. Both feed the same semantic `back` intent.
+   * @returns void
+   */
+  #buildBackControl(): void {
+    const box = addPanel(
+      this,
+      BenchLayout.backX,
+      BenchLayout.backY,
+      BenchLayout.backWidth,
+      BenchLayout.backHeight
+    );
+    enablePanelTap(box, BenchLayout.backWidth, BenchLayout.backHeight, () => {
+      this.#input.tapBack();
+    });
+    this.add
+      .text(
+        BenchLayout.backX,
+        BenchLayout.backY,
+        "‹ Back",
+        BenchTextStyles.button
+      )
+      .setOrigin(0.5);
+    this.add
+      .text(
+        GameView.width / 2,
+        BenchLayout.hintY,
+        "[Esc] back",
+        BenchTextStyles.hint
+      )
+      .setOrigin(0.5);
   }
 
   /**
@@ -392,6 +460,7 @@ export class Bench extends Phaser.Scene {
         this.#input.tapBuySink(BenchSinkIds.runnersReflex),
       accelerateCinder: () =>
         this.#input.tapBuySink(BenchSinkIds.accelerateCinder),
+      back: () => this.#input.tapBack(),
     };
   }
 
@@ -399,12 +468,13 @@ export class Bench extends Phaser.Scene {
    * Free every external subscription on scene shutdown (the
    * `require-shutdown-cleanup` contract): detach the bridge first (so
    * `__VERIFY__.bench()` returns null out of the scene), then unsubscribe the
-   * bench-intent bus listener.
+   * bench-intent bus listener and dispose the input service's Back-key listener (#239).
    * @returns void
    */
   #shutdown(): void {
     verifyBridge.attach("", null);
     this.#cueCaption.destroy();
     eventsCenter.off(BenchEvents.Input, this.#onIntent);
+    this.#input.dispose();
   }
 }

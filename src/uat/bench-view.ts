@@ -46,6 +46,12 @@ export interface BenchView {
   readonly buyRunnersReflex: () => void;
   /** Buy Accelerate: Cinder (faster unlock); a no-op if unaffordable or not learning. */
   readonly accelerateCinder: () => void;
+  /**
+   * Back out of the Bench (#239) — returns to the caller (the pause Menu, via Builds);
+   * a no-op on a standalone `?scene=bench` bench (no caller). Routes through the same
+   * semantic `back` intent the on-screen Back control and the Esc key publish.
+   */
+  readonly back: () => void;
 }
 
 /**
@@ -107,11 +113,43 @@ export class BenchCell {
   }
 
   /**
-   * The attached bench view, or null — the bridge drives equip/buy/accelerate
+   * The attached bench view, or null — the bridge drives equip/buy/accelerate/back
    * straight through it (each a no-op when null).
    * @returns The bench view, or null.
    */
   view(): BenchView | null {
     return this.#view;
   }
+}
+
+/** The growth/bench slice of the `__VERIFY__` surface, spread into it. */
+export interface BenchApi {
+  /** A snapshot of the growth/bench screen (grist, shard, learning, build), or null. */
+  readonly bench: () => VerifyBenchState | null;
+  /** Equip the Ashling shard at the bench (begins Cinder learning). */
+  readonly equipShard: () => void;
+  /** Buy Runner's Reflex at the bench (+2 SPD); a no-op if unaffordable. */
+  readonly buyRunnersReflex: () => void;
+  /** Buy Accelerate: Cinder at the bench; a no-op if unaffordable or not learning. */
+  readonly accelerateCinder: () => void;
+  /** Back out of the bench (#239) — returns to the caller (the pause Menu); no-op standalone. */
+  readonly benchBack: () => void;
+}
+
+/**
+ * Build the growth/bench `__VERIFY__` reads + drives over a {@link BenchCell}, the
+ * `dialogueApi`/`menuApi` way — keeping `uat/bridge.ts` under its line budget. The
+ * snapshot is null outside the Bench scene and each drive is a no-op there.
+ * @param cell - The bench cell the reads/drives dispatch through.
+ * @param scene - A getter for the active scene key (for the snapshot).
+ * @returns The bench slice of the verification surface.
+ */
+export function benchApi(cell: BenchCell, scene: () => string): BenchApi {
+  return {
+    bench: () => cell.snapshot(scene()),
+    equipShard: () => cell.view()?.equipShard(),
+    buyRunnersReflex: () => cell.view()?.buyRunnersReflex(),
+    accelerateCinder: () => cell.view()?.accelerateCinder(),
+    benchBack: () => cell.view()?.back(),
+  };
 }
