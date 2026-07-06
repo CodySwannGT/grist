@@ -150,10 +150,10 @@ test.describe("GRIST — the Cinderfen region verification (UAT, #131)", () => {
     expect(run!.booted).toBe(true);
     expect(run!.error).toBeNull();
     // Every region currently resolves the shared Marrow parallax set's far layer —
-    // `regionBackdrop()` is region-agnostic until the per-region backdrop pass
-    // (#200) gives the Cinderfen its own set; asserted against the same key the
-    // framework harness (`region-harness.spec.ts`) pins.
-    expect(run!.backdrop).toBe("img-marrow/bg-far");
+    // The per-region backdrop pass (#200) gives the Cinderfen its OWN distinct
+    // parallax set (an ashen-fen palette variant of the CC0 Warped City layers);
+    // the scene renders exactly this key, an asset the loader can resolve.
+    expect(run!.backdrop).toBe("img-cinderfen/bg-far");
     expect(run!.hash).toMatch(/^[0-9a-f]{8}$/);
     expect(await page.evaluate(() => window.__VERIFY__!.hash())).toBe(
       run!.hash

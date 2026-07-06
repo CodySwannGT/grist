@@ -162,11 +162,96 @@ const UI = [
   { name: "panel", file: "Ui/Theme/Wip/ThemeMetal3/nine_path_panel.png" },
 ];
 
-/** Warped City parallax layers → the Marrow side-view backdrop set. */
-const BACKDROPS = [
-  { name: "marrow/bg-far", file: "assets/environment/bg-1.png" },
-  { name: "marrow/bg-mid", file: "assets/environment/bg-2.png" },
-  { name: "marrow/bg-near", file: "assets/environment/bg-3.png" },
+/**
+ * The three CC0 Warped City parallax layers (far → near), the single source set
+ * every region's backdrop is carved from. `bg-1/2/3` are the pack's far/mid/near
+ * plates; the `layer` name is the region-relative output stem.
+ */
+const BACKDROP_LAYERS = [
+  { layer: "bg-far", file: "assets/environment/bg-1.png" },
+  { layer: "bg-mid", file: "assets/environment/bg-2.png" },
+  { layer: "bg-near", file: "assets/environment/bg-3.png" },
+];
+
+/**
+ * Per-region palette treatments over the one CC0 Warped City parallax set (#200,
+ * PRD #43 Art pass II) — every live region in `content/regions` gets its OWN
+ * distinct layered backdrop instead of sharing the Marrow plates. Cohesion over
+ * variety: rather than seven unrelated packs, this is one artist's set (ansimuz,
+ * CC0) palette-shifted per region toward its art-direction identity
+ * (`wiki/design/art-direction.md` §Environment design). The recolor is a
+ * deterministic `jimp` `.color()` pipeline (hue `spin` + `saturate`/`desaturate`
+ * + `mix` toward the region's key colour + `darken`/`lighten`) so the derivation
+ * is reproducible from the CC0 source and stays CC0. `marrow` keeps the pack
+ * verbatim (`color: []`) — its native neon-over-bone read is the signature look.
+ *
+ * The `mix` toward each region's key colour dominates the final palette, so a
+ * region reads as its colour family regardless of the source hue; `spin` +
+ * saturation shape the secondary tones so no two regions collide.
+ * @type {ReadonlyArray<{ region: string, color: ReadonlyArray<{ apply: string, params: readonly unknown[] }> }>}
+ */
+const REGION_BACKDROPS = [
+  // The Marrow — neon, rain, ancient bone: the untouched Warped City set.
+  { region: "marrow", color: [] },
+  // The Deep / Roots — luminous overgrown forest, the last bright Weave.
+  {
+    region: "roots",
+    color: [
+      { apply: "spin", params: [-105] },
+      { apply: "saturate", params: [22] },
+      { apply: "mix", params: [{ r: 46, g: 196, b: 120 }, 46] },
+      { apply: "lighten", params: [4] },
+    ],
+  },
+  // Upper Vanta / the Crown — cold glass spires, ordered gold corporate light.
+  {
+    region: "upper-vanta",
+    color: [
+      { apply: "desaturate", params: [16] },
+      { apply: "spin", params: [40] },
+      { apply: "mix", params: [{ r: 210, g: 192, b: 132 }, 42] },
+      { apply: "lighten", params: [8] },
+    ],
+  },
+  // Sylvemarch — verdant march: lusher, more yellow-green than the Deep.
+  {
+    region: "sylvemarch",
+    color: [
+      { apply: "spin", params: [-68] },
+      { apply: "saturate", params: [28] },
+      { apply: "mix", params: [{ r: 122, g: 190, b: 68 }, 46] },
+      { apply: "lighten", params: [3] },
+    ],
+  },
+  // Holtspire — foundry / industry: furnace amber over smoky iron.
+  {
+    region: "holtspire",
+    color: [
+      { apply: "spin", params: [150] },
+      { apply: "saturate", params: [18] },
+      { apply: "mix", params: [{ r: 202, g: 108, b: 40 }, 46] },
+      { apply: "darken", params: [8] },
+    ],
+  },
+  // Cinderfen — ashen fen: strip-mined greys, dead machinery, haunted.
+  {
+    region: "cinderfen",
+    color: [
+      { apply: "desaturate", params: [46] },
+      { apply: "mix", params: [{ r: 122, g: 120, b: 108 }, 42] },
+      { apply: "darken", params: [12] },
+    ],
+  },
+  // Wrack — drowned gloom: deep sunken blue-teal, light-starved.
+  {
+    region: "wrack",
+    color: [
+      { apply: "spin", params: [28] },
+      { apply: "desaturate", params: [10] },
+      { apply: "mix", params: [{ r: 22, g: 74, b: 92 }, 52] },
+      { apply: "darken", params: [20] },
+    ],
+  },
 ];
 
 /**
@@ -357,11 +442,16 @@ async function main() {
     mkdirSync(dirname(outPath), { recursive: true });
     await img.write(outPath);
   }
-  for (const backdrop of BACKDROPS) {
-    const img = await Jimp.read(join(warped, backdrop.file));
-    const outPath = join(OUT, "images", `${backdrop.name}.png`);
-    mkdirSync(dirname(outPath), { recursive: true });
-    await img.write(outPath);
+  for (const { region, color } of REGION_BACKDROPS) {
+    for (const { layer, file } of BACKDROP_LAYERS) {
+      const img = await Jimp.read(join(warped, file));
+      if (color.length > 0) {
+        img.color(color);
+      }
+      const outPath = join(OUT, "images", region, `${layer}.png`);
+      mkdirSync(dirname(outPath), { recursive: true });
+      await img.write(outPath);
+    }
   }
   for (const clip of AUDIO) {
     const outPath = join(OUT, "audio", clip.name);

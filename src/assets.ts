@@ -16,9 +16,27 @@ export const AtlasKeys = {
 
 /** Standalone image keys (backdrops / parallax layers under `assets/src/images`). */
 export const ImageKeys = {
+  cinderfenBgFar: "img-cinderfen/bg-far",
+  cinderfenBgMid: "img-cinderfen/bg-mid",
+  cinderfenBgNear: "img-cinderfen/bg-near",
+  holtspireBgFar: "img-holtspire/bg-far",
+  holtspireBgMid: "img-holtspire/bg-mid",
+  holtspireBgNear: "img-holtspire/bg-near",
   marrowBgFar: "img-marrow/bg-far",
   marrowBgMid: "img-marrow/bg-mid",
   marrowBgNear: "img-marrow/bg-near",
+  rootsBgFar: "img-roots/bg-far",
+  rootsBgMid: "img-roots/bg-mid",
+  rootsBgNear: "img-roots/bg-near",
+  sylvemarchBgFar: "img-sylvemarch/bg-far",
+  sylvemarchBgMid: "img-sylvemarch/bg-mid",
+  sylvemarchBgNear: "img-sylvemarch/bg-near",
+  upperVantaBgFar: "img-upper-vanta/bg-far",
+  upperVantaBgMid: "img-upper-vanta/bg-mid",
+  upperVantaBgNear: "img-upper-vanta/bg-near",
+  wrackBgFar: "img-wrack/bg-far",
+  wrackBgMid: "img-wrack/bg-mid",
+  wrackBgNear: "img-wrack/bg-near",
 } as const;
 
 /** Standalone audio load keys (CC0 temp music + stingers under `assets/src/audio`). */

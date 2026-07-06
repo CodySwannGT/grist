@@ -179,9 +179,9 @@ describe("region-runtime — the per-region boot harness (#137)", () => {
     // The harness boots an entirely different authored region — its own scene key,
     // its own encounter playlist — proving it reads the region's data, not Marrow's.
     expect(state.scene).toBe("region:vale");
-    // Until per-region art exists, every region resolves to the shared placeholder
-    // backdrop key the Preloader generates — an asset the loader can actually load
-    // (the run state never claims a per-region texture Phaser can't resolve).
+    // An author-supplied region OUTSIDE the registry (#200) has no art set of its
+    // own, so it falls back to the Marrow far layer — a key the loader can always
+    // resolve (the run state never claims a texture Phaser can't load).
     expect(state.backdrop).toBe("img-marrow/bg-far");
     expect(state.phase).toBe(RegionPhases.exploring);
     const done = playToComplete(state);
@@ -193,5 +193,43 @@ describe("region-runtime — the per-region boot harness (#137)", () => {
         playToComplete(bootRegion(REGIONS[RegionIds.marrow], SEED, "reach"))
       )
     );
+  });
+});
+
+describe("regionBackdrop — per-region parallax sets (#200)", () => {
+  // The authoritative region-id → far-layer-key map (mirrors of the generated
+  // `ImageKeys.<region>BgFar`). Hardcoded known values, NOT derived from the SUT.
+  const EXPECTED_BACKDROP: Readonly<Record<string, string>> = {
+    marrow: "img-marrow/bg-far",
+    roots: "img-roots/bg-far",
+    "upper-vanta": "img-upper-vanta/bg-far",
+    sylvemarch: "img-sylvemarch/bg-far",
+    holtspire: "img-holtspire/bg-far",
+    cinderfen: "img-cinderfen/bg-far",
+    wrack: "img-wrack/bg-far",
+  };
+
+  it("boots every registered region on its OWN far-layer backdrop key", () => {
+    for (const id of Object.values(RegionIds)) {
+      const state = bootRegion(REGIONS[id], SEED, "reach");
+      expect(state.backdrop).toBe(EXPECTED_BACKDROP[id]);
+    }
+  });
+
+  it("gives every registered region a DISTINCT backdrop set (no sharing)", () => {
+    const keys = Object.values(RegionIds).map(
+      id => bootRegion(REGIONS[id], SEED, "reach").backdrop
+    );
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("survives the Reckoning on the same per-region backdrop key", () => {
+    // The backdrop is world-state-invariant: flipping to Ashfall keeps the
+    // region's own set (the world-state variant shares the region's plates, #200).
+    for (const id of Object.values(RegionIds)) {
+      const reach = bootRegion(REGIONS[id], SEED, "reach");
+      const ashfall = actRegion(reach, { kind: RegionActionKinds.reckon });
+      expect(ashfall.backdrop).toBe(EXPECTED_BACKDROP[id]);
+    }
   });
 });

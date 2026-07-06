@@ -34,8 +34,20 @@ evidence recorded here, and (2) an ingest entry or committed source file under
   (`break.wav`, `Audio/Sounds/Hit & Impact/Impact.wav`), and **Rendering**
   (`rendering.wav`, `Audio/Sounds/Magic & Skill/Spirit.wav`). All copied verbatim
   (no re-encode) so the pipeline stays byte-reproducible without ffmpeg.
-- **Warped City**: the Marrow side-view parallax backdrop layers
-  (`assets/src/images/marrow/bg-{far,mid,near}.png`).
+- **Warped City**: the single source parallax set every region's side-view
+  backdrop is carved from (#200, Art pass II). The Marrow keeps the pack verbatim
+  (`assets/src/images/marrow/bg-{far,mid,near}.png` — its native neon-over-bone
+  read). Every other live region
+  (`roots`, `upper-vanta`, `sylvemarch`, `holtspire`, `cinderfen`, `wrack`) is a
+  **deterministic palette-shift variant** of those same three CC0 layers, recolored
+  toward its art-direction identity (`wiki/design/art-direction.md` §Environment
+  design) by a reproducible `jimp` `.color()` pipeline in
+  `scripts/ingest-assets.mjs` (hue `spin` + `saturate`/`desaturate` + `mix` toward
+  the region's key colour + `darken`/`lighten`). A CC0 work's derivatives are CC0,
+  so no new source or license evidence is introduced — this is one artist's set
+  (ansimuz, CC0) tinted per region for cohesion over variety. Re-running
+  `node scripts/ingest-assets.mjs --packs <dir>` reproduces all seven sets
+  byte-for-byte from the CC0 Warped City pack.
 
 ## Verbatim license quotes
 
