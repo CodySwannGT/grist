@@ -152,6 +152,12 @@ export class Battle extends Phaser.Scene {
   #fromField = false;
   /** The battle seed a field launch threaded in, or null for a standalone boot. */
   #launchSeed: number | null = null;
+  /**
+   * The scene a launched battle returns to on resolution (#241) — the Field by
+   * default, or the Region when a region encounter launched it. Only read when
+   * {@link #fromField} (a launched fight).
+   */
+  #returnTo: string = SceneKeys.Field;
   /** Set once the terminal outcome has been consumed, so it fires exactly once. */
   #resolutionHandled = false;
   /**
@@ -189,6 +195,10 @@ export class Battle extends Phaser.Scene {
     // shipped default — every existing battle test — is unchanged.
     this.#encounter = launchedEncounter ?? urlEncounter() ?? DEFAULT_ENCOUNTER;
     this.#launchSeed = this.#fromField ? (data?.seed ?? DEFAULT_SEED) : null;
+    // Where a launched fight returns on resolution: the Field by default (every
+    // existing Field↔Battle launch is unchanged), or the caller-named scene (the
+    // Region, for a world-map region encounter — #241).
+    this.#returnTo = data?.returnTo ?? SceneKeys.Field;
   }
 
   /**
@@ -340,10 +350,11 @@ export class Battle extends Phaser.Scene {
     if (result === null) {
       return;
     }
-    // Record the raw result only — the Field folds it into the run exactly once.
+    // Record the raw result only — the return scene folds it into the run exactly
+    // once (the Field's `resumeFieldSession`, or the Region's post-battle resume).
     setLastBattleResult(this.registry, result);
     const resume: FieldResumeData = { resumed: true };
-    transitionToScene(this, SceneKeys.Field, resume);
+    transitionToScene(this, this.#returnTo, resume);
   }
 
   /**

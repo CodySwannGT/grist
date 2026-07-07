@@ -18,6 +18,7 @@ import { Bench } from "../scenes/Bench";
 import { Dialogue } from "../scenes/Dialogue";
 import { Region } from "../scenes/Region";
 import { Menu } from "../scenes/Menu";
+import { WorldMap } from "../scenes/WorldMap";
 
 /** The configuration passed to `new Phaser.Game()`. */
 export const gameConfig: Phaser.Types.Core.GameConfig = {
@@ -44,5 +45,18 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
   // dialogue-presenter verification entry (#104); the Region scene is the per-region
   // boot + asset-pipeline verification entry (#137); the Menu is the pause/main menu
   // reached via `?scene=menu` (#113), whose Builds entry reuses the Bench growth screen.
-  scene: [Boot, Preloader, Title, Battle, Field, Bench, Dialogue, Region, Menu],
+  // The WorldMap is the travel front door (#241), reached from the pause Menu's Map
+  // entry (and the `?scene=worldmap` seam); it travels the player into a region.
+  scene: [
+    Boot,
+    Preloader,
+    Title,
+    Battle,
+    Field,
+    Bench,
+    Dialogue,
+    Region,
+    Menu,
+    WorldMap,
+  ],
 };

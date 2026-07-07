@@ -113,6 +113,9 @@ function startScene(): string {
   if (requested === "menu") {
     return SceneKeys.Menu;
   }
+  if (requested === "worldmap") {
+    return SceneKeys.WorldMap;
+  }
   if (requested === "battle") {
     return SceneKeys.Battle;
   }

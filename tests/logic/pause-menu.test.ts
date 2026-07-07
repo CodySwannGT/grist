@@ -59,16 +59,22 @@ describe("pause/main-menu routes — Builds reuses growth, Ledger surfaces the l
     expect(ledger?.route).toEqual({ kind: "ledger" });
   });
 
-  it("routes the remaining entries to their own in-menu panels", () => {
+  it("routes the remaining panel entries to their own in-menu panels", () => {
     for (const id of [
       PauseMenuEntryIds.party,
       PauseMenuEntryIds.items,
-      PauseMenuEntryIds.map,
       PauseMenuEntryIds.system,
     ]) {
       const entry = PAUSE_MENU_ENTRIES.find(candidate => candidate.id === id);
       expect(entry?.route).toEqual({ kind: "panel", panel: id });
     }
+  });
+
+  it("routes Map to the World Map travel scene (#241), not a placeholder panel", () => {
+    const map = PAUSE_MENU_ENTRIES.find(
+      entry => entry.id === PauseMenuEntryIds.map
+    );
+    expect(map?.route).toEqual({ kind: "worldmap" });
   });
 });
 

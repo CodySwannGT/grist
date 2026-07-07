@@ -49,6 +49,14 @@ export const CONTROLS_HELP: readonly HelpSection[] = [
     rows: ["Back Esc / tap (menu · Bench)"],
   },
   {
+    title: "WORLD MAP",
+    rows: [
+      "Open    Menu → Map",
+      "Move ↑↓ · Travel Enter",
+      "Region  Engage Enter · Map Esc",
+    ],
+  },
+  {
     title: "COMMANDS & COST",
     rows: [
       "Strike free · Craft AP · Bind G",

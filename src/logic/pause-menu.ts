@@ -44,6 +44,16 @@ export interface PauseMenuLedgerRoute {
 }
 
 /**
+ * Open the world-map travel front door (the WorldMap scene, #241). The **Map** entry
+ * resolves to this; the scene maps it to `scene.start(SceneKeys.WorldMap)`, so Map
+ * *reuses* the shipped travel surface (the region roster + Reckoning + Act II) rather
+ * than the old placeholder info panel.
+ */
+export interface PauseMenuWorldMapRoute {
+  readonly kind: "worldmap";
+}
+
+/**
  * Open the in-menu information panel for an entry that has no dedicated scene yet
  * (Party / Items / Map / System-Settings). Carries the entry id so the scene can
  * title and route the panel without a second lookup.
@@ -55,7 +65,10 @@ export interface PauseMenuPanelRoute {
 
 /** The semantic destination a menu entry resolves to when confirmed. */
 export type PauseMenuRoute =
-  PauseMenuGrowthRoute | PauseMenuLedgerRoute | PauseMenuPanelRoute;
+  | PauseMenuGrowthRoute
+  | PauseMenuLedgerRoute
+  | PauseMenuWorldMapRoute
+  | PauseMenuPanelRoute;
 
 /** One pause/main-menu entry: its id, its display label, and its route. */
 export interface PauseMenuEntry {
@@ -84,11 +97,7 @@ export const PAUSE_MENU_ENTRIES: readonly PauseMenuEntry[] = [
     route: { kind: "panel", panel: PauseMenuEntryIds.items },
   },
   { id: PauseMenuEntryIds.ledger, label: "Ledger", route: { kind: "ledger" } },
-  {
-    id: PauseMenuEntryIds.map,
-    label: "Map",
-    route: { kind: "panel", panel: PauseMenuEntryIds.map },
-  },
+  { id: PauseMenuEntryIds.map, label: "Map", route: { kind: "worldmap" } },
   {
     id: PauseMenuEntryIds.system,
     label: "System/Settings",
