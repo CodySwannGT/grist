@@ -70,7 +70,8 @@ export class Preloader extends Phaser.Scene {
  * `?scene=bench`, the Dialogue presenter scene when it carries `?scene=dialogue`,
  * `?scene=opening` (the Ch.1 opening — the Dialogue scene selects the Ch.1 script
  * over the demo for `opening`; #105), or `?scene=mill` (Wren's "What the mill took"
- * side-story beat; #111), the standalone Battle when it carries `?scene=battle`,
+ * side-story beat; #111), `?scene=reckoning` (the Reckoning world-turn set-piece;
+ * #251/#125), the standalone Battle when it carries `?scene=battle`,
  * case-insensitive, with the `?start=<Scene>` alias, else the default Title front
  * door (#226).
  * Reading the query here (not in `gameConfig`) keeps the scene registry static. The
@@ -118,6 +119,9 @@ function startScene(): string {
   }
   if (requested === "finale") {
     return SceneKeys.Finale;
+  }
+  if (requested === "reckoning") {
+    return SceneKeys.Reckoning;
   }
   if (requested === "battle") {
     return SceneKeys.Battle;

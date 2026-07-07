@@ -20,12 +20,12 @@ import Phaser from "phaser";
 import { SceneKeys } from "../consts";
 import {
   type FinaleLaunchData,
+  type ReckoningLaunchData,
   type RegionLaunchData,
   type WorldMapLaunchData,
 } from "../world-map-consts";
 import { type RegionId } from "../content";
 import { spendGrist } from "../logic/grist";
-import { reckon } from "../logic/world";
 import {
   planRegionTravel,
   projectWorldMapSurface,
@@ -356,10 +356,14 @@ export class WorldMap extends Phaser.Scene {
   }
 
   /**
-   * Trigger the Reckoning from the surfaced hook: flip the world-state to ashfall and
-   * persist it, then re-project so the map presents the Ashfall state + Act II content.
-   * A no-op with a note when the hook is not yet reachable. The authored set-piece
-   * cutscene (#125) is separate; this is the map's world-turn wiring.
+   * Trigger the Reckoning from the surfaced hook: play the authored world-turn set-piece
+   * (#251, playing #125) instead of silently re-skinning the map. Starts the {@link
+   * SceneKeys.Reckoning} scene, which mounts the reckoning dialogue script, commits the
+   * world-state flip **once** at its authored world-turns beat, and lands the run back on
+   * this map — now transformed to Ashfall — so the re-skin reads as the consequence of what
+   * the player just watched (and the hook, projected to null once turned, can never replay).
+   * The World Map's own back target is carried forward so the restored Ashfall map keeps it.
+   * A no-op with a note when the hook is not yet reachable.
    * @param available - Whether the hook is reachable (upper Vanta finished).
    * @returns void
    */
@@ -368,24 +372,9 @@ export class WorldMap extends Phaser.Scene {
       this.#render();
       return;
     }
-    void this.#applyReckoning();
-  }
-
-  /**
-   * Persist the world-turn flip and re-project the surface in ashfall.
-   * @returns A promise resolving once the flip is persisted and rendered.
-   */
-  async #applyReckoning(): Promise<void> {
-    // Route the world-turn flip through the shared save queue (#245) — it is a full
-    // read-modify-write against the save, so on its own chain it could load before an
-    // in-flight economy write committed and write the stale grist back. Re-project from
-    // the freshly-persisted world-state once the queued flip has landed.
-    await saveAutosave.mutate(save => ({
-      ...save,
-      worldState: reckon(save.worldState),
-    }));
-    const save = await saveService.load();
-    this.#project(save.worldState);
+    const launch: ReckoningLaunchData =
+      this.#returnTo === null ? {} : { returnTo: this.#returnTo };
+    this.scene.start(SceneKeys.Reckoning, launch);
   }
 
   /**
