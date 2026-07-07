@@ -23,6 +23,7 @@ import {
   computeRenderingTick,
   critMod,
   elementMultiplier,
+  guardMod,
   isCrit,
   isWeakness,
   pressureMod,
@@ -187,7 +188,7 @@ function computeHit(
       : elementMultiplier(targetElements(target), profile.element);
   const defStat =
     profile.defKind === "def" ? target.stats.def : target.stats.wrd;
-  const damage = computeDamage({
+  const raw = computeDamage({
     attackerStat: profile.attackerStat,
     skillPower: profile.skillPower,
     defStat,
@@ -196,6 +197,11 @@ function computeHit(
     variance,
     pressureMod: pressureMod(target.broken),
   });
+  // A Guarding target (spent its last turn on Defend) braces the incoming hit.
+  const damage = Math.max(
+    0,
+    Math.round(raw * guardMod(target.defending ?? false))
+  );
   return { damage, elementMod };
 }
 
@@ -244,12 +250,16 @@ function spendTurn(
   actorRef: CombatantRef
 ): BattleState {
   const stepped = rngStep(state.rngState);
+  // A Defend spends the turn Guarding (braces the next incoming hit); every other
+  // no-effect kind ends any guard the actor was holding.
+  const guarding = action.kind === ActionKinds.defend;
   const sides = updateAt(
     { party: state.party, enemies: state.enemies },
     actorRef,
     c => ({
       ...c,
       atb: 0,
+      defending: guarding,
     })
   );
   const event: BattleEvent = {
@@ -299,7 +309,12 @@ function resolveHit(
     refs.targetRef,
     () => applyHit(target, profile, hit)
   );
-  const sides = updateAt(hitSides, refs.actorRef, c => ({ ...c, atb: 0 }));
+  // Landing a hit ends any guard the actor was holding (it acted, not braced).
+  const sides = updateAt(hitSides, refs.actorRef, c => ({
+    ...c,
+    atb: 0,
+    defending: false,
+  }));
   const event: BattleEvent = {
     tick: state.tick,
     kind: action.kind,

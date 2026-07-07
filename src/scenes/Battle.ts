@@ -20,9 +20,9 @@ import {
   BattleLayout,
   GameView,
   SceneKeys,
-  type BattleLaunchData,
   type FieldResumeData,
 } from "../consts";
+import { type BattleLaunchData } from "./battle-launch-data";
 import {
   ENCOUNTERS,
   EncounterIds,
@@ -63,11 +63,9 @@ import {
 } from "../ui/battler-stage";
 import { type FxSelection } from "../ui/battle-fx";
 import { battlerArtRef } from "../ui/battler-view";
-import {
-  isVerificationEnabled,
-  verifyBridge,
-  type BattleView,
-} from "../uat/bridge";
+import { verifyBridge, type BattleView } from "../uat/bridge";
+import { INITIAL_WORLD_STATE, type WorldState } from "../logic/world";
+import { urlEncounter, urlWorldState } from "./battle-boot-seams";
 
 /** Fallback seed when none is supplied via the verification bridge / `?seed=`. */
 const DEFAULT_SEED = 0x9e3779b1;
@@ -98,26 +96,6 @@ const DEFAULT_ENCOUNTER: EncounterDef = ENCOUNTERS[EncounterIds.theDrip];
 const SCRIM_COLOR = 0x0b0e16;
 const SCRIM_ALPHA = 0.45;
 
-/**
- * The encounter named by the `?encounter=<id>` query, or null when absent/unknown
- * or the verification surface is disabled. A verification-only standalone-boot seam
- * (the battle counterpart of the bench's `?grist=`): it lets a UAT boot a specific
- * encounter — e.g. a tanky one to demonstrate a survivable Rendering/Break (#115) —
- * without a field launch. Gated behind {@link isVerificationEnabled} so a production
- * user (no `?uat=1`) can never reach it, and guarded for non-browser (test) contexts.
- * @returns The selected encounter, or null when the seam does not apply.
- */
-function urlEncounter(): EncounterDef | null {
-  if (!isVerificationEnabled() || typeof window === "undefined") {
-    return null;
-  }
-  const raw = new URLSearchParams(window.location.search).get("encounter");
-  if (raw === null) {
-    return null;
-  }
-  return ENCOUNTERS[raw as EncounterId] ?? null;
-}
-
 /** Renders a {@link BattleState} and emits {@link BattleAction}s; holds no rules. */
 export class Battle extends Phaser.Scene {
   #runner!: BattleRunner;
@@ -147,6 +125,9 @@ export class Battle extends Phaser.Scene {
   #lastFx: FxSelection | null = null;
   /** The encounter this run resolved (default for a standalone boot, or launched). */
   #encounter: EncounterDef = DEFAULT_ENCOUNTER;
+  /** The fielded enemies' world-state (#266): region-threaded or `?world=` seam,
+   * else base reads. Passed straight to the {@link BattleRunner}. */
+  #worldState: WorldState = INITIAL_WORLD_STATE;
   /**
    * The banner rendered top-center (#248): the launched region's contextual title
    * ({@link BattleLaunchData.title}) when a region encounter set it, else the authored
@@ -205,6 +186,11 @@ export class Battle extends Phaser.Scene {
     // encounter to demonstrate a survivable Rendering/Break (#115); otherwise the
     // shipped default — every existing battle test — is unchanged.
     this.#encounter = launchedEncounter ?? urlEncounter() ?? DEFAULT_ENCOUNTER;
+    // The fielded enemies' world-state (#266): region-threaded, `?world=` seam, or base.
+    this.#worldState =
+      (data?.worldState as WorldState | undefined) ??
+      urlWorldState() ??
+      INITIAL_WORLD_STATE;
     this.#launchSeed = this.#fromField ? (data?.seed ?? DEFAULT_SEED) : null;
     // The banner: a region encounter threads its contextual title (#248); a Field or
     // standalone boot has none, so the authored default stands.
@@ -225,7 +211,12 @@ export class Battle extends Phaser.Scene {
     // A field-launched battle runs under the launch seed (the field threaded it);
     // a standalone boot honors the bridge/URL seed exactly as before.
     const seed = this.#launchSeed ?? verifyBridge.takeSeed() ?? DEFAULT_SEED;
-    this.#runner = new BattleRunner(PARTY_LINEUP, this.#encounter, seed);
+    this.#runner = new BattleRunner(
+      PARTY_LINEUP,
+      this.#encounter,
+      seed,
+      this.#worldState
+    );
     this.#input = new InputService(this);
     this.#controller = new BattleController(this.#runner);
 

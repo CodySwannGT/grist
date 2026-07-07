@@ -107,7 +107,7 @@ export const ENEMIES: {
   "marrow-scrapper": {
     id: EnemyIds.marrowScrapper,
     name: "Marrow scrapper",
-    stats: { hp: 40, ap: 0, pow: 8, foc: 0, def: 4, wrd: 2, spd: 8, lck: 2 },
+    stats: { hp: 40, ap: 0, pow: 14, foc: 0, def: 4, wrd: 2, spd: 8, lck: 2 },
     elements: {},
     ai: EnemyAi.tempo,
     lootGrist: 6,
@@ -115,7 +115,7 @@ export const ENEMIES: {
   "render-construct": {
     id: EnemyIds.renderConstruct,
     name: 'Render-construct "Vesper"',
-    stats: { hp: 70, ap: 6, pow: 6, foc: 10, def: 8, wrd: 6, spd: 7, lck: 4 },
+    stats: { hp: 70, ap: 6, pow: 12, foc: 10, def: 8, wrd: 6, spd: 8, lck: 4 },
     elements: { flux: 1.5 },
     ai: EnemyAi.renderPressure,
     lootGrist: 10,
@@ -127,7 +127,7 @@ export const ENEMIES: {
     stats: {
       hp: 220,
       ap: 20,
-      pow: 16,
+      pow: 22,
       foc: 18,
       def: 14,
       wrd: 12,
@@ -161,7 +161,7 @@ export const ENEMIES: {
   "drowned-husk": {
     id: EnemyIds.drownedHusk,
     name: "Drowned husk",
-    stats: { hp: 52, ap: 0, pow: 9, foc: 2, def: 5, wrd: 3, spd: 5, lck: 2 },
+    stats: { hp: 52, ap: 0, pow: 15, foc: 2, def: 5, wrd: 3, spd: 5, lck: 2 },
     elements: { flux: 1.5 },
     ai: EnemyAi.tempo,
     lootGrist: 8,
@@ -169,7 +169,7 @@ export const ENEMIES: {
   "requiem-wraith": {
     id: EnemyIds.requiemWraith,
     name: "Requiem wraith",
-    stats: { hp: 64, ap: 6, pow: 7, foc: 11, def: 6, wrd: 8, spd: 9, lck: 4 },
+    stats: { hp: 64, ap: 6, pow: 13, foc: 11, def: 6, wrd: 8, spd: 9, lck: 4 },
     elements: { flux: 0.5 },
     ai: EnemyAi.renderPressure,
     lootGrist: 11,
@@ -180,7 +180,7 @@ export const ENEMIES: {
     stats: {
       hp: 90,
       ap: 12,
-      pow: 10,
+      pow: 16,
       foc: 14,
       def: 10,
       wrd: 12,
@@ -207,9 +207,9 @@ export const ENEMIES: {
     id: EnemyIds.halcyonKnight,
     name: "Halcyon, the frame-knight",
     stats: {
-      hp: 300,
+      hp: 460,
       ap: 24,
-      pow: 18,
+      pow: 32,
       foc: 16,
       def: 16,
       wrd: 14,

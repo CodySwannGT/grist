@@ -32,18 +32,18 @@ export const DETERMINISM_SEED_B = 0x0badf00d;
  * actions (Strike, Craft, Bind, Craft) — five samples in total.
  */
 export const DETERMINISM_HASHES_SEED_A: readonly string[] = [
-  "a9748c0d",
-  "98149e5b",
-  "869bde14",
-  "718b396d",
-  "63f611ef",
+  "ae2cbd08",
+  "3044c646",
+  "1ff14011",
+  "a89b3460",
+  "48512f9c",
 ];
 
 /** The pinned `hashState` progression for {@link DETERMINISM_SEED_B} (must differ from A). */
 export const DETERMINISM_HASHES_SEED_B: readonly string[] = [
-  "ac1a10c3",
-  "586ee8dc",
-  "bbd0c954",
-  "695fb2d9",
-  "1b67965a",
+  "c7d0ce16",
+  "6377b631",
+  "70881bb5",
+  "b203a9d4",
+  "1106068d",
 ];

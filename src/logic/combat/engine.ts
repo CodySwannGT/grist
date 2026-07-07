@@ -9,7 +9,12 @@
  * `(state, action, seed)` always produces the same next state.
  * @module logic/combat/engine
  */
-import { ENEMIES, type EncounterDef, type PartyMemberDef } from "../../content";
+import {
+  resolveEncounterEnemy,
+  type EncounterDef,
+  type PartyMemberDef,
+} from "../../content";
+import { INITIAL_WORLD_STATE, type WorldState } from "../world";
 import { lootGristFor, tickStatuses } from "./effects";
 import { isResolved, resolveOutcome } from "./outcome";
 import { resolveTurn } from "./resolve";
@@ -60,20 +65,29 @@ function buildCombatant(ref: string, stats: Stats): Combatant {
  * combatants resolve from the encounter's typed enemy ids via the ENEMIES table.
  * The seed initializes the threaded RNG (matching `new Rng(seed)`), so the
  * battle is reproducible. Pure — returns fresh state and reads nothing ambient.
+ * The `worldState` selects the enemy read: `reach` (default) fields each foe's
+ * base stat block; `ashfall` fields its warped #141 variant (harsher HP/POW)
+ * where one is authored, falling back to the base block otherwise — so the same
+ * encounter genuinely bites harder after the Reckoning instead of the variant
+ * table being authored-but-never-fought. The battler `ref` stays the base enemy
+ * id in both states (the variant overlays the base), so the by-ref element and
+ * loot lookups the resolver and loot credit use are unchanged.
  * @param party - The party member definitions to field.
  * @param encounter - The encounter whose enemy lineup to resolve.
  * @param seed - The 32-bit battle seed.
+ * @param worldState - The world-state that selects base vs. Ashfall enemy reads.
  * @returns The initial battle state, in the `select` phase.
  */
 export function startBattle(
   party: readonly PartyMemberDef[],
   encounter: EncounterDef,
-  seed: number
+  seed: number,
+  worldState: WorldState = INITIAL_WORLD_STATE
 ): BattleState {
   return {
     party: party.map(member => buildCombatant(member.id, member.baseStats)),
     enemies: encounter.enemies.map(enemyId =>
-      buildCombatant(enemyId, ENEMIES[enemyId].stats)
+      buildCombatant(enemyId, resolveEncounterEnemy(enemyId, worldState).stats)
     ),
     grist: 0,
     seed: seed >>> 0,

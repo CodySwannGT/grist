@@ -17,7 +17,8 @@
  * @module scenes/region-launch
  */
 import type Phaser from "phaser";
-import { SceneKeys, type BattleLaunchData } from "../consts";
+import { SceneKeys } from "../consts";
+import { type BattleLaunchData } from "./battle-launch-data";
 import { type RegionLaunchData } from "../world-map-consts";
 import {
   REGIONS,
@@ -124,6 +125,10 @@ export function engageRegionEncounter(
     seed: session.run.rngState,
     returnTo: SceneKeys.Region,
     title: regionBattleTitle(region, session.run.worldState),
+    // Field the fight through the region's live world-state (#266): after the
+    // Reckoning turns the region to `ashfall`, the encounter's foes read their
+    // warped #141 variants and the fight genuinely bites harder.
+    worldState: session.run.worldState,
   };
   setRegionSession(registry, session);
   transitionToScene(scene, SceneKeys.Battle, launch);
