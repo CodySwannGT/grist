@@ -26,8 +26,15 @@ import {
   type BenchLaunchData,
 } from "../consts";
 import { resolveBenchBack } from "../logic/bench-nav";
-import { BenchSinkIds, BENCH_SINKS, type BenchSinkId } from "../content/bench";
-import { BoundIds } from "../content/bounds";
+import {
+  controlId,
+  focusedControl,
+  moveBenchFocus,
+  newBenchFocus,
+  type BenchFocusState,
+} from "../logic/bench-focus";
+import { BenchSinkIds, type BenchSinkId } from "../content/bench";
+import { type BoundId } from "../content/bounds";
 import { SpellIds } from "../content/spells";
 import { earnGrist } from "../logic/grist";
 import {
@@ -48,17 +55,15 @@ import {
 } from "../services/run-store";
 import { soundService } from "../services/sound-service";
 import { isVerificationEnabled, verifyBridge } from "../uat/bridge";
-import { addPanel, enablePanelTap, PanelTint } from "../ui/chrome";
+import { addCursor, addPanel, enablePanelTap } from "../ui/chrome";
+import { ASHLING_SHARD, BenchBoard } from "../ui/bench-board";
 import { CueCaptionView } from "../ui/cue-caption";
 import { type BenchView } from "../uat/bench-view";
 
-/** The shard the bench equips (the Ashling reward shard that teaches Cinder). */
-const ASHLING_SHARD = BoundIds.marrowBound;
-/** The pooled objects for one sink button (its highlight box + label). */
-interface SinkButton {
-  readonly id: BenchSinkId;
-  readonly box: Phaser.GameObjects.NineSlice;
-  readonly label: Phaser.GameObjects.Text;
+/** Where the keyboard focus caret parks for one control (#246). */
+interface CaretTarget {
+  readonly x: number;
+  readonly y: number;
 }
 
 /** Renders the growth/bench screen from run-state and emits growth actions. */
@@ -66,12 +71,14 @@ export class Bench extends Phaser.Scene {
   /** The cross-scene run progression (grist, shards, learning, stat bonuses). */
   #run: RunState = newRunState();
   #input!: BenchInputService;
-  #gristText!: Phaser.GameObjects.Text;
-  #equipBox!: Phaser.GameObjects.NineSlice;
-  #equipLabel!: Phaser.GameObjects.Text;
-  #sinks: readonly SinkButton[] = [];
-  #progressFill!: Phaser.GameObjects.Rectangle;
-  #progressLabel!: Phaser.GameObjects.Text;
+  /** The pooled board view: grist readout, equip + sink buttons, progress bar. */
+  #board!: BenchBoard;
+  /** The keyboard focus-ring cursor over the bench controls (#246). */
+  #focus: BenchFocusState = newBenchFocus();
+  /** The grist-gold caret parked beside the focused control (#246). */
+  #caret!: Phaser.GameObjects.Image;
+  /** Per-control caret parking spots, parallel to {@link BENCH_CONTROL_ORDER}. */
+  #caretTargets: readonly CaretTarget[] = [];
   /** The redundant on-screen caption for audio cues (#115, FR11 / AC12). */
   #cueCaption!: CueCaptionView;
   /**
@@ -102,14 +109,9 @@ export class Bench extends Phaser.Scene {
     this.#input = new BenchInputService(this);
 
     this.cameras.main.setBackgroundColor(BenchColors.backdrop);
-    this.#buildChrome();
-    this.#equipBox = this.#buildEquipButton();
-    this.#sinks = [
-      this.#buildSinkButton(BenchSinkIds.runnersReflex, 0),
-      this.#buildSinkButton(BenchSinkIds.accelerateCinder, 1),
-    ];
-    this.#buildProgressBar();
+    this.#board = new BenchBoard(this, this.#input);
     this.#buildBackControl();
+    this.#buildCaret();
 
     this.#cueCaption = new CueCaptionView(this);
     soundService.attachUnlock(this);
@@ -117,7 +119,8 @@ export class Bench extends Phaser.Scene {
     verifyBridge.attach(SceneKeys.Bench, this.#bridgeView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
 
-    this.#render();
+    this.#board.render(this.#run);
+    this.#renderFocus();
   }
 
   /**
@@ -158,33 +161,85 @@ export class Bench extends Phaser.Scene {
   }
 
   /**
-   * Apply a semantic bench intent by threading it through the matching pure
-   * reducer, persisting the result, and re-rendering. An equip begins the shard's
-   * learning; a buy-sink spends grist and changes the build (a rejected spend —
-   * unaffordable, or accelerating a spell not in progress — is a no-op that leaves
-   * the run untouched, so nothing is persisted and the render is unchanged). A
-   * stable arrow field so it can be unsubscribed on shutdown.
+   * Apply a semantic bench intent. Pointer taps arrive as the concrete `equip` /
+   * `buy-sink` / `back` verbs (a tap knows what it hit); the keyboard arrives as
+   * `move` (step the focus ring) and `confirm` (activate the focused control, #246)
+   * — the navigate-then-activate path that gives keyboard/gamepad/Deck players the
+   * build system a mouse had all to itself. Every activation threads through the
+   * same pure reducers a tap does, so a keyboard confirm and a click are one code
+   * path. A stable arrow field so it can be unsubscribed on shutdown.
    * @param intent - The semantic bench intent from the bus.
    * @param _device - The originating device (kept for telemetry symmetry).
    * @returns void
    */
   readonly #onIntent = (intent: BenchIntent, _device: string): void => {
-    if (intent.kind === "back") {
+    switch (intent.kind) {
+      case "move":
+        this.#focus = moveBenchFocus(this.#focus, intent.delta);
+        this.#renderFocus();
+        return;
+      case "confirm":
+        this.#confirmFocused();
+        return;
+      case "back":
+        this.#back();
+        return;
+      case "equip":
+        this.#applyEquip(intent.shard);
+        return;
+      case "buy-sink":
+        this.#applyBuySink(intent.sink);
+        return;
+    }
+  };
+
+  /**
+   * Activate the keyboard-focused control (#246): equip the shard, buy the focused
+   * sink, or back out — the same effect the pointer tap on that control emits, so
+   * Enter/Space on a focused control is exactly a click on it. A focused but
+   * unaffordable sink is confirm-visitable-but-inert: {@link #applyBuySink} routes
+   * it through the reducer, which no-ops the rejected spend (the Menu handles its
+   * `unavailable` entries the same way).
+   * @returns void
+   */
+  #confirmFocused(): void {
+    const control = focusedControl(this.#focus);
+    if (control.kind === "equip") {
+      this.#applyEquip(ASHLING_SHARD);
+      return;
+    }
+    if (control.kind === "back") {
       this.#back();
       return;
     }
-    if (intent.kind === "equip") {
-      this.#commit(equipShardAtBench(this.#run, intent.shard));
-      return;
-    }
-    const result = applyBenchSink(this.#run, intent.sink);
+    this.#applyBuySink(control.sink);
+  }
+
+  /**
+   * Equip a shard through the pure reducer, persisting and re-rendering. Begins the
+   * shard's learning; re-equipping is a harmless no-op the reducer absorbs.
+   * @param shard - The shard to equip.
+   * @returns void
+   */
+  #applyEquip(shard: BoundId): void {
+    this.#commit(equipShardAtBench(this.#run, shard));
+  }
+
+  /**
+   * Buy a grist sink through the pure reducer. A successful spend fires the
+   * resonant grist-spend stinger (#115) alongside the persisted state change; a
+   * rejected spend (unaffordable, or accelerating a spell not in progress) is a
+   * no-op that leaves the run untouched, so nothing is persisted or re-rendered.
+   * @param sink - The sink to buy.
+   * @returns void
+   */
+  #applyBuySink(sink: BenchSinkId): void {
+    const result = applyBenchSink(this.#run, sink);
     if (result.ok) {
-      // A successful sink spends grist — fire the resonant grist-spend stinger
-      // (#115) alongside the persisted state change.
       soundService.playCue(AudioCues.gristSpend);
       this.#commit(result.run);
     }
-  };
+  }
 
   /**
    * Adopt a new run-state: persist it to the typed registry wrapper so every scene
@@ -199,7 +254,7 @@ export class Bench extends Phaser.Scene {
     // a bought augment, and an equipped shard survive a reload and Continue restores
     // them — best-effort/fire-and-forget so a storage write never blocks the render.
     void persistRunEconomy(run);
-    this.#render();
+    this.#board.render(this.#run);
   }
 
   /**
@@ -254,182 +309,54 @@ export class Bench extends Phaser.Scene {
   }
 
   /**
-   * Build the static title banner and the shared-grist readout (the grist text is
-   * retained and updated on render).
+   * Build the keyboard focus caret (#246): the grist-gold `arrow` cursor rotated to
+   * point right, plus the per-control parking spots it hops between — one for each
+   * control in {@link BENCH_CONTROL_ORDER} (equip, the two sinks, Back), each just
+   * left of its control. The caret sits beside the focused control so keyboard/
+   * gamepad players see what Enter will activate; the parked-caret idiom mirrors the
+   * pause menu's focus cursor, and it never fights the box tints (equipped-green /
+   * disabled-dim) the way a focus tint would.
    * @returns void
    */
-  #buildChrome(): void {
-    this.add
-      .text(
-        GameView.width / 2,
-        BenchLayout.titleY,
-        "Growth — The Bench",
-        BenchTextStyles.title
-      )
-      .setOrigin(0.5, 0);
-    this.#gristText = this.add.text(
-      BenchLayout.gristX,
-      BenchLayout.gristY,
-      "",
-      BenchTextStyles.grist
+  #buildCaret(): void {
+    const left = (centerX: number, width: number): number =>
+      centerX - width / 2 - BenchLayout.caretGap;
+    // Parallel to BENCH_CONTROL_ORDER: equip, Runner's Reflex sink, Accelerate sink, Back.
+    this.#caretTargets = [
+      {
+        x: left(BenchLayout.equipX, BenchLayout.equipWidth),
+        y: BenchLayout.equipY,
+      },
+      {
+        x: left(BenchLayout.sinkX, BenchLayout.sinkWidth),
+        y: BenchLayout.firstSinkY,
+      },
+      {
+        x: left(BenchLayout.sinkX, BenchLayout.sinkWidth),
+        y: BenchLayout.firstSinkY + BenchLayout.rowGap,
+      },
+      {
+        x: left(BenchLayout.backX, BenchLayout.backWidth),
+        y: BenchLayout.backY,
+      },
+    ];
+    const first = this.#caretTargets[0] ?? { x: 0, y: 0 };
+    this.#caret = addCursor(this, first.x, first.y, -Math.PI / 2).setOrigin(
+      0.5
     );
   }
 
   /**
-   * Build the equip-shard button: a tappable box that publishes an `equip` intent
-   * for the Ashling shard. The label/stroke reflect equipped state on render.
-   * @returns The equip button box (retained for restyle on render).
-   */
-  #buildEquipButton(): Phaser.GameObjects.NineSlice {
-    const box = addPanel(
-      this,
-      BenchLayout.equipX,
-      BenchLayout.equipY,
-      BenchLayout.equipWidth,
-      BenchLayout.equipHeight
-    );
-    enablePanelTap(box, BenchLayout.equipWidth, BenchLayout.equipHeight, () => {
-      this.#input.tapEquip(ASHLING_SHARD);
-    });
-    this.#equipLabel = this.add
-      .text(BenchLayout.equipX, BenchLayout.equipY, "", BenchTextStyles.button)
-      .setOrigin(0.5);
-    return box;
-  }
-
-  /**
-   * Build one sink button at the given row: a tappable box that publishes a
-   * `buy-sink` intent for that sink. The label (name + cost) and the enabled
-   * styling are set on render.
-   * @param id - The sink id this button buys.
-   * @param row - The zero-based row index (stacks downward by `rowGap`).
-   * @returns The pooled sink button.
-   */
-  #buildSinkButton(id: BenchSinkId, row: number): SinkButton {
-    const y = BenchLayout.firstSinkY + row * BenchLayout.rowGap;
-    const box = addPanel(
-      this,
-      BenchLayout.sinkX,
-      y,
-      BenchLayout.sinkWidth,
-      BenchLayout.sinkHeight
-    );
-    enablePanelTap(box, BenchLayout.sinkWidth, BenchLayout.sinkHeight, () => {
-      this.#input.tapBuySink(id);
-    });
-    const label = this.add
-      .text(BenchLayout.sinkX, y, "", BenchTextStyles.button)
-      .setOrigin(0.5);
-    return { id, box, label };
-  }
-
-  /**
-   * Build the Cinder learning-progress bar (background, fill, caption). The fill
-   * width and caption are updated on render.
+   * Park the caret beside the focused control, reading the spot parallel to the
+   * pure focus cursor (#246). Called on open and after every `move` intent.
    * @returns void
    */
-  #buildProgressBar(): void {
-    this.add
-      .rectangle(
-        BenchLayout.progressX,
-        BenchLayout.progressY,
-        BenchLayout.progressWidth,
-        BenchLayout.progressHeight,
-        BenchColors.progressBg
-      )
-      .setOrigin(0, 0.5);
-    this.#progressFill = this.add
-      .rectangle(
-        BenchLayout.progressX,
-        BenchLayout.progressY,
-        0,
-        BenchLayout.progressHeight,
-        BenchColors.progressFill
-      )
-      .setOrigin(0, 0.5);
-    this.#progressLabel = this.add
-      .text(
-        BenchLayout.progressX,
-        BenchLayout.progressY - BenchLayout.progressHeight,
-        "",
-        BenchTextStyles.progress
-      )
-      .setOrigin(0, 1);
-  }
-
-  /**
-   * Render the whole screen from the live run-state: the shared grist, the equip
-   * button (equipped vs. not), each sink's affordability styling, and the Cinder
-   * progress bar. Pure read of `this.#run` — the scene derives nothing it does not
-   * read from state.
-   * @returns void
-   */
-  #render(): void {
-    this.#gristText.setText(`Grist: ${this.#run.wallet.grist}`);
-    this.#renderEquip();
-    this.#sinks.forEach(button => this.#renderSink(button));
-    this.#renderProgress();
-  }
-
-  /**
-   * Style the equip button from whether the Ashling shard is already equipped:
-   * once equipped its label reads "equipped" and its stroke turns the equipped
-   * accent (re-equipping is a harmless no-op the reducer absorbs).
-   * @returns void
-   */
-  #renderEquip(): void {
-    const equipped = this.#run.equippedShards.includes(ASHLING_SHARD);
-    this.#equipLabel.setText(
-      equipped
-        ? "The Marrow Bound — equipped (learning Cinder)"
-        : "Equip: The Marrow Bound"
-    );
-    this.#equipBox.setTint(equipped ? PanelTint.equipped : PanelTint.frame);
-  }
-
-  /**
-   * Style one sink button from whether the reducer would *accept* its purchase:
-   * the wallet must cover the cost AND, for a `teaches` sink, its spell must be in
-   * progress (a `teaches` sink no-ops before the shard is equipped — see
-   * {@link applyBenchSink}). The label shows the name + grist cost, and a disabled
-   * sink is dimmed (fill + text) so it never looks actionable while it would
-   * silently no-op. The rule still lives in the reducer — this only mirrors it.
-   * @param button - The pooled sink button to restyle.
-   * @returns void
-   */
-  #renderSink(button: SinkButton): void {
-    const sink = BENCH_SINKS[button.id];
-    const enabled =
-      this.#run.wallet.grist >= sink.gristCost &&
-      (sink.teaches === undefined ||
-        isLearning(this.#run.learning, sink.teaches));
-    button.label
-      .setText(`${sink.name}  —  ${sink.gristCost} grist`)
-      .setColor(
-        enabled ? BenchColors.buttonText : BenchColors.buttonTextDisabled
-      );
-    button.box.setTint(enabled ? PanelTint.frame : PanelTint.disabled);
-  }
-
-  /**
-   * Render the Cinder progress bar from the learning state: the fill spans the
-   * unlock fraction in [0, 1], and the caption reports the percentage (or that
-   * Cinder is not yet begun before the shard is equipped).
-   * @returns void
-   */
-  #renderProgress(): void {
-    const progress = learningProgress(this.#run.learning, SpellIds.cinder);
-    this.#progressFill.setDisplaySize(
-      BenchLayout.progressWidth * progress,
-      BenchLayout.progressHeight
-    );
-    const begun =
-      isLearning(this.#run.learning, SpellIds.cinder) || progress > 0;
-    this.#progressLabel.setText(
-      begun
-        ? `Cinder: ${Math.round(progress * 100)}%`
-        : "Cinder: not begun (equip the shard)"
-    );
+  #renderFocus(): void {
+    const target =
+      this.#caretTargets[this.#focus.cursor] ?? this.#caretTargets[0];
+    if (target) {
+      this.#caret.setPosition(target.x, target.y);
+    }
   }
 
   /**
@@ -455,6 +382,7 @@ export class Bench extends Phaser.Scene {
       cinderProgress: () =>
         learningProgress(this.#run.learning, SpellIds.cinder),
       spdBonus: () => this.#run.statBonuses.spd ?? 0,
+      focus: () => controlId(focusedControl(this.#focus)),
       equipShard: () => this.#input.tapEquip(ASHLING_SHARD),
       buyRunnersReflex: () =>
         this.#input.tapBuySink(BenchSinkIds.runnersReflex),

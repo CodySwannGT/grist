@@ -22,6 +22,12 @@ export interface VerifyBenchState {
   readonly cinderProgress: number;
   /** The SPD bonus the bench has bought into the build (0 before any purchase). */
   readonly spdBonus: number;
+  /**
+   * The id of the keyboard-focused control (#246): `"equip"`, a sink id, or
+   * `"back"`. Lets the keyboard-only e2e assert the focus ring moves under the
+   * arrow keys (proving cursor navigation, not just the reducer state changes).
+   */
+  readonly focus: string;
 }
 
 /**
@@ -40,6 +46,8 @@ export interface BenchView {
   readonly cinderLearning: () => boolean;
   readonly cinderProgress: () => number;
   readonly spdBonus: () => number;
+  /** The id of the keyboard-focused control (#246): `"equip"`, a sink id, or `"back"`. */
+  readonly focus: () => string;
   /** Equip the Ashling (Marrow) shard now — begins Cinder learning. */
   readonly equipShard: () => void;
   /** Buy Runner's Reflex (+2 SPD); a no-op if unaffordable. */
@@ -69,6 +77,7 @@ function toVerifyBenchState(scene: string, view: BenchView): VerifyBenchState {
     cinderLearning: view.cinderLearning(),
     cinderProgress: view.cinderProgress(),
     spdBonus: view.spdBonus(),
+    focus: view.focus(),
   };
 }
 
