@@ -20,6 +20,7 @@
  */
 import Phaser from "phaser";
 import { saveService } from "../services/save-service";
+import { saveAutosave } from "../services/save-autosave";
 import {
   advanceOnboarding,
   hasSeenBattleOnboarding,
@@ -88,7 +89,9 @@ export class BattleOnboardingController {
       }
       this.#view = new BattleHintView(this.#scene);
       this.#active = true;
-      await saveService.save(markBattleOnboardingSeen(save));
+      // Route the seen-flag write through the shared save queue (#245) so it can never
+      // interleave with an economy/region write and clobber the credited grist.
+      await saveAutosave.mutate(markBattleOnboardingSeen);
     } catch {
       // A storage failure just means no beats this run — never a broken battle.
     }

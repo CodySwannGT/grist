@@ -16,13 +16,17 @@ import { type BattleResult } from "../logic/battle-result";
 import { type FieldState } from "../logic/field";
 import { type RegionRunState } from "../logic/region";
 import { type RegionId } from "../content";
-import { foldRunEconomy, foldSceneProgress } from "../logic/save";
+import {
+  foldRunEconomy,
+  foldSceneProgress,
+  type CurrentSave,
+} from "../logic/save";
 import {
   recordRegionProgress,
   regionProgressFlags,
   regionProgressFromFlags,
 } from "../logic/world-map";
-import { saveService } from "./save-service";
+import { saveAutosave } from "./save-autosave";
 
 /** The single registry data manager the wrapper reads/writes. */
 type Registry = Phaser.Data.DataManager;
@@ -94,71 +98,28 @@ export function setRunState(registry: Registry, run: RunState): void {
 }
 
 /**
- * The serial autosave queue for run-economy write-through: every {@link enqueue} chains
- * onto the prior write so the IndexedDB load→fold→save cycles never interleave. Two
- * economy commits in quick succession (equip then buy at the bench, a battle credit
- * landing mid-write) would otherwise each read the same base save and the slower write
- * could land last, clobbering the newer economy with a stale one. Chaining serializes
- * them in call order so the LATEST run is written last (the run is authoritative for the
- * whole economy, so last-write-wins is correct). The `#chain` mutation mirrors
- * `SaveService`'s own single-field caching; each queued write is total (swallows its own
- * failures) so a transient storage error can never reject the chain and wedge it.
- */
-class RunEconomyAutosave {
-  /** The tail of the serialized write chain — awaited before the next write starts. */
-  #chain: Promise<void> = Promise.resolve();
-
-  /**
-   * Queue a run's economy write behind any in-flight ones.
-   * @param run - The live run whose economy to persist.
-   * @returns A promise that resolves once this write (after those ahead of it) is attempted.
-   */
-  enqueue(run: RunState): Promise<void> {
-    this.#chain = this.#chain.then(() => RunEconomyAutosave.#write(run));
-    return this.#chain;
-  }
-
-  /**
-   * The single load→fold→save cycle. Total — every failure path is swallowed so the
-   * chain can never reject and wedge later writes.
-   * @param run - The live run whose economy to persist.
-   * @returns A promise that resolves once the write is attempted (never rejects).
-   */
-  static async #write(run: RunState): Promise<void> {
-    try {
-      const save = await saveService.load();
-      await saveService.save(
-        foldRunEconomy(save, {
-          grist: run.wallet.grist,
-          statBonuses: run.statBonuses,
-          equippedShards: run.equippedShards,
-        })
-      );
-    } catch {
-      // Best-effort autosave — the folded economy remains in the live run.
-    }
-  }
-}
-
-/** The single shared autosave queue every economy write-through serializes through. */
-const runEconomyAutosave = new RunEconomyAutosave();
-
-/**
  * Write a run's earned economy THROUGH to the persisted save (#235) so it survives a
  * reload and **Continue** restores it — the write side of the wallet/build persistence
- * the owner decision requires (`runStateFromSave` is the read side). Loads the current
- * save, folds the run's grist wallet + bench build into it via the pure
- * {@link foldRunEconomy} projection (preserving scene progress, party, world-state, and
- * the rng lineage), and persists it through the shared {@link saveService}. Serialized
- * behind the shared {@link RunEconomyAutosave} queue so concurrent commits never race,
- * and best-effort: a storage failure is swallowed so it never breaks play (mirroring the
- * Dialogue scene's `#persistNarrative` and `SaveService`'s own fail-safe I/O) — the live
- * run still holds the economy for the rest of the session.
+ * the owner decision requires (`runStateFromSave` is the read side). Folds the run's grist
+ * wallet + bench build into the loaded save via the pure {@link foldRunEconomy} projection
+ * (preserving scene progress, party, world-state, and the rng lineage). Serialized behind
+ * the shared {@link saveAutosave} queue — the ONE choke point every read-modify-write save
+ * shares (#245) — so it never races the region-progress or world-turn write that lands in
+ * the same beat (a region battle win credits grist AND advances the region cursor; before
+ * the unified queue the region write, having loaded before this one committed, clobbered
+ * the credited grist with the stale pre-win balance). Best-effort: a storage failure is
+ * swallowed so it never breaks play — the live run still holds the economy for the session.
  * @param run - The live run whose economy to persist.
  * @returns A promise that resolves once this write (after any queued ahead of it) is attempted.
  */
 export function persistRunEconomy(run: RunState): Promise<void> {
-  return runEconomyAutosave.enqueue(run);
+  return saveAutosave.mutate(save =>
+    foldRunEconomy(save, {
+      grist: run.wallet.grist,
+      statBonuses: run.statBonuses,
+      equippedShards: run.equippedShards,
+    })
+  );
 }
 
 /**
@@ -300,57 +261,6 @@ export function getCurrentRegion(registry: Registry): RegionId | null {
   return (registry.get(RunKeys.currentRegion) as RegionId | undefined) ?? null;
 }
 
-/**
- * The serial autosave queue for region-progress write-through (#241) — the region
- * counterpart of {@link RunEconomyAutosave}. Chains every load→fold→save so two region
- * commits (a battle win, then a Back-to-map) never interleave and clobber each other.
- */
-class RegionProgressAutosave {
-  /** The tail of the serialized write chain. */
-  #chain: Promise<void> = Promise.resolve();
-
-  /**
-   * Queue a region's cursor write behind any in-flight ones.
-   * @param update - The region + its live cursor/total to record.
-   * @returns A promise resolving once this write is attempted.
-   */
-  enqueue(update: RegionCursorUpdate): Promise<void> {
-    this.#chain = this.#chain.then(() => RegionProgressAutosave.#write(update));
-    return this.#chain;
-  }
-
-  /**
-   * The single load→read→record→fold→save cycle. Reads the CURRENT region ledger back
-   * from the save (so sticky completion is preserved across an Ashfall re-visit),
-   * records the region's new cursor, then merges the region-progress flags INTO the
-   * save's scene-flag ledger via {@link foldSceneProgress} — preserving the existing
-   * sceneId/nodeId narrative cursor and every other flag. Total — swallows failures.
-   * @param update - The region + its live cursor/total to record.
-   * @returns A promise resolving once the write is attempted (never rejects).
-   */
-  static async #write(update: RegionCursorUpdate): Promise<void> {
-    try {
-      const save = await saveService.load();
-      const ledger = regionProgressFromFlags(save.scene?.flags ?? {});
-      const next = recordRegionProgress(
-        ledger,
-        update.regionId,
-        update.cleared,
-        update.total
-      );
-      await saveService.save(
-        foldSceneProgress(save, {
-          sceneId: save.scene?.sceneId ?? "",
-          nodeId: save.scene?.nodeId ?? "",
-          flags: regionProgressFlags(next),
-        })
-      );
-    } catch {
-      // Best-effort autosave — the live run still holds the region progress.
-    }
-  }
-}
-
 /** A single region's live cursor + playlist length to record. */
 interface RegionCursorUpdate {
   /** The region whose progress to record. */
@@ -361,21 +271,51 @@ interface RegionCursorUpdate {
   readonly total: number;
 }
 
-/** The single shared region-progress autosave queue. */
-const regionProgressAutosave = new RegionProgressAutosave();
+/**
+ * The pure region-progress projection: read the CURRENT region ledger back from the save
+ * (so sticky completion is preserved across an Ashfall re-visit), record the region's new
+ * cursor, then merge the region-progress flags INTO the save's scene-flag ledger via the
+ * pure {@link foldSceneProgress} — preserving the existing sceneId/nodeId narrative cursor,
+ * every other flag, AND the grist/build the economy write owns (this fold never touches
+ * them). Because it reads the ledger from the *passed* save, running it behind the shared
+ * {@link saveAutosave} queue means it folds into the freshest committed save — so a region
+ * win's economy credit is already present and preserved verbatim, never clobbered (#245).
+ * @param save - The freshest loaded save to fold the region cursor into (never mutated).
+ * @param update - The region + its live cursor/total to record.
+ * @returns The next save carrying the recorded region progress.
+ */
+function foldRegionProgress(
+  save: CurrentSave,
+  update: RegionCursorUpdate
+): CurrentSave {
+  const ledger = regionProgressFromFlags(save.scene?.flags ?? {});
+  const next = recordRegionProgress(
+    ledger,
+    update.regionId,
+    update.cleared,
+    update.total
+  );
+  return foldSceneProgress(save, {
+    sceneId: save.scene?.sceneId ?? "",
+    nodeId: save.scene?.nodeId ?? "",
+    flags: regionProgressFlags(next),
+  });
+}
 
 /**
  * Persist the region-progress ledger THROUGH to the save (#241, Scope-IN 4) so region
  * completion and partial progress survive a reload and the world map surfaces the
  * restored statuses. Folds the region-progress flags into `SaveDataV3.scene.flags` via
  * the shipped {@link foldSceneProgress} merge reducer (no schema bump — the reunion
- * precedent), serialized behind the shared queue and best-effort (a storage failure is
- * swallowed so it never breaks play).
+ * precedent), serialized behind the shared {@link saveAutosave} queue — the SAME choke
+ * point the economy write uses (#245) — so the two writes a region battle win fires (grist
+ * credit + cursor advance) never interleave and clobber each other. Best-effort (a storage
+ * failure is swallowed so it never breaks play).
  * @param update - The region + its live cursor/total to record.
  * @returns A promise resolving once this write (after any queued ahead of it) is attempted.
  */
 export function persistRegionProgress(
   update: RegionCursorUpdate
 ): Promise<void> {
-  return regionProgressAutosave.enqueue(update);
+  return saveAutosave.mutate(save => foldRegionProgress(save, update));
 }
