@@ -49,15 +49,16 @@ import {
 import { keyToMenuIntent, type MenuIntent } from "../services/menu-input-map";
 import { saveService } from "../services/save-service";
 import { verifyBridge } from "../uat/bridge";
-import type { MenuView } from "../uat/menu-view";
+import type { MenuPanelFit, MenuView } from "../uat/menu-view";
+import { menuPanelInnerRight } from "../ui/menu-panel-fit";
 import { LedgerCodexPanel } from "../ui/ledger-codex-panel";
 import { HelpPanel } from "../ui/help-panel";
 import { PartyPanel } from "../ui/party-panel";
 import { MenuInfoPanel } from "../ui/menu-info-panel";
 import { projectPartyRoster } from "../logic/party-roster";
 
-/** The karma summary header line count (`formatMoralLedger` returns three lines). */
-const KARMA_HEADER_LINES = 3;
+/** The compact codex karma header line count (`formatCodexKarmaLine` is one line, #265). */
+const KARMA_HEADER_LINES = 1;
 /** The codex body pool size: karma header + the tally + one line per catalog choice. */
 const CODEX_LINE_SLOTS = KARMA_HEADER_LINES + 1 + LEDGER_CODEX_TOTAL;
 
@@ -204,7 +205,22 @@ export class Menu extends Phaser.Scene {
       ledgerCodex: () => this.#codexPanel.codex(),
       helpControls: () => this.#helpPanel.lines(),
       party: () => this.#partyPanel.roster(),
+      panelFit: () => this.#panelFit(),
     };
+  }
+
+  /**
+   * The rendered fit of whichever dense body panel is open (#265): the right edge of its
+   * widest visible line and the panel's inner right bound, so the bridge can prove no
+   * row clips the panel's right border. Null when no dense panel is open.
+   * @returns The panel fit, or null.
+   */
+  #panelFit(): MenuPanelFit | null {
+    const right =
+      this.#codexPanel.maxLineRight() ??
+      this.#partyPanel.maxLineRight() ??
+      this.#helpPanel.maxLineRight();
+    return right === null ? null : { right, bound: menuPanelInnerRight() };
   }
 
   /**
@@ -332,10 +348,10 @@ export class Menu extends Phaser.Scene {
 
   /**
    * Read the persisted save and, while the Ledger panel is still the open one, render
-   * the moral-ledger **codex** (#221): the karma summary header (#98, kept — additive)
-   * plus every catalog choice tagged recorded/pending and the `Recorded: N of M`
-   * tally, projected from the save's `scene.flags`. Guarded against a panel the player
-   * has since closed or changed so a late load never clobbers the view.
+   * the moral-ledger **codex** (#221): the compact karma summary header (#265) plus
+   * every catalog choice tagged recorded/pending and the `Recorded: N of M` tally,
+   * projected from the save's `scene.flags`. Guarded against a panel the player has
+   * since closed or changed so a late load never clobbers the view.
    * @returns A promise that resolves once the codex has been read and rendered.
    */
   async #loadLedger(): Promise<void> {

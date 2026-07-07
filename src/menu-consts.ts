@@ -27,24 +27,38 @@ export const MenuLayout = {
   entryHeight: 18,
   /** The cursor caret drawn to the left of the focused entry. */
   caretX: 28,
-  /** The detail panel (right side) shown when an entry is confirmed. */
-  panelX: 208,
-  panelY: 48,
-  panelWidth: 168,
-  panelHeight: 132,
+  /**
+   * The detail panel (right side) shown when an entry is confirmed. Widened and
+   * heightened for #265: the Ledger/Party rows carry authored sentences (a recorded
+   * codex line, a member's name + stats + shard) that overflowed the old 168px panel's
+   * right border. A wider inner body wraps each authored line to at most a couple of
+   * rows (see `ui/menu-panel-fit`), and the taller box holds the fully-recorded codex
+   * once its rows wrap; the left edge still clears the longest entry label
+   * ("System/Settings", centered on {@link entryX}) so the panel never covers an entry.
+   */
+  panelX: 160,
+  panelY: 24,
+  panelWidth: 216,
+  panelHeight: 174,
   /** Inset of the panel's title and its body lines from the panel's top-left. */
   panelPadX: 10,
-  panelTitleY: 58,
-  panelBodyY: 80,
+  panelTitleY: 34,
+  panelBodyY: 54,
   /** Vertical step between stacked body lines in the detail panel. */
   panelLineGap: 14,
   /**
-   * The Ledger **codex** panel's denser body (#221): it stacks the karma header, the
-   * `Recorded: N of M` tally, and one line per catalog choice, so it starts just under
-   * the title and steps tighter than the four-slot info panel to fit every row.
+   * The Ledger **codex** panel's denser body (#221): it stacks the compact karma header,
+   * the `Recorded: N of M` tally, and one line per catalog choice, so it starts just
+   * under the title and steps tighter than the four-slot info panel. The codex panel
+   * *flows* its rows by their rendered (wrapped) height rather than a fixed step, so a
+   * two-row recorded line never overlaps the next; this gap is the base top and the
+   * fallback single-line pitch (the help panel, whose lines never wrap, still steps by
+   * it).
    */
-  codexBodyY: 72,
+  codexBodyY: 46,
   codexLineGap: 9,
+  /** The extra vertical gap the codex flow leaves between wrapped rows (#265). */
+  codexRowGap: 1,
   /** The bottom hint line ("↑↓ move · Enter open · Esc / tap close"). */
   hintY: 200,
   /**
@@ -65,9 +79,13 @@ export const MenuLayout = {
  */
 export const PartyLayout = {
   /** The first member row's baseline Y; rows stack down by `rowGap`. */
-  rowY: 72,
-  /** Vertical step between stacked member rows. */
-  rowGap: 15,
+  rowY: 50,
+  /**
+   * Vertical step between stacked member rows — sized to hold a stat line that wraps to
+   * a second row (a max-length name + stats + shard) without the wrapped line touching
+   * the next member (#265).
+   */
+  rowGap: 18,
   /** The square portrait faceset drawn at the left of each member row. */
   portraitSize: 12,
   /** X inset of the member's stat line from the portrait's right edge. */

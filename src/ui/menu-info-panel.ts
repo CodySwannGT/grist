@@ -16,6 +16,7 @@
 import Phaser from "phaser";
 import { MenuLayout, MenuTextStyles } from "../menu-consts";
 import { addPanel } from "./chrome";
+import { menuPanelInnerWidth } from "./menu-panel-fit";
 
 /** The number of body lines the info panel can show at once. */
 const INFO_PANEL_LINE_SLOTS = 4;
@@ -60,7 +61,10 @@ export class MenuInfoPanel {
           MenuLayout.panelX + MenuLayout.panelPadX,
           MenuLayout.panelBodyY + line * MenuLayout.panelLineGap,
           "",
-          MenuTextStyles.panelBody
+          {
+            ...MenuTextStyles.panelBody,
+            wordWrap: { width: menuPanelInnerWidth() },
+          }
         )
     );
   }
