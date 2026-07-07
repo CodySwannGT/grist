@@ -22,7 +22,7 @@
  * @module logic/spell-learning
  */
 import { BOUNDS, type BoundId } from "../content/bounds";
-import { type SpellId } from "../content/spells";
+import { SpellIds, type SpellId } from "../content/spells";
 
 /**
  * First-pass learning tuning. The wiki fixes the *shape* — "a spell needs N
@@ -266,5 +266,102 @@ export function accelerateLearning(
     state,
     LearningTuning.acceleratePoints,
     candidate => candidate === spell
+  );
+}
+
+/** The set of valid {@link SpellId}s, for filtering an untrusted save's spell ids. */
+const SPELL_IDS: ReadonlySet<string> = new Set(Object.values(SpellIds));
+
+/**
+ * One in-progress unlock in the *persisted* shape (#264): the spell id and its unlock
+ * fraction in the half-open range [0, 1) — the `points` counter divided out into the
+ * `SavedLearning.progress` field the save schema already carries. Mirrors
+ * `logic/save/types`' `SavedLearning` by structure so a projection drops straight into
+ * the save without this model taking a save-layer import.
+ */
+interface PersistedLearningEntry {
+  /** The spell id being learned. */
+  readonly spell: SpellId;
+  /** Unlock progress in the half-open range [0, 1). */
+  readonly progress: number;
+}
+
+/**
+ * The full learning progression in the *persisted* shape (#264): the completed spell
+ * ids plus the in-progress spells as [0, 1) fractions — exactly the `learned` /
+ * `learning` fields `SaveDataV3` has modeled since v1, so persisting the run's learning
+ * needs no save-version bump.
+ */
+interface PersistedLearning {
+  /** Spells permanently learned (by id). */
+  readonly learned: readonly SpellId[];
+  /** Spells in progress, with their [0, 1) unlock fraction. */
+  readonly learning: readonly PersistedLearningEntry[];
+}
+
+/**
+ * Project a live {@link LearningState} into its persisted shape (#264) so a player's
+ * learning progress survives a reload the same way the wallet and build do (owner
+ * decision #235: "persist whatever a player would call my progress"). The in-progress
+ * `points` counters are divided by {@link LearningTuning.pointsToLearn} into the [0, 1)
+ * fractions the save's `SavedLearning.progress` field holds; the learned ids pass
+ * through verbatim. Pure — the inverse of {@link learningStateFromPersisted}, and a
+ * round-trip through the two restores the same state.
+ * @param state - The live learning state to persist.
+ * @returns The learning progression in the persisted (`learned` + fractional `learning`) shape.
+ */
+export function toPersistedLearning(state: LearningState): PersistedLearning {
+  return {
+    learned: [...state.learned],
+    learning: state.learning.map(entry => ({
+      spell: entry.spell,
+      progress: entry.points / LearningTuning.pointsToLearn,
+    })),
+  };
+}
+
+/**
+ * Rebuild a live {@link LearningState} from persisted learning (#264) so **Continue**
+ * restores the spells a player has learned and the ones in progress — the read side of
+ * the learning persistence, mirroring how `runStateFromSave` restores the wallet/build.
+ * Pure and **total**: an unrecognized spell id (a foreign or corrupt save) is dropped
+ * rather than trusted, an in-progress entry duplicating an already-learned spell is
+ * dropped (learned wins), and each fraction is converted back to whole `points` clamped
+ * below {@link LearningTuning.pointsToLearn} so a rehydrated in-progress spell is never
+ * silently at/over the bar (completed spells live in `learned`, never `learning`).
+ * @param learned - The persisted completed spell ids (untrusted strings).
+ * @param learning - The persisted in-progress entries (untrusted spell ids + [0, 1) fractions).
+ * @returns The live learning state to seed the run with on Continue.
+ */
+export function learningStateFromPersisted(
+  learned: readonly string[],
+  learning: readonly { readonly spell: string; readonly progress: number }[]
+): LearningState {
+  const learnedIds = learned.filter((id): id is SpellId => SPELL_IDS.has(id));
+  const inProgress = learning.reduce<readonly LearningProgress[]>(
+    (acc, entry) =>
+      !SPELL_IDS.has(entry.spell) || learnedIds.includes(entry.spell as SpellId)
+        ? acc
+        : [
+            ...acc,
+            { spell: entry.spell as SpellId, points: toPoints(entry.progress) },
+          ],
+    []
+  );
+  return { learned: learnedIds, learning: inProgress };
+}
+
+/**
+ * Convert a persisted [0, 1) unlock fraction back to whole learning-points, clamped to
+ * `[0, {@link LearningTuning.pointsToLearn} − 1]` so a rehydrated in-progress spell is
+ * always strictly below the bar (a completed spell is carried in `learned`, not here).
+ * @param progress - The persisted unlock fraction.
+ * @returns The whole learning-points to restore the in-progress entry at.
+ */
+function toPoints(progress: number): number {
+  const points = Math.round(progress * LearningTuning.pointsToLearn);
+  return Math.min(
+    LearningTuning.pointsToLearn - 1,
+    Math.max(NOT_BEGUN, points)
   );
 }

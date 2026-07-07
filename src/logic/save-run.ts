@@ -2,23 +2,26 @@
  * The pure save → run-state projection the Title's **Continue** entry uses (#226):
  * rebuild a live {@link RunState} from a persisted {@link CurrentSave} so the player
  * drops back into the Field with the run they saved — the shared grist wallet, the
- * bench-grown build (equipped shards + stat augments), and the party roster restored.
- * Zero Phaser, no I/O — a total function of the save, unit-tested headless — so the
- * Title scene stays a thin adapter (load the save, project it, seed the registry,
- * start the Field). The inverse (run → save) is written piecemeal by the narrative
- * beats that persist; this is the read side Continue needs.
+ * bench-grown build (equipped shards + stat augments), the spell-learning progression,
+ * and the party roster restored. Zero Phaser, no I/O — a total function of the save,
+ * unit-tested headless — so the Title scene stays a thin adapter (load the save, project
+ * it, seed the registry, start the Field). The inverse (run → save) is written piecemeal
+ * by the beats that persist; this is the read side Continue needs.
  *
  * Scope: it restores the tangible, cross-scene run progression a fresh Field session
- * carries and renders (wallet, build, roster). It deliberately starts the descent
- * fresh (Room A) and does not re-derive an in-flight field position or the
- * spell-learning in-progress state — resuming an exact mid-descent field cursor is a
- * separate concern; Continue's contract is "your run, back in the Field".
+ * carries and renders (wallet, build, learning, roster). The learning progression is
+ * rehydrated from the save's `learned` / `learning` fields (#264) so the Bench never
+ * shows an equipped shard whose learning has silently reset — the two labels derive from
+ * the same restored state and always agree. It still deliberately starts the descent
+ * fresh (Room A) and does not re-derive an in-flight field *position* — resuming an exact
+ * mid-descent field cursor is a separate concern; Continue's contract is "your run, back
+ * in the Field".
  * @module logic/save-run
  */
 import { BoundIds, type BoundId } from "../content/bounds";
 import { PartyMemberIds, type PartyMemberId } from "../content/party";
 import { newWallet } from "./grist";
-import { newLearningState } from "./spell-learning";
+import { learningStateFromPersisted } from "./spell-learning";
 import { newRunState, type RunState } from "./run-state";
 import { type CurrentSave } from "./save";
 
@@ -58,9 +61,10 @@ function toRoster(
 /**
  * Rebuild a live {@link RunState} from a persisted save (#226) so **Continue** drops
  * the player into the Field with their saved run: the shared grist wallet at the saved
- * balance, the bench build (equipped shards + stat augments), and the party roster,
- * all restored. Pure and total — a corrupt/foreign shard or roster id is filtered, so
- * a bad save projects to a safe run rather than throwing.
+ * balance, the bench build (equipped shards + stat augments), the spell-learning
+ * progression (#264), and the party roster, all restored. Pure and total — a
+ * corrupt/foreign shard, spell, or roster id is filtered, so a bad save projects to a
+ * safe run rather than throwing.
  * @param save - The persisted current-version save to project.
  * @returns The run state to seed the registry with before starting the Field.
  */
@@ -70,7 +74,7 @@ export function runStateFromSave(save: CurrentSave): RunState {
     shards: [],
     pendingChoiceShard: null,
     equippedShards: toEquippedShards(save.build.equippedShards),
-    learning: newLearningState(),
+    learning: learningStateFromPersisted(save.learned, save.learning),
     statBonuses: save.build.statBonuses,
     roster: toRoster(save.party),
   };

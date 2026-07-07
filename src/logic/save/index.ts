@@ -29,3 +29,4 @@ export { asCurrentSave, deserialize, freshSave, serialize } from "./serialize";
 export { migrate } from "./migrate";
 export { foldSceneProgress, type SceneProgress } from "./scene-progress";
 export { foldRunEconomy, type RunEconomy } from "./run-economy";
+export { foldLearning, type PersistedLearning } from "./learning";
