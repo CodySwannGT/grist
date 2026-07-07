@@ -535,17 +535,27 @@ export const DialogueLayout = {
   captionY: 176,
   captionWrapWidth: 308,
   /**
-   * Branch-choice buttons: a right-aligned vertical list stacked downward above the
-   * caption box. The stack is sized so up to four choices sit fully above `boxY`
-   * (158): the 4th slot's bottom is `choiceTopY + 3*(choiceHeight+choiceGap) +
-   * choiceHeight = 88 + 3*17 + 14 = 153`, clear of the box — no overlap.
+   * Branch-choice buttons: a full-width vertical list stacked downward above the
+   * caption box, spanning the same 8…376 columns as the box so a fork's options read
+   * as option bars over the caption (#262 — the old 150px-wide right-aligned column
+   * clipped the long finale ending labels off the right screen edge). The stack is
+   * sized so up to four choices sit fully above `boxY` (158): the 4th slot's bottom is
+   * `choiceTopY + 3*(choiceHeight+choiceGap) + choiceHeight = 88 + 3*17 + 14 = 153`,
+   * clear of the box — no overlap. Each label renders at the base `choice` font when
+   * it fits the button's inner width (`choiceWidth - 2*choicePadX = 356px`, which
+   * holds the longest authored label — 52 chars — at 8px monospace with headroom) and
+   * shrinks by whole pixels to `choiceMinFontPx` only if a future label exceeds it —
+   * see `dialogueChoiceFontPx`, provably fit by the dialogue-layout unit twin so no
+   * authored choice can ever clip.
    */
-  choiceRightX: 372,
+  choiceRightX: 376,
   choiceTopY: 88,
-  choiceWidth: 150,
+  choiceWidth: 368,
   choiceHeight: 14,
   choiceGap: 3,
   choicePadX: 6,
+  /** Smallest font (px) a long choice label shrinks to before it stops (#262). */
+  choiceMinFontPx: 6,
 } as const;
 
 /** Dialogue presenter chrome colors (programmatic art only — no assets). */

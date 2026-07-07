@@ -29,14 +29,32 @@ const SEEN_TIMEOUT = 15_000;
 /** A short dwell between keystrokes so each keydown lands in its own Phaser tick. */
 const KEY_DWELL = 150;
 
+/** A choice button's on-screen rectangle in the bridge snapshot. */
+interface ChoiceRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
 /** The dialogue snapshot the bridge exposes via `dialogue()`. */
 interface DialogueSnapshot {
   readonly scene: string;
   readonly caption: string;
   readonly branching: boolean;
   readonly done: boolean;
-  readonly choices: readonly { readonly id: string; readonly label: string }[];
+  readonly choices: readonly {
+    readonly id: string;
+    readonly label: string;
+    readonly rect: ChoiceRect;
+    readonly labelWidth: number;
+  }[];
 }
+
+/** The logical viewport width (px) every choice button + label must stay within. */
+const VIEW_WIDTH = 384;
+/** The choice button's horizontal label pad (`DialogueLayout.choicePadX`). */
+const CHOICE_PAD_X = 6;
 
 /**
  * Wait until the running game reports the given scene key.
@@ -265,5 +283,44 @@ test.describe("GRIST — finale wiring (#244, UAT)", () => {
     const ids = fork?.choices.map(c => c.id) ?? [];
     // Diverges from the neutral single-choice fork: every ending is on the table here.
     expect(ids).toEqual(["sunder", "wake", "third-way", "let-die"]);
+  });
+
+  test("[EVIDENCE: finale-choice-fit] every ending-choice label renders fully inside the viewport on a merciful run", async ({
+    page,
+  }) => {
+    const errors = collectErrors(page);
+    await page.goto("/?scene=worldmap&uat=1");
+    await waitForBridge(page);
+    await page.evaluate(() => window.__VERIFY__?.clearSave());
+    // The maximal fork: all four endings unlocked — including the 52- and 49-char
+    // labels that clipped off the right screen edge before #262.
+    await seedAshfallStanding(page, { karma: 3, wieldChoices: 0, reunions: 3 });
+    await page.goto("/?scene=worldmap&uat=1");
+    await waitForBridge(page);
+    await waitForScene(page, "WorldMap");
+
+    await enterFinaleFromMap(page);
+    const fork = await advanceToFork(page);
+    const choices = fork?.choices ?? [];
+    expect(choices.length).toBe(4);
+
+    for (const choice of choices) {
+      // The button box lands fully on-screen (no negative left, no right-edge spill).
+      expect(choice.rect.x).toBeGreaterThanOrEqual(0);
+      expect(choice.rect.x + choice.rect.width).toBeLessThanOrEqual(VIEW_WIDTH);
+      // The REAL rendered label (browser monospace metrics) fits the button's inner
+      // width — no glyph is clipped by the button edge...
+      const innerWidth = choice.rect.width - 2 * CHOICE_PAD_X;
+      expect(
+        choice.labelWidth,
+        `label "${choice.label}" (${choice.labelWidth}px) overflows button inner width ${innerWidth}px`
+      ).toBeLessThanOrEqual(innerWidth);
+      // ...nor by the right screen edge (label is drawn at rect.x + padX).
+      const labelRight = choice.rect.x + CHOICE_PAD_X + choice.labelWidth;
+      expect(labelRight).toBeLessThanOrEqual(VIEW_WIDTH);
+      // A real label actually rendered (guards against a 0-width empty snapshot).
+      expect(choice.labelWidth).toBeGreaterThan(0);
+    }
+    expect(errors).toEqual([]);
   });
 });

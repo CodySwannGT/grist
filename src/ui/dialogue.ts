@@ -45,7 +45,7 @@ import {
 import { eventsCenter } from "../services/events";
 import { GuardedText } from "./hud-text";
 import { addPanel, enablePanelTap, PanelTint } from "./chrome";
-import { dialogueChoiceRect } from "./dialogue-layout";
+import { dialogueChoiceFontPx, dialogueChoiceRect } from "./dialogue-layout";
 import type { Rect } from "./layout";
 
 /** The scene-definition table the presenter plays through, keyed by scene id. */
@@ -78,6 +78,13 @@ export interface DialogueChoiceModel {
   readonly id: string;
   readonly label: string;
   readonly rect: Rect;
+  /**
+   * The choice label's **actual** rendered width in logical px (the live Phaser text
+   * object's width, after the fit-to-button font step). Carried on the model so the
+   * finale-choice-fit e2e can assert every ending label fits inside its button and the
+   * visible viewport with real browser monospace metrics, not an estimate (#262).
+   */
+  readonly labelWidth: number;
 }
 
 /** The whole dialogue view-model the UAT bridge exposes under `?uat=1`. */
@@ -329,6 +336,10 @@ export class DialoguePresenter {
       slot.label.object.setVisible(show);
       if (choice) {
         slot.label.set(choice.label);
+        // Fit the label to the button: base font when it fits the inner width,
+        // shrunk by whole pixels (to the legible floor) otherwise — so no authored
+        // choice, however long, clips the button or the right screen edge (#262).
+        slot.label.object.setFontSize(dialogueChoiceFontPx(choice.label));
       }
     });
   }
@@ -398,6 +409,9 @@ export class DialoguePresenter {
         id: choice.id,
         label: choice.label,
         rect: dialogueChoiceRect(index),
+        // The live text object's width reflects the fit-to-button font applied in
+        // refresh(); 0 before the fork has rendered its slots (never on a live fork).
+        labelWidth: this.#choiceSlots[index]?.label.object.width ?? 0,
       })),
       flags: this.#state.narrative.flags,
       // The node's declared quiet beat (#114 AC3), or 0 on a line that carries none —

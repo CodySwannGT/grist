@@ -11,6 +11,7 @@
  */
 import type { NarrativeLedger, SceneDef, SceneFlag } from "../logic/narrative";
 import type { DialogueModel } from "../ui/dialogue";
+import type { Rect } from "../ui/layout";
 import { type VerifyResolution } from "./bridge";
 
 /**
@@ -22,6 +23,19 @@ import { type VerifyResolution } from "./bridge";
 interface VerifyDialogueChoice {
   readonly id: string;
   readonly label: string;
+  /**
+   * The choice button's on-screen hit/draw rectangle — carried so the finale-choice-fit
+   * e2e can assert every ending button lands fully inside the 384-wide viewport (#262),
+   * the geometry the presenter and a verification reader both compute via
+   * `dialogueChoiceRect`.
+   */
+  readonly rect: Rect;
+  /**
+   * The label's actual rendered width in logical px (real browser monospace metrics,
+   * after the fit-to-button font step) — the e2e asserts it stays inside the button's
+   * inner width so no ending label clips at the climactic fork (#262).
+   */
+  readonly labelWidth: number;
 }
 
 /** A read-only snapshot of the dialogue presenter for assertions (#104). */
@@ -114,6 +128,8 @@ function toVerifyDialogueState(
     choices: model.choices.map(choice => ({
       id: choice.id,
       label: choice.label,
+      rect: choice.rect,
+      labelWidth: choice.labelWidth,
     })),
     flags: model.flags,
     revealBeatMs: model.beatMs,

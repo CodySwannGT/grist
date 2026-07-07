@@ -140,7 +140,9 @@ test.describe("Dialogue — presenter scene verification (UAT)", () => {
     const fork = await dialogueState(page);
     expect(fork?.caption).toBe("Free the shard, or wield it?");
     expect(fork?.branching).toBe(true);
-    expect(fork?.choices).toEqual([
+    expect(
+      fork?.choices.map(choice => ({ id: choice.id, label: choice.label }))
+    ).toEqual([
       { id: "freed", label: "Free it" },
       { id: "wielded", label: "Wield it" },
     ]);
