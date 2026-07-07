@@ -14,7 +14,14 @@ import type Phaser from "phaser";
 import { newRunState, type RunState } from "../logic/run-state";
 import { type BattleResult } from "../logic/battle-result";
 import { type FieldState } from "../logic/field";
-import { foldRunEconomy } from "../logic/save";
+import { type RegionRunState } from "../logic/region";
+import { type RegionId } from "../content";
+import { foldRunEconomy, foldSceneProgress } from "../logic/save";
+import {
+  recordRegionProgress,
+  regionProgressFlags,
+  regionProgressFromFlags,
+} from "../logic/world-map";
 import { saveService } from "./save-service";
 
 /** The single registry data manager the wrapper reads/writes. */
@@ -26,7 +33,22 @@ const RunKeys = {
   lastResult: "grist:last-battle-result",
   fieldState: "grist:field-state",
   fieldView: "grist:field-view",
+  regionSession: "grist:region-session",
+  currentRegion: "grist:current-region",
 } as const;
+
+/**
+ * The live region run + its return route (#241), stashed on the registry so a region
+ * encounter's Battle round-trip restores the exact playlist cursor on return — the
+ * region counterpart of {@link setFieldState}. `returnTo` is the World Map the region
+ * exits back to.
+ */
+export interface RegionSession {
+  /** The live region run state (playlist cursor, world-state, seeded RNG). */
+  readonly run: RegionRunState;
+  /** The World Map scene key the region returns to on exit. */
+  readonly returnTo: string;
+}
 
 /**
  * Wren's adapter-level render position when the Field handed off to the pause menu
@@ -225,4 +247,135 @@ export function takeFieldViewSnapshot(
   }
   registry.remove(RunKeys.fieldView);
   return view;
+}
+
+/**
+ * Stash the live region session (#241) so a region encounter's Battle round-trip
+ * restores the exact playlist cursor on return — the region counterpart of
+ * {@link setFieldState}. The Region scene writes this immediately before launching a
+ * region encounter; it reads it back via {@link getRegionSession} on the post-battle
+ * resume.
+ * @param registry - The scene registry.
+ * @param session - The region session to stash.
+ * @returns void
+ */
+export function setRegionSession(
+  registry: Registry,
+  session: RegionSession
+): void {
+  registry.set(RunKeys.regionSession, session);
+}
+
+/**
+ * Read the stashed region session, or null when none is stored. The Region scene
+ * restores from this on a post-battle resume.
+ * @param registry - The scene registry.
+ * @returns The stashed region session, or null.
+ */
+export function getRegionSession(registry: Registry): RegionSession | null {
+  return (
+    (registry.get(RunKeys.regionSession) as RegionSession | undefined) ?? null
+  );
+}
+
+/**
+ * Record the player's current region location (#241) — the "you are here" marker the
+ * World Map reads and the travel plan prices against (a return to the current region
+ * is a no-op). Set when the player travels into a region; null on a fresh run.
+ * @param registry - The scene registry.
+ * @param regionId - The region the player is in.
+ * @returns void
+ */
+export function setCurrentRegion(registry: Registry, regionId: RegionId): void {
+  registry.set(RunKeys.currentRegion, regionId);
+}
+
+/**
+ * The player's current region location, or null when unset (a fresh run before any
+ * travel). Read by the World Map to mark "you are here" and price the travel plan.
+ * @param registry - The scene registry.
+ * @returns The current region, or null.
+ */
+export function getCurrentRegion(registry: Registry): RegionId | null {
+  return (registry.get(RunKeys.currentRegion) as RegionId | undefined) ?? null;
+}
+
+/**
+ * The serial autosave queue for region-progress write-through (#241) — the region
+ * counterpart of {@link RunEconomyAutosave}. Chains every load→fold→save so two region
+ * commits (a battle win, then a Back-to-map) never interleave and clobber each other.
+ */
+class RegionProgressAutosave {
+  /** The tail of the serialized write chain. */
+  #chain: Promise<void> = Promise.resolve();
+
+  /**
+   * Queue a region's cursor write behind any in-flight ones.
+   * @param update - The region + its live cursor/total to record.
+   * @returns A promise resolving once this write is attempted.
+   */
+  enqueue(update: RegionCursorUpdate): Promise<void> {
+    this.#chain = this.#chain.then(() => RegionProgressAutosave.#write(update));
+    return this.#chain;
+  }
+
+  /**
+   * The single load→read→record→fold→save cycle. Reads the CURRENT region ledger back
+   * from the save (so sticky completion is preserved across an Ashfall re-visit),
+   * records the region's new cursor, then merges the region-progress flags INTO the
+   * save's scene-flag ledger via {@link foldSceneProgress} — preserving the existing
+   * sceneId/nodeId narrative cursor and every other flag. Total — swallows failures.
+   * @param update - The region + its live cursor/total to record.
+   * @returns A promise resolving once the write is attempted (never rejects).
+   */
+  static async #write(update: RegionCursorUpdate): Promise<void> {
+    try {
+      const save = await saveService.load();
+      const ledger = regionProgressFromFlags(save.scene?.flags ?? {});
+      const next = recordRegionProgress(
+        ledger,
+        update.regionId,
+        update.cleared,
+        update.total
+      );
+      await saveService.save(
+        foldSceneProgress(save, {
+          sceneId: save.scene?.sceneId ?? "",
+          nodeId: save.scene?.nodeId ?? "",
+          flags: regionProgressFlags(next),
+        })
+      );
+    } catch {
+      // Best-effort autosave — the live run still holds the region progress.
+    }
+  }
+}
+
+/** A single region's live cursor + playlist length to record. */
+interface RegionCursorUpdate {
+  /** The region whose progress to record. */
+  readonly regionId: RegionId;
+  /** The region's live cursor (encounters cleared). */
+  readonly cleared: number;
+  /** The region's live variant playlist length. */
+  readonly total: number;
+}
+
+/** The single shared region-progress autosave queue. */
+const regionProgressAutosave = new RegionProgressAutosave();
+
+/**
+ * Persist the region-progress ledger THROUGH to the save (#241, Scope-IN 4) so region
+ * completion and partial progress survive a reload and the world map surfaces the
+ * restored statuses. Folds the region-progress flags into `SaveDataV3.scene.flags` via
+ * the shipped {@link foldSceneProgress} merge reducer (no schema bump — the reunion
+ * precedent), serialized behind the shared queue and best-effort (a storage failure is
+ * swallowed so it never breaks play).
+ * @param update - The region + its live cursor/total to record.
+ * @returns A promise resolving once this write (after any queued ahead of it) is attempted.
+ */
+export function persistRegionProgress(
+  update: RegionCursorUpdate
+): Promise<void> {
+  return regionProgressAutosave.enqueue(update);
 }

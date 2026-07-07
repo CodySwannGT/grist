@@ -70,6 +70,10 @@ import { type MillDecision } from "../logic/side-story/mill";
 import { TravelCell, type VerifyTravelState } from "./travel-cell";
 import { WalletCell } from "./wallet-cell";
 import { WorldMapCell, type VerifyWorldMapState } from "./world-map-cell";
+import {
+  WorldMapSurfaceCell,
+  type VerifyWorldMapSurfaceState,
+} from "./world-map-surface-cell";
 import { WorldStateCell } from "./world-state-cell";
 
 /**
@@ -250,6 +254,15 @@ const renderCell = new RenderCell();
 const worldMapCell = new WorldMapCell();
 
 /**
+ * The bridge-held world-map surface cell (#241): the travel front-door surface projected
+ * from the persisted save (region progress from `scene.flags` + the live world-state
+ * flag), so the travel e2e can read every region's grade + the Act nodes
+ * scene-agnostically — adopted on save/reload so a persisted clear surfaces the restored
+ * status.
+ */
+const worldMapSurfaceCell = new WorldMapSurfaceCell();
+
+/**
  * Adopt a {@link CurrentSave} into the bridge-held world-state + run-state cells so
  * the in-memory read paths (`worldState` / `reckon` / `regionTone` / `runState`)
  * reflect it — the single sync point shared by a successful persist and a reload.
@@ -280,6 +293,10 @@ function adoptIntoCells(save: CurrentSave): void {
   // *restored* grown build (the persisted stat augments), not the empty starting
   // build — the battle-hydration path the save-reload e2e asserts after reload (#116).
   buildCell.adopt(save);
+  // worldMapSurfaceCell.adopt reads region progress from save.scene.flags so a reload
+  // (or a post-battle persist re-adopted via loadSave) surfaces the restored region
+  // statuses on the travel front door (#241), not a fresh roster.
+  worldMapSurfaceCell.adopt(save);
 }
 
 /**
@@ -343,6 +360,9 @@ async function clearAndReset(): Promise<void> {
   // the base party in the next snapshot, not a stale grown build (#116).
   buildCell.reset();
   travelCell.reset();
+  // Reset the world-map surface cell to an untouched roster so a clearSave leaves the
+  // travel front door reading the fresh Act I statuses, not a stale cleared region (#241).
+  worldMapSurfaceCell.reset();
   // Reset the shared wallet to the slice default alongside the travel cell so both
   // halves of the run return to a known origin together.
   walletCell.reset();
@@ -372,6 +392,14 @@ export interface DataCellApi {
    * until a save adopts or `reckon()` flips one.
    */
   readonly worldMap: () => VerifyWorldMapState;
+  /**
+   * The world-map travel front-door surface (#241) projected from the persisted save:
+   * every region graded LOCKED / AVAILABLE / IN PROGRESS / COMPLETE, the Act I Reckoning
+   * hook, and the Act II reunion frontier + finale entry, resolved through the live
+   * world-state flag. The SAME surface the World Map scene renders; reflects a persisted
+   * region clear once re-adopted (a reload / `loadSave`).
+   */
+  readonly worldMapSurface: () => VerifyWorldMapSurfaceState;
   /** Load the canonical example region authored against the template. */
   readonly loadRegion: () => void;
   /** The loaded region resolved through the live world-state, or null. */
@@ -559,6 +587,8 @@ export function dataCellApi(): DataCellApi {
     reckon: () => worldStateCell.reckon(),
     regionTone: () => worldStateCell.regionTone(),
     worldMap: () => worldMapCell.snapshot(worldStateCell.read() ?? "reach"),
+    worldMapSurface: () =>
+      worldMapSurfaceCell.snapshot(worldStateCell.read() ?? "reach"),
     loadRegion: () => regionCell.load(),
     region: () => regionCell.snapshot(worldStateCell.read() ?? "reach"),
     loadEnemy: () => enemyCell.load(),

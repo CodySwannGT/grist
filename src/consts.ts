@@ -43,6 +43,14 @@ export const SceneKeys = {
   Dialogue: "Dialogue",
   Region: "Region",
   Menu: "Menu",
+  /**
+   * The world-map travel front door (#241) — the full-screen region-select surface
+   * reachable from the pause Menu's **Map** entry (and the `?scene=worldmap` UAT
+   * seam). It renders the region roster with per-region status, the Reckoning hook,
+   * and (post-Reckoning) the Act II reunion frontier + finale entry, and travels the
+   * player into a region (which plays its playlist through real battles).
+   */
+  WorldMap: "WorldMap",
 } as const;
 
 /**
@@ -190,6 +198,13 @@ export interface BattleLaunchData {
   readonly encounterId: string;
   /** The 32-bit battle seed threaded from the field session for determinism. */
   readonly seed: number;
+  /**
+   * The scene to return to when the fight resolves (#241). Defaults to the Field when
+   * absent — every existing Field↔Battle launch is unchanged — but a region encounter
+   * launched from the World Map's region runner sets it to {@link SceneKeys.Region} so
+   * the win flows back into the region's playlist progression rather than the Field.
+   */
+  readonly returnTo?: string;
 }
 
 /**

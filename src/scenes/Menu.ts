@@ -26,6 +26,7 @@ import {
   type FieldResumeData,
   type MenuLaunchData,
 } from "../consts";
+import { type WorldMapLaunchData } from "../world-map-consts";
 import { MenuColors, MenuLayout, MenuTextStyles } from "../menu-consts";
 import { addCursor, addPanel } from "../ui/chrome";
 import {
@@ -68,9 +69,9 @@ const PANEL_LINE_SLOTS = 4;
 const PANEL_DESCRIPTIONS: Readonly<Record<string, readonly string[]>> = {
   [PauseMenuEntryIds.party]: ["Your party roster and bonds."],
   [PauseMenuEntryIds.items]: ["Carried items and key relics."],
-  [PauseMenuEntryIds.map]: ["The world map and waypoints."],
-  // System/Settings opens the controls & help reference (#228) via the dense
-  // HelpPanel instead of a one-line description — so it is keyed nowhere here.
+  // Map now opens the World Map travel scene (#241) instead of a placeholder panel, so
+  // it is no longer keyed here. System/Settings opens the controls & help reference
+  // (#228) via the dense HelpPanel, so it is keyed nowhere here either.
 };
 
 /** Renders the pause/main menu from the pure model and routes confirmed entries. */
@@ -324,6 +325,15 @@ export class Menu extends Phaser.Scene {
       this.#openPanel = entry.id;
       this.#render();
       void this.#loadLedger();
+      return;
+    }
+    if (route.kind === "worldmap") {
+      // Open the travel front door (#241). It returns to the caller the menu was opened
+      // over (the Field), so closing the map drops the player back where they paused;
+      // a standalone menu (no caller) opens a standalone map (its Back stays put).
+      const launch: WorldMapLaunchData | undefined =
+        this.#returnTo !== null ? { returnTo: this.#returnTo } : undefined;
+      this.scene.start(SceneKeys.WorldMap, launch);
       return;
     }
     this.#openPanel = route.panel;

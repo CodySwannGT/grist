@@ -30,98 +30,45 @@ import {
   RegionLayout,
   RegionTextStyles,
   SceneKeys,
+  type FieldResumeData,
 } from "../consts";
-import { REGIONS, RegionIds, authorRegion, type RegionDef } from "../content";
-import { BoundIds } from "../content";
+import {
+  type RegionLaunchData,
+  type WorldMapLaunchData,
+} from "../world-map-consts";
+import {
+  REGIONS,
+  resolveRegionVariant,
+  type RegionDef,
+  type RegionId,
+} from "../content";
 import {
   actRegion,
   bootRegion,
   hashRegionRun,
+  RegionPhases,
   type RegionAction,
   type RegionRunState,
 } from "../logic/region";
-import { type WorldState } from "../logic/world";
+import { keyToWorldMapIntent } from "../logic/world-map-nav";
+import { RegionPlayHud } from "../ui/region-play-hud";
 import { verifyBridge } from "../uat/bridge";
 import { type RegionView } from "../uat/region-scene-view";
+import {
+  getRunState,
+  persistRegionProgress,
+  type RegionSession,
+} from "../services/run-store";
+import {
+  bootRegionPlay,
+  engageRegionEncounter,
+  resumeRegionPlay,
+} from "./region-launch";
+import { buildRegionBackdrop } from "./region-backdrop";
+import { requestedRegion, requestedWorldState } from "./region-harness";
 
 /** Fallback seed when none is supplied via the verification bridge / `?seed=`. */
 const DEFAULT_SEED = 0x9e3779b1;
-
-/**
- * Parallax layer stacks per backdrop key (far → near). A booted session's
- * `state.backdrop` names its FAR layer (see `regionBackdrop()` in
- * `logic/region`); when that key has an entry here the scene layers the full
- * stack, otherwise it renders the key as a single flat backdrop — so a per-region
- * art set ships by adding images + one row here, no scene logic. Every live region
- * in `content/regions` gets its own distinct set (#200, Art pass II); the keys are
- * the generated `ImageKeys.<region>Bg{Far,Mid,Near}`, so a renamed/missing plate is
- * a compile error, never a silent black square.
- */
-const REGION_BACKDROP_LAYERS: Readonly<Record<string, readonly string[]>> = {
-  [ImageKeys.marrowBgFar]: [
-    ImageKeys.marrowBgFar,
-    ImageKeys.marrowBgMid,
-    ImageKeys.marrowBgNear,
-  ],
-  [ImageKeys.rootsBgFar]: [
-    ImageKeys.rootsBgFar,
-    ImageKeys.rootsBgMid,
-    ImageKeys.rootsBgNear,
-  ],
-  [ImageKeys.upperVantaBgFar]: [
-    ImageKeys.upperVantaBgFar,
-    ImageKeys.upperVantaBgMid,
-    ImageKeys.upperVantaBgNear,
-  ],
-  [ImageKeys.sylvemarchBgFar]: [
-    ImageKeys.sylvemarchBgFar,
-    ImageKeys.sylvemarchBgMid,
-    ImageKeys.sylvemarchBgNear,
-  ],
-  [ImageKeys.holtspireBgFar]: [
-    ImageKeys.holtspireBgFar,
-    ImageKeys.holtspireBgMid,
-    ImageKeys.holtspireBgNear,
-  ],
-  [ImageKeys.cinderfenBgFar]: [
-    ImageKeys.cinderfenBgFar,
-    ImageKeys.cinderfenBgMid,
-    ImageKeys.cinderfenBgNear,
-  ],
-  [ImageKeys.wrackBgFar]: [
-    ImageKeys.wrackBgFar,
-    ImageKeys.wrackBgMid,
-    ImageKeys.wrackBgNear,
-  ],
-};
-
-/** Readability scrim over the backdrop (color + alpha) so chrome stays legible. */
-const SCRIM_COLOR = 0x0b0e16;
-const SCRIM_ALPHA = 0.35;
-
-/**
- * A deliberately-incomplete region (missing its `ashfall` variant) authored for the
- * boot-throw path. Forced past the compiler with a cast — the same shape the
- * Phaser-free unit suite uses — so the e2e can drive
- * `?scene=region&region=broken` and prove a bad region is CAUGHT and fails the
- * harness (AC scenario 2), not rendered.
- * @returns An incomplete region that {@link bootRegion} rejects.
- */
-function brokenRegion(): RegionDef {
-  return authorRegion({
-    id: "broken",
-    boundSite: BoundIds.marrowBound,
-    states: {
-      reach: {
-        name: "Broken Reach",
-        tone: "verdant",
-        keyLocations: [{ id: "void", name: "Void" }],
-        encounters: [],
-        sideStories: [],
-      },
-    },
-  } as unknown as RegionDef);
-}
 
 /** Renders a booted region session as the side-view and emits harness actions. */
 export class Region extends Phaser.Scene {
@@ -133,10 +80,34 @@ export class Region extends Phaser.Scene {
   #region!: RegionDef;
   #markers: readonly Phaser.GameObjects.Rectangle[] = [];
   #caption!: Phaser.GameObjects.Text;
+  /** The World Map launch payload when entered in player mode (#241), else null. */
+  #launch: RegionLaunchData | null = null;
+  /** True when re-entered after a region encounter's battle resolved (#241). */
+  #resumed = false;
+  /** The World Map scene the player-mode region returns to on exit. */
+  #returnTo: string = SceneKeys.WorldMap;
+  /** The player-mode controls HUD (Engage / Back), or null in harness mode. */
+  #playHud: RegionPlayHud | null = null;
 
   /** Register the scene key. */
   constructor() {
     super(SceneKeys.Region);
+  }
+
+  /**
+   * Read the entry mode (#241): a {@link RegionLaunchData} means the player travelled
+   * in from the World Map (player mode); a `{ resumed: true }` payload means the scene
+   * is re-entered after a region encounter's battle resolved; no payload is the shipped
+   * harness mode (`?scene=region`). Reset per-entry so a Phaser-reused instance never
+   * carries stale mode state.
+   * @param data - The launch / resume payload, or undefined on a harness boot.
+   * @returns void
+   */
+  init(data?: RegionLaunchData | FieldResumeData): void {
+    this.#launch = data !== undefined && "regionId" in data ? data : null;
+    this.#resumed = data !== undefined && "resumed" in data && data.resumed;
+    this.#markers = [];
+    this.#playHud = null;
   }
 
   /**
@@ -150,6 +121,10 @@ export class Region extends Phaser.Scene {
    * @returns void
    */
   create(): void {
+    if (this.#launch !== null || this.#resumed) {
+      this.#createPlay();
+      return;
+    }
     const seed = verifyBridge.takeSeed() ?? DEFAULT_SEED;
     this.#region = requestedRegion();
     this.cameras.main.setBackgroundColor(RegionColors.sky);
@@ -176,6 +151,147 @@ export class Region extends Phaser.Scene {
   }
 
   /**
+   * Create the player-facing region (#241): resolve the region session (booted fresh
+   * from the World Map launch, or restored + advanced after a battle resolved), render
+   * the side-view + the Engage/Back controls, and wire the keyboard. Unlike harness
+   * mode, encounters are played through REAL battles — Engage launches the Battle scene
+   * and a win advances the playlist cursor (`resumeRegionPlay`). Bounces back to the map
+   * defensively if there is no session to render.
+   * @returns void
+   */
+  #createPlay(): void {
+    this.cameras.main.setBackgroundColor(RegionColors.sky);
+    const session = this.#resolvePlaySession();
+    if (session === null) {
+      this.scene.start(this.#returnTo, {
+        returnTo: SceneKeys.Field,
+      } as WorldMapLaunchData);
+      return;
+    }
+    this.#state = session.run;
+    this.#returnTo = session.returnTo;
+    this.#region = REGIONS[session.run.regionId as RegionId];
+    this.#bootError = null;
+    this.#buildBackdrop(this.#state);
+    this.#buildSideView(this.#state);
+    this.#playHud = new RegionPlayHud(this, {
+      onEngage: () => this.#engage(),
+      onBack: () => this.#backToMap(),
+    });
+    this.#renderPlay();
+    this.input.keyboard?.on(
+      Phaser.Input.Keyboard.Events.ANY_KEY_DOWN,
+      this.#onPlayKey
+    );
+    verifyBridge.attach(SceneKeys.Region, this.#bridgeView());
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdownPlay());
+  }
+
+  /**
+   * Resolve the player-mode region session: after a battle it restores the stashed run
+   * and advances the cursor ({@link resumeRegionPlay}); on a fresh travel-in it boots
+   * the region at the saved cursor ({@link bootRegionPlay}). Null when neither applies.
+   * @returns The region session, or null.
+   */
+  #resolvePlaySession(): RegionSession | null {
+    if (this.#resumed) {
+      const resumed = resumeRegionPlay(
+        this.registry,
+        getRunState(this.registry)
+      );
+      return resumed?.session ?? null;
+    }
+    if (this.#launch !== null) {
+      const seed = verifyBridge.takeSeed() ?? DEFAULT_SEED;
+      return bootRegionPlay(this.#launch, seed);
+    }
+    return null;
+  }
+
+  /**
+   * Render the player-mode side-view + controls from the live run: the marker strip +
+   * caption (shared with harness mode) and the Engage/Back HUD sized to the cursor.
+   * @returns void
+   */
+  #renderPlay(): void {
+    if (this.#state === null || this.#playHud === null) {
+      return;
+    }
+    this.#render(this.#state);
+    const total = resolveRegionVariant(this.#region, this.#state.worldState)
+      .encounters.length;
+    this.#playHud.render(
+      this.#state.cursor,
+      total,
+      this.#state.phase === RegionPhases.complete
+    );
+  }
+
+  /**
+   * Engage the encounter under the cursor — launch its real battle. A no-op when the
+   * region is already complete (nothing left to fight; the player leaves via Back).
+   * @returns void
+   */
+  #engage(): void {
+    if (this.#state === null) {
+      return;
+    }
+    engageRegionEncounter(this, this.registry, {
+      run: this.#state,
+      returnTo: this.#returnTo,
+    });
+  }
+
+  /**
+   * Leave the region back to the World Map (#239 exit): persist the live cursor best-
+   * effort, then start the map (which returns to the Field on its own Back).
+   * @returns void
+   */
+  #backToMap(): void {
+    if (this.#state !== null) {
+      const total = resolveRegionVariant(this.#region, this.#state.worldState)
+        .encounters.length;
+      void persistRegionProgress({
+        regionId: this.#state.regionId as RegionId,
+        cleared: this.#state.cursor,
+        total,
+      });
+    }
+    this.scene.start(this.#returnTo, {
+      returnTo: SceneKeys.Field,
+    } as WorldMapLaunchData);
+  }
+
+  /**
+   * The stable player-mode key handler: Enter/Space engages the next encounter, Esc/Q
+   * backs to the World Map.
+   * @param event - The raw keyboard event.
+   * @returns void
+   */
+  readonly #onPlayKey = (event: KeyboardEvent): void => {
+    const intent = keyToWorldMapIntent(event.code);
+    if (intent === "select") {
+      this.#engage();
+    } else if (intent === "back") {
+      this.#backToMap();
+    }
+  };
+
+  /**
+   * Free the player-mode keyboard + HUD listeners and detach the bridge (the
+   * `require-shutdown-cleanup` contract).
+   * @returns void
+   */
+  #shutdownPlay(): void {
+    this.input.keyboard?.off(
+      Phaser.Input.Keyboard.Events.ANY_KEY_DOWN,
+      this.#onPlayKey
+    );
+    this.#playHud?.destroy();
+    verifyBridge.attach("", null);
+  }
+
+  /**
    * Paint the side-view backdrop: the parallax stack registered for the booted
    * session's OWN `state.backdrop` key (resolved by the harness via
    * `regionBackdrop()`), far layer first, plus a dark scrim so the chrome stays
@@ -186,22 +302,7 @@ export class Region extends Phaser.Scene {
    * @returns void
    */
   #buildBackdrop(state: RegionRunState | null): void {
-    const key = state?.backdrop ?? ImageKeys.marrowBgFar;
-    const layers = REGION_BACKDROP_LAYERS[key] ?? [key];
-    for (const layer of layers) {
-      // Bottom-anchored: taller-than-stage art crops at the top edge.
-      this.add.image(0, GameView.height, layer).setOrigin(0, 1);
-    }
-    this.add
-      .rectangle(
-        0,
-        0,
-        GameView.width,
-        GameView.height,
-        SCRIM_COLOR,
-        SCRIM_ALPHA
-      )
-      .setOrigin(0, 0);
+    buildRegionBackdrop(this, state?.backdrop ?? ImageKeys.marrowBgFar);
   }
 
   /**
@@ -351,46 +452,4 @@ export class Region extends Phaser.Scene {
   #shutdown(): void {
     verifyBridge.attach("", null);
   }
-}
-
-/**
- * Resolve which region to boot from the `?region=` query: the deliberately-broken
- * region when `?region=broken` (the boot-throw path), else the authored region whose
- * id matches the query value, resolved against the {@link REGIONS} registry so EVERY
- * registered region boots through the harness — not just `marrow`. Falls back to the
- * canonical `marrow` when the query is absent or names no registered region (the
- * default), keeping the harness genuinely reusable for later RegionDefs with no
- * code edit. Guarded for non-browser (test) contexts where `window` is absent.
- * @returns The region to boot.
- */
-function requestedRegion(): RegionDef {
-  if (typeof window === "undefined") {
-    return REGIONS[RegionIds.marrow];
-  }
-  const requested = new URLSearchParams(window.location.search)
-    .get("region")
-    ?.toLowerCase();
-  if (requested === "broken") {
-    return brokenRegion();
-  }
-  const matched = Object.values(REGIONS).find(
-    region => region.id.toLowerCase() === requested
-  );
-  return matched ?? REGIONS[RegionIds.marrow];
-}
-
-/**
- * Resolve the world-state to boot in from the `?world=` query: Act II `ashfall`
- * when `?world=ashfall`, else Act I `reach` (the default). Lets the e2e boot a
- * region directly into either variant. Guarded for non-browser (test) contexts.
- * @returns The world-state to boot in.
- */
-function requestedWorldState(): WorldState {
-  if (typeof window === "undefined") {
-    return "reach";
-  }
-  const requested = new URLSearchParams(window.location.search)
-    .get("world")
-    ?.toLowerCase();
-  return requested === "ashfall" ? "ashfall" : "reach";
 }
