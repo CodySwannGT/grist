@@ -23,7 +23,13 @@ interface ReadyEntry {
 }
 
 /**
- * Map one side's ready combatants (gauge at `ready`) to {@link ReadyEntry}s.
+ * Map one side's ready combatants to {@link ReadyEntry}s — a combatant is ready
+ * only when it is **alive** (HP > 0) *and* its gauge has reached `ready`. Excluding
+ * the downed is load-bearing: a KO'd combatant keeps ticking its gauge to full, and
+ * a full-gauge corpse left in the ready queue parks the ATB loop on a turn no one
+ * can take — the runner pauses for a player command the HP-gated HUD never surfaces
+ * and `resolveEnemyTurns` bails on the corpse at the head of the queue, an
+ * input-dead soft-lock (#243). The dead never act, so they are never ready.
  * @param side - The side's combatants.
  * @param sideId - Which side they are on.
  * @returns Ready entries for that side.
@@ -33,7 +39,7 @@ function collectReady(
   sideId: BattleSide
 ): readonly ReadyEntry[] {
   return side.flatMap((combatant, index) =>
-    combatant.atb >= AtbTuning.ready
+    combatant.hp > 0 && combatant.atb >= AtbTuning.ready
       ? [{ ref: { side: sideId, index }, spd: combatant.stats.spd }]
       : []
   );
