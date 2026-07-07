@@ -45,6 +45,12 @@ export interface VerifyDialogueState {
   readonly speaker: string;
   /** The full caption line currently shown ("" once done). */
   readonly caption: string;
+  /**
+   * The caption text object's rendered height in logical px (rows × line height) — the
+   * caption-fit e2e asserts `captionY + captionHeight` clears the box's bottom border so
+   * no authored caption spills below the framed panel (#263). 0 before the first render.
+   */
+  readonly captionHeight: number;
   /** The portrait-slot content id rendered beside the caption. */
   readonly portraitSlot: string;
   /** Whether the current node is a fork offering choices. */
@@ -122,6 +128,7 @@ function toVerifyDialogueState(
     scene,
     speaker: model.speaker,
     caption: model.caption,
+    captionHeight: model.captionHeight,
     portraitSlot: model.portraitSlot,
     branching: model.branching,
     done: model.done,

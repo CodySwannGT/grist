@@ -91,6 +91,14 @@ export interface DialogueChoiceModel {
 export interface DialogueModel {
   readonly speaker: string;
   readonly caption: string;
+  /**
+   * The caption text object's **actual** rendered height in logical px (the live
+   * Phaser text object's height, reflecting how many rows the current caption wrapped
+   * to). Carried on the model so the caption-fit e2e can assert the longest authored
+   * caption renders fully inside the box's bottom border with real browser metrics,
+   * not an estimate (#263). 0 before the first caption has rendered.
+   */
+  readonly captionHeight: number;
   readonly portraitSlot: string;
   readonly branching: boolean;
   readonly done: boolean;
@@ -402,6 +410,9 @@ export class DialoguePresenter {
     return {
       speaker: view.speaker,
       caption: view.caption,
+      // The live caption text object's rendered height (rows × line height); 0 before
+      // the first caption has painted. The caption-fit e2e asserts it clears the box.
+      captionHeight: this.#caption.object.height,
       portraitSlot: view.portraitSlot,
       branching: view.branching,
       done: view.done,

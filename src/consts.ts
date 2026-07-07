@@ -518,11 +518,21 @@ export const DIALOGUE_DEPTH = 200;
  * the contract, not the exact constants.
  */
 export const DialogueLayout = {
-  /** The caption banner box (bottom of the screen). */
+  /**
+   * The caption banner box. `boxHeight` (58) sits the box flush with the 216-tall
+   * screen bottom (`boxY + boxHeight = 216`) so it holds the longest authored caption —
+   * 4 wrapped rows (the 206-char mill / 198-char Sallow lines) — with breathing room
+   * below the last row, ACROSS browsers: a caption row's rendered height is the browser's
+   * default-monospace line height, which varies (~8.2px on the CI Chromium, ~9.25px on
+   * desktop Chrome), so a 4-row caption's bottom ranges `176 + 4*9.25 ≈ 213` at the tall
+   * end — ~3px inside the border, vs the ~1px overlap a 4-row line had against the old
+   * 50-high box's edge (#263). The `dialogueCaptionFits` twin proves every caption stays
+   * within `dialogueCaptionMaxLines()` rows so a future long line fails CI, not the player.
+   */
   boxX: 8,
   boxY: 158,
   boxWidth: 368,
-  boxHeight: 50,
+  boxHeight: 58,
   /** The square portrait slot inset into the box's left edge. */
   portraitX: 14,
   portraitY: 164,

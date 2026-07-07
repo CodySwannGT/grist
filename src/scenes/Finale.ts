@@ -257,6 +257,7 @@ export class Finale extends Phaser.Scene {
       this.#presenter?.model() ?? {
         speaker: "",
         caption: "",
+        captionHeight: 0,
         portraitSlot: "",
         branching: false,
         done: true,
