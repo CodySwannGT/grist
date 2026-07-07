@@ -204,37 +204,6 @@ export const FieldEvents = {
 } as const;
 
 /**
- * The typed scene-data the Field hands to the Battle scene when an encounter
- * trigger fires (`this.scene.start(SceneKeys.Battle, data)`): the encounter id to
- * run and the deterministic seed. The Battle scene reads this in `init()` and
- * launches the *existing* Phase-1 sim with it — no combat math is added, only the
- * launch payload. Keeping the shape here (not inline) means a field-launch and a
- * battle-init can never drift on the key names.
- */
-export interface BattleLaunchData {
-  /** The encounter id the Field's trigger fired (one of {@link import("./content").EncounterId}). */
-  readonly encounterId: string;
-  /** The 32-bit battle seed threaded from the field session for determinism. */
-  readonly seed: number;
-  /**
-   * The scene to return to when the fight resolves (#241). Defaults to the Field when
-   * absent — every existing Field↔Battle launch is unchanged — but a region encounter
-   * launched from the World Map's region runner sets it to {@link SceneKeys.Region} so
-   * the win flows back into the region's playlist progression rather than the Field.
-   */
-  readonly returnTo?: string;
-  /**
-   * The battle banner to render (#248) — the contextual title of the fight, derived
-   * from the originating region's live world-state variant name (via
-   * {@link import("./content").regionBattleTitle}) so a region encounter reads
-   * "THE MARROW REACH" / "UPPER VANTA — …" rather than the fixed dungeon banner.
-   * Absent on a Field/standalone launch, where the Battle scene keeps its authored
-   * default ("MARROW DESCENT", the Marrow-descent tutorial's own name).
-   */
-  readonly title?: string;
-}
-
-/**
  * The typed scene-data the Battle scene hands back to the Field on return
  * (`this.scene.start(SceneKeys.Field, data)`). The live field session and the
  * consumed battle result both ride the registry (see `services/run-store`) so the

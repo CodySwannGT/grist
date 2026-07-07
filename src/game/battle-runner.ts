@@ -23,12 +23,14 @@ import {
   type BattleState,
 } from "../logic/combat";
 import { eventsCenter } from "../services/events";
+import { INITIAL_WORLD_STATE, type WorldState } from "../logic/world";
 import { DEFAULT_SPEED, speedTickMs, type BattleSpeed } from "./speed";
 
 /** Owns and advances one battle's pure state; renders nothing. */
 export class BattleRunner {
   readonly #party: readonly PartyMemberDef[];
   readonly #encounter: EncounterDef;
+  readonly #worldState: WorldState;
   #state: BattleState;
   #accumulatorMs = 0;
   #speed: BattleSpeed = DEFAULT_SPEED;
@@ -38,15 +40,19 @@ export class BattleRunner {
    * @param party - The party member definitions to field.
    * @param encounter - The encounter whose enemy lineup to resolve.
    * @param seed - The 32-bit battle seed.
+   * @param worldState - The world-state selecting base vs. Ashfall enemy reads
+   *   (defaults to reach — every existing Field/standalone launch is unchanged).
    */
   constructor(
     party: readonly PartyMemberDef[],
     encounter: EncounterDef,
-    seed: number
+    seed: number,
+    worldState: WorldState = INITIAL_WORLD_STATE
   ) {
     this.#party = party;
     this.#encounter = encounter;
-    this.#state = startBattle(party, encounter, seed);
+    this.#worldState = worldState;
+    this.#state = startBattle(party, encounter, seed, worldState);
     eventsCenter.on(BattleEvents.ActionRequested, this.#onAction);
   }
 
@@ -143,7 +149,12 @@ export class BattleRunner {
    * @returns void
    */
   restart(seed: number): void {
-    this.#state = startBattle(this.#party, this.#encounter, seed);
+    this.#state = startBattle(
+      this.#party,
+      this.#encounter,
+      seed,
+      this.#worldState
+    );
     this.#accumulatorMs = 0;
   }
 

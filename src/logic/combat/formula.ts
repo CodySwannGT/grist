@@ -35,6 +35,8 @@ export const CombatTuning = {
   neutralElement: 1,
   /** Damage multiplier applied to a Broken target (≥ ×2 per combat-spec). */
   brokenPressureMod: 2,
+  /** Incoming-damage multiplier while a combatant is Guarding (Defend braces). */
+  guardMod: 0.5,
   /** Pressure at which a target Breaks and Severance is enabled. */
   breakThreshold: 50,
   /** Pressure gained by hitting an elemental weakness. */
@@ -193,6 +195,16 @@ export function critMod(crit: boolean): number {
  */
 export function pressureMod(broken: boolean): number {
   return broken ? CombatTuning.brokenPressureMod : 1;
+}
+
+/**
+ * The incoming-damage multiplier for a target: {@link CombatTuning.guardMod}
+ * when the target is Guarding (spent its last turn on Defend), otherwise 1.
+ * @param defending - Whether the target is Guarding.
+ * @returns The guard mitigation multiplier.
+ */
+export function guardMod(defending: boolean): number {
+  return defending ? CombatTuning.guardMod : 1;
 }
 
 /**

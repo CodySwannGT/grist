@@ -51,6 +51,7 @@ export {
   computeHeal,
   computeRenderingTick,
   elementMultiplier,
+  guardMod,
   varianceFromRoll,
 } from "./formula";
 export {

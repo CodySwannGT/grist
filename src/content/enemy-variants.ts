@@ -99,7 +99,7 @@ export const ASHFALL_ENEMY_VARIANTS: {
     baseId: EnemyIds.marrowScrapper,
     name: "Ashen scrapper",
     drainedPalette: DrainedPalettes.ash,
-    stats: { hp: 48, ap: 0, pow: 10, foc: 4, def: 4, wrd: 3, spd: 7, lck: 2 },
+    stats: { hp: 48, ap: 0, pow: 30, foc: 4, def: 4, wrd: 3, spd: 9, lck: 2 },
     elements: { gloom: 1.5 },
     lootGrist: 6,
     gloomAttacks: [
@@ -115,7 +115,7 @@ export const ASHFALL_ENEMY_VARIANTS: {
     baseId: EnemyIds.renderConstruct,
     name: 'Render-construct "Vesper" (unmade)',
     drainedPalette: DrainedPalettes.ash,
-    stats: { hp: 82, ap: 6, pow: 8, foc: 13, def: 8, wrd: 7, spd: 6, lck: 4 },
+    stats: { hp: 130, ap: 6, pow: 26, foc: 13, def: 8, wrd: 7, spd: 8, lck: 4 },
     elements: { flux: 1.5, gloom: 1.5 },
     lootGrist: 10,
     gloomAttacks: [
@@ -132,13 +132,13 @@ export const ASHFALL_ENEMY_VARIANTS: {
     name: "The Ashling, guttering",
     drainedPalette: DrainedPalettes.ash,
     stats: {
-      hp: 240,
+      hp: 420,
       ap: 20,
-      pow: 18,
+      pow: 44,
       foc: 21,
       def: 14,
       wrd: 13,
-      spd: 10,
+      spd: 14,
       lck: 8,
     },
     elements: { flux: 1.5, gloom: 1 },
@@ -156,7 +156,7 @@ export const ASHFALL_ENEMY_VARIANTS: {
     baseId: EnemyIds.houseEnforcer,
     name: "House Mourne remnant",
     drainedPalette: DrainedPalettes.ash,
-    stats: { hp: 30, ap: 0, pow: 8, foc: 3, def: 2, wrd: 2, spd: 6, lck: 2 },
+    stats: { hp: 30, ap: 0, pow: 16, foc: 3, def: 2, wrd: 2, spd: 6, lck: 2 },
     elements: { gloom: 1.5 },
     lootGrist: 4,
     gloomAttacks: [
@@ -172,7 +172,7 @@ export const ASHFALL_ENEMY_VARIANTS: {
     baseId: EnemyIds.drownedHusk,
     name: "Drowned husk (dimmed)",
     drainedPalette: DrainedPalettes.deep,
-    stats: { hp: 60, ap: 0, pow: 11, foc: 6, def: 5, wrd: 4, spd: 5, lck: 2 },
+    stats: { hp: 60, ap: 0, pow: 22, foc: 6, def: 5, wrd: 4, spd: 5, lck: 2 },
     elements: { flux: 1.5, gloom: 1.5 },
     lootGrist: 9,
     gloomAttacks: [
@@ -188,7 +188,7 @@ export const ASHFALL_ENEMY_VARIANTS: {
     baseId: EnemyIds.requiemWraith,
     name: "Requiem wraith (unquiet)",
     drainedPalette: DrainedPalettes.deep,
-    stats: { hp: 74, ap: 6, pow: 9, foc: 14, def: 6, wrd: 9, spd: 9, lck: 4 },
+    stats: { hp: 74, ap: 6, pow: 26, foc: 14, def: 6, wrd: 9, spd: 9, lck: 4 },
     elements: { flux: 0.5, gloom: 1 },
     lootGrist: 12,
     gloomAttacks: [
@@ -207,11 +207,11 @@ export const ASHFALL_ENEMY_VARIANTS: {
     stats: {
       hp: 110,
       ap: 16,
-      pow: 12,
+      pow: 33,
       foc: 18,
       def: 11,
       wrd: 14,
-      spd: 8,
+      spd: 9,
       lck: 7,
     },
     // Warped: the Auditor stops resisting Gloom and starts wielding it.

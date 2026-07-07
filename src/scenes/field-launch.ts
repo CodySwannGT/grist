@@ -10,11 +10,8 @@
  * @module scenes/field-launch
  */
 import type Phaser from "phaser";
-import {
-  SceneKeys,
-  type BattleLaunchData,
-  type MenuLaunchData,
-} from "../consts";
+import { SceneKeys, type MenuLaunchData } from "../consts";
+import { type BattleLaunchData } from "./battle-launch-data";
 import { type WorldMapLaunchData } from "../world-map-consts";
 import { CH1_AMBUSH_ENCOUNTER } from "../content";
 import {

@@ -96,6 +96,15 @@ export interface Combatant {
   readonly pressure: number;
   readonly broken: boolean;
   readonly spent: boolean;
+  /**
+   * Whether the combatant is Guarding — it spent its last turn on
+   * {@link ActionKinds.defend} and has not acted since, so the next incoming hit
+   * is mitigated (combat-spec "Defend"). Set when a Defend resolves, cleared the
+   * instant the combatant next acts. Optional so existing combatant literals and
+   * the `hashState` serialization (which reads the mitigated HP, not this flag)
+   * stay unchanged; absent means not guarding.
+   */
+  readonly defending?: boolean;
 }
 
 /**
