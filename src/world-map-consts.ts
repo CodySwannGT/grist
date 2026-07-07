@@ -39,6 +39,18 @@ export interface RegionLaunchData {
 }
 
 /**
+ * The typed scene-data the World Map hands to the Finale scene when the player enters the
+ * ★ Aurel's Heart node (#244): the scene to return to if the finale is ever backed out of
+ * before it commits. The finale itself always plays through to the Title on completion, so
+ * `returnTo` is the pre-commit escape hatch, not the terminal destination. Absent when the
+ * finale is reached standalone via the `?scene=finale` seam.
+ */
+export interface FinaleLaunchData {
+  /** The caller scene key to resume if the finale is exited before it commits. */
+  readonly returnTo: string;
+}
+
+/**
  * World-map surface layout in logical (384×216) pixels (#241). The travel front door
  * is a full-screen list surface (the Menu/Bench chrome pattern): a title banner, a
  * grist readout, a single navigable column of status-graded region rows and Act nodes,

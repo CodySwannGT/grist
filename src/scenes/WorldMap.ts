@@ -19,6 +19,7 @@
 import Phaser from "phaser";
 import { SceneKeys } from "../consts";
 import {
+  type FinaleLaunchData,
   type RegionLaunchData,
   type WorldMapLaunchData,
 } from "../world-map-consts";
@@ -276,8 +277,35 @@ export class WorldMap extends Phaser.Scene {
     } else if (entry.kind === "reckoning") {
       this.#triggerReckoning(entry.hook.available);
     } else {
-      this.#render();
+      this.#enterFinale(entry.finale.available);
     }
+  }
+
+  /**
+   * Enter the finale at Aurel's heart (#244): when it is available (the world has turned
+   * to ashfall) start the {@link SceneKeys.Finale} scene, which resolves the run's
+   * reachable ending-choice and plays the confrontation through to the Title. When it is
+   * still sealed the node explains itself with a stated prerequisite rather than the
+   * previous silent no-op — the affordance matches its true state either way.
+   * @param available - Whether the finale is reachable (the world has turned).
+   * @returns void
+   */
+  #enterFinale(available: boolean): void {
+    if (this.#surface === null) {
+      return;
+    }
+    if (!available) {
+      this.#panel.render(
+        this.#entries.map(entry => this.#rowView(entry)),
+        this.#cursor,
+        this.#grist,
+        this.#surface.worldState,
+        "Aurel's heart is sealed — turn the world through the Reckoning first."
+      );
+      return;
+    }
+    const launch: FinaleLaunchData = { returnTo: SceneKeys.WorldMap };
+    this.scene.start(SceneKeys.Finale, launch);
   }
 
   /**

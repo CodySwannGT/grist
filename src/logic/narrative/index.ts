@@ -70,6 +70,11 @@ export {
   isFinaleReached,
   resolveFinale,
 } from "./finale";
+export {
+  REUNION_COMPLETE_FLAG_PREFIX,
+  reunionsCompletedFromFlags,
+  standingFromSave,
+} from "./finale-standing";
 export type { ReckoningPhase, ReckoningSession } from "./reckoning";
 export {
   RECKONING_ASH_SWATH,

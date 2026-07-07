@@ -19,17 +19,22 @@ import {
 } from "../../src/logic/world-map-entries";
 
 describe("world-map entries — Act I", () => {
-  it("lists regions then the Reckoning hook", () => {
+  it("lists regions, the Reckoning hook, then the sealed finale", () => {
     const surface = projectWorldMapSurface({
       worldState: "reach",
       progress: emptyRegionProgress(),
       currentRegion: RegionIds.marrow,
     });
     const entries = buildWorldMapEntries(surface);
-    expect(entries).toHaveLength(8); // 7 regions + Reckoning hook
+    // 7 regions + Reckoning hook + the always-present finale entry (sealed in reach, #244).
+    expect(entries).toHaveLength(9);
     expect(entries[0]?.kind).toBe("region");
     expect(entries[7]?.kind).toBe("reckoning");
     expect(worldMapEntryId(entries[7]!)).toBe("reckoning");
+    const finale = entries[8]!;
+    expect(finale.kind).toBe("finale");
+    expect(worldMapEntryLabel(finale)).toContain("sealed");
+    expect(worldMapEntryDetail(finale)).toContain("LOCKED");
   });
 
   it("labels a locked region and shows its cue as detail", () => {

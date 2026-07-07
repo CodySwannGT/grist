@@ -144,3 +144,13 @@ export {
   MILL_RENDERED_SCENE_ID,
   MILL_SPARED_SCENE_ID,
 } from "./scenes/side-mill";
+export {
+  buildFinaleScript,
+  endingIdFromSceneId,
+  finaleEndingSceneId,
+  FINALE_CARD_SCENE_ID,
+  FINALE_CHOICE_NODE_ID,
+  FINALE_CHOSEN_ENDING_FLAG,
+  FINALE_ENDINGS,
+  FINALE_SCENE_ID,
+} from "./scenes/finale";
