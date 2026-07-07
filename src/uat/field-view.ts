@@ -52,9 +52,15 @@ export interface VerifyFieldState {
   /**
    * The summonable mini-map's nodes (A→B→C), each with its visit state and — for
    * a locked node still ahead in the descent — the cue that explains why it can't
-   * be reached yet (#250).
+   * be reached yet (#250; the cue now points at the World Map, #261).
    */
   readonly miniMapNodes: readonly VerifyMiniMapNode[];
+  /**
+   * The once-per-save travel signpost currently on screen, or null (#261) — the hint
+   * that guides a first-time player from the dead-ended intro Field to the World Map.
+   * Lets an e2e prove it shows once on a fresh opted-in run and clears on first input.
+   */
+  readonly onboardingHint: string | null;
 }
 
 /**
@@ -82,6 +88,8 @@ export interface FieldView {
   readonly contextPrompt: () => string | null;
   /** Whether the summonable mini-map overlay is open (#107). */
   readonly miniMapOpen: () => boolean;
+  /** The once-per-save travel signpost on screen, or null (#261). */
+  readonly onboardingHint: () => string | null;
   /** The mini-map nodes with their visit state + locked-node cues (#250). */
   readonly miniMapNodes: () => readonly VerifyMiniMapNode[];
   /** Summon or dismiss the mini-map overlay (the "agent toggled the map" action). */
@@ -115,6 +123,7 @@ export function toVerifyFieldState(
     pendingChoiceShard: view.pendingChoiceShard(),
     contextPrompt: view.contextPrompt(),
     miniMapOpen: view.miniMapOpen(),
+    onboardingHint: view.onboardingHint(),
     miniMapNodes: view.miniMapNodes(),
   };
 }

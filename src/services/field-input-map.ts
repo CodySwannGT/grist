@@ -54,14 +54,20 @@ export const FieldMoveDirections = {
  * the primary gameplay surface, so `Esc` here hands control to the pause Menu
  * (Party / Builds / Items / Ledger / Map / System-Help) and the Menu's own `Esc`
  * closes back to where the player was. It is a discrete one-shot intent (like
- * `examine`), advertised by the HUD's "[Esc] menu" hint.
+ * `examine`), advertised by the HUD's "[Esc] menu" hint. `open-world-map` (`T`)
+ * is the first-class travel front door out of the intro Field (#261): the intro
+ * Field has no in-scene action that advances the descent, so a brand-new player
+ * dead-ended with only `[M]`/`[Esc]` on screen; `T` opens the World Map — the real
+ * road onward — directly, without hunting through the pause menu. A discrete
+ * one-shot intent, advertised by the HUD's "[T] travel" hint.
  */
 export type FieldIntent =
   | { readonly kind: "move"; readonly dir: FieldMoveDir }
   | { readonly kind: "move-to"; readonly x: number; readonly y: number }
   | { readonly kind: "examine" }
   | { readonly kind: "toggle-map" }
-  | { readonly kind: "open-menu" };
+  | { readonly kind: "open-menu" }
+  | { readonly kind: "open-world-map" };
 
 const MOVE_UP: FieldIntent = { kind: "move", dir: FieldMoveDirections.up };
 const MOVE_DOWN: FieldIntent = { kind: "move", dir: FieldMoveDirections.down };
@@ -73,6 +79,7 @@ const MOVE_RIGHT: FieldIntent = {
 const EXAMINE: FieldIntent = { kind: "examine" };
 const TOGGLE_MAP: FieldIntent = { kind: "toggle-map" };
 const OPEN_MENU: FieldIntent = { kind: "open-menu" };
+const OPEN_WORLD_MAP: FieldIntent = { kind: "open-world-map" };
 
 /**
  * The field keyboard map, keyed by physical `KeyboardEvent.code` so it is
@@ -84,6 +91,8 @@ const OPEN_MENU: FieldIntent = { kind: "open-menu" };
  * and stop later keyboard input — `M` is the single, safe, discoverable binding.
  * `Escape` opens the pause Menu (#233), the same Cancel/Back verb the menu and
  * dialogue layers use, so the pause-menu opener is consistent across screens.
+ * `T` opens the World Map travel front door (#261) — the intro Field's road onward,
+ * surfaced as a first-class key so a new player never dead-ends looking for it.
  */
 const FIELD_KEY_INTENTS: Readonly<Record<string, FieldIntent>> = {
   KeyW: MOVE_UP,
@@ -99,6 +108,7 @@ const FIELD_KEY_INTENTS: Readonly<Record<string, FieldIntent>> = {
   KeyE: EXAMINE,
   KeyM: TOGGLE_MAP,
   Escape: OPEN_MENU,
+  KeyT: OPEN_WORLD_MAP,
 };
 
 /**

@@ -15,6 +15,7 @@ import {
   type BattleLaunchData,
   type MenuLaunchData,
 } from "../consts";
+import { type WorldMapLaunchData } from "../world-map-consts";
 import { CH1_AMBUSH_ENCOUNTER } from "../content";
 import {
   FieldActionKinds,
@@ -156,6 +157,21 @@ export function openPauseMenu(
   setFieldState(registry, state);
   setFieldViewSnapshot(registry, view);
   scene.scene.start(SceneKeys.Menu, launch);
+}
+
+/**
+ * Open the World Map travel front door straight from the Field (#261): the intro Field
+ * has no in-scene action that advances the descent, so the `[T]` travel affordance is
+ * the player's first-class road onward. A real full-screen `scene.start` (the same path
+ * the pause Menu's Map entry uses), telling the map to return to the Field on Back so a
+ * player who only wanted to look drops back where they stood. No map rules live here —
+ * only the launch payload.
+ * @param scene - The Field scene (used to start the World Map scene).
+ * @returns void
+ */
+export function openWorldMap(scene: Phaser.Scene): void {
+  const launch: WorldMapLaunchData = { returnTo: SceneKeys.Field };
+  scene.scene.start(SceneKeys.WorldMap, launch);
 }
 
 /**

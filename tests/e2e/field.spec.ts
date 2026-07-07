@@ -512,17 +512,22 @@ test.describe("GRIST — field scene verification (UAT)", () => {
       )
       .toBe(true);
 
-    // The Drip — the node immediately ahead of Warren Street — is locked and its
-    // cue names the room that opens it. The current room carries no cue.
+    // The Drip / The Cage — the nodes ahead of Warren Street — are locked, and their
+    // cue points the player at the real road onward (the World Map) rather than a
+    // non-existent in-field "clear" action (#261). The current room carries no cue.
     const nodes = await page.evaluate(
       () => window.__VERIFY__?.field()?.miniMapNodes
     );
     expect(nodes?.[0]?.name).toBe("Warren Street");
     expect(nodes?.[0]?.lockReason).toBe("");
     expect(nodes?.[1]?.name).toBe("The Drip");
-    expect(nodes?.[1]?.lockReason).toBe("Locked — clear Warren Street");
+    expect(nodes?.[1]?.lockReason).toBe(
+      "Locked — travel on from the world map"
+    );
     expect(nodes?.[2]?.name).toBe("The Cage");
-    expect(nodes?.[2]?.lockReason).toBe("Locked — clear The Drip");
+    expect(nodes?.[2]?.lockReason).toBe(
+      "Locked — travel on from the world map"
+    );
 
     expect(errors).toEqual([]);
   });

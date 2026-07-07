@@ -43,6 +43,8 @@ interface FieldViewAccessors {
   readonly pendingChoiceShard: () => string | null;
   /** Whether the summonable mini-map overlay is open. */
   readonly miniMapOpen: () => boolean;
+  /** The once-per-save travel signpost on screen, or null (#261). */
+  readonly onboardingHint: () => string | null;
   /** Summon or dismiss the mini-map overlay. */
   readonly toggleMiniMap: () => void;
   /** Deterministically examine the nearest examinable prop. */
@@ -84,6 +86,7 @@ export function makeFieldView(accessors: FieldViewAccessors): FieldView {
         loreOnScreen(accessors) !== null
       ),
     miniMapOpen: () => accessors.miniMapOpen(),
+    onboardingHint: () => accessors.onboardingHint(),
     miniMapNodes: () =>
       miniMapModel(accessors.state()).map(node => ({
         room: node.room,
