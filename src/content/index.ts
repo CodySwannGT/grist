@@ -119,6 +119,7 @@ export {
   authorRegion,
   isCompleteRegion,
   regionBattleTitle,
+  regionDisplayName,
   resolveRegionVariant,
   validateRegion,
   type RegionDef,

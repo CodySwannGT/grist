@@ -153,13 +153,36 @@ export function resolveRegionVariant(
 }
 
 /**
+ * The human-facing **display name** for `region` under `state` — the live
+ * world-state variant's authored {@link RegionVariant.name}, verbatim (mixed-case,
+ * exactly as authored: "The Marrow Reach", "Upper Vanta — the Crown & the Tiers",
+ * its Ashfall reading once the world has turned). The single name-resolution seam
+ * shared by every surface that prints a region's identity — the World-Map row, the
+ * region-play banner (#247), and the battle banner ({@link regionBattleTitle}) — so
+ * they can never disagree and a region is renamed by editing its data alone. Pure —
+ * reads through {@link resolveRegionVariant}; the seed never enters. Content-as-data,
+ * no hardcoded strings.
+ * @param region - The region to name.
+ * @param state - The current world-state (the variant to read).
+ * @returns The authored variant name, verbatim.
+ */
+export function regionDisplayName(
+  region: RegionDef,
+  state: WorldState
+): string {
+  return resolveRegionVariant(region, state).name;
+}
+
+/**
  * The battle-banner title for a fight originating in `region` under `state` (#248) —
- * the live world-state variant's authored display name, upper-cased to match the
- * battle banner's chrome. Content-as-data: the name is the region's own authored
+ * the region's live {@link regionDisplayName}, upper-cased to match the battle
+ * banner's chrome. Content-as-data: the name is the region's own authored
  * {@link RegionVariant.name} (e.g. "The Marrow Reach" → "THE MARROW REACH", "Upper
  * Vanta — the Grey Crown & the Shuttered Tiers" → its Ashfall reading), so the banner
  * changes as the player travels AND turns with the Reckoning, with no new hardcoded
- * strings. Pure — reads through {@link resolveRegionVariant}; the seed never enters.
+ * strings. Delegates the name lookup to {@link regionDisplayName} so the banner and
+ * the region-play title (#247) resolve the same source — the banner only adds the
+ * upper-case chrome. Pure — reads through {@link resolveRegionVariant}.
  * @param region - The region the encounter is fought in.
  * @param state - The current world-state (the variant to read).
  * @returns The upper-cased variant name to render as the battle banner.
@@ -168,7 +191,7 @@ export function regionBattleTitle(
   region: RegionDef,
   state: WorldState
 ): string {
-  return resolveRegionVariant(region, state).name.toUpperCase();
+  return regionDisplayName(region, state).toUpperCase();
 }
 
 /**
