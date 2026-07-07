@@ -46,7 +46,7 @@ export const CONTROLS_HELP: readonly HelpSection[] = [
   },
   {
     title: "MENUS",
-    rows: ["Back Esc / tap (menu · Bench)"],
+    rows: ["Move ↑↓ · Confirm Enter", "Back Esc / tap (menu · Bench)"],
   },
   {
     title: "WORLD MAP",

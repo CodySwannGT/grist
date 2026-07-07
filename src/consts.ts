@@ -400,6 +400,12 @@ export const BenchLayout = {
   backY: 15,
   backWidth: 68,
   backHeight: 18,
+  /**
+   * The gap between the left edge of the focused control and the keyboard focus
+   * caret parked beside it (#246) — the grist-gold arrow cursor points right into
+   * the control the way the pause menu's caret points at its focused entry.
+   */
+  caretGap: 10,
   /** The "[Esc] back" affordance hint, centered along the bottom. */
   hintY: 207,
 } as const;
