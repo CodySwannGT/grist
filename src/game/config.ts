@@ -19,6 +19,7 @@ import { Dialogue } from "../scenes/Dialogue";
 import { Region } from "../scenes/Region";
 import { Menu } from "../scenes/Menu";
 import { WorldMap } from "../scenes/WorldMap";
+import { Finale } from "../scenes/Finale";
 
 /** The configuration passed to `new Phaser.Game()`. */
 export const gameConfig: Phaser.Types.Core.GameConfig = {
@@ -58,5 +59,6 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     Region,
     Menu,
     WorldMap,
+    Finale,
   ],
 };

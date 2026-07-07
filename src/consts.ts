@@ -51,6 +51,15 @@ export const SceneKeys = {
    * player into a region (which plays its playlist through real battles).
    */
   WorldMap: "WorldMap",
+  /**
+   * The Act II finale set-piece at Aurel's heart (#244, composing #142) — reached by
+   * selecting the ★ Aurel's Heart node on the turned World Map (and the `?scene=finale`
+   * UAT seam). It mounts the dialogue presenter over the finale script built for the
+   * run's reachable endings (`content/scenes/finale`): the confrontation with Sallow,
+   * the Choir's Song heard whole, the ending-choice gated by standing, and the terminal
+   * THE GRIST card that hands the run back to the Title.
+   */
+  Finale: "Finale",
 } as const;
 
 /**

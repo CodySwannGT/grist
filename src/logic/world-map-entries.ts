@@ -53,11 +53,12 @@ export function buildWorldMapEntries(
     kind: "reunion",
     node,
   }));
-  const finale: readonly WorldMapEntry[] = surface.reunions.length
-    ? [{ kind: "finale", finale: surface.finale }]
-    : surface.finale.available
-      ? [{ kind: "finale", finale: surface.finale }]
-      : [];
+  // The finale entry is always present so its affordance matches its true state (#244):
+  // enterable in ashfall, shown sealed with a stated prerequisite before the world turns
+  // — never advertised as open while being a no-op.
+  const finale: readonly WorldMapEntry[] = [
+    { kind: "finale", finale: surface.finale },
+  ];
   return [...regions, ...reckoning, ...reunions, ...finale];
 }
 
@@ -120,6 +121,6 @@ export function worldMapEntryDetail(entry: WorldMapEntry): string {
     case "finale":
       return entry.finale.available
         ? "The way to Aurel's heart is open — the finale awaits."
-        : "Sealed until the Reckoning turns the world.";
+        : "LOCKED — turn the world through the Reckoning first; the finale is sealed until then.";
   }
 }

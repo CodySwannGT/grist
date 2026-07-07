@@ -116,6 +116,9 @@ function startScene(): string {
   if (requested === "worldmap") {
     return SceneKeys.WorldMap;
   }
+  if (requested === "finale") {
+    return SceneKeys.Finale;
+  }
   if (requested === "battle") {
     return SceneKeys.Battle;
   }
