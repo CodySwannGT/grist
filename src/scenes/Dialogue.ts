@@ -43,7 +43,7 @@ import {
 import { MILL_RENDERED_FLAG } from "../content/ledger-codex";
 import type { DialoguePresenterInput, SceneDef } from "../logic/narrative";
 import { foldSceneProgress, type SceneProgress } from "../logic/save";
-import { saveService } from "../services/save-service";
+import { saveAutosave } from "../services/save-autosave";
 import {
   beginRevealBeat,
   canAdvancePastReveal,
@@ -385,21 +385,19 @@ export class Dialogue extends Phaser.Scene {
    * Write the dialogue scene's live narrative flags THROUGH to the persisted save
    * (#223): load the current save, fold the presenter's cursor + flag ledger into its
    * `scene.flags` via the pure {@link foldSceneProgress} projection (merging over any
-   * flags other beats already wrote), and persist it via the shared {@link saveService}
-   * — the same `SaveDataV3.scene.flags` seam the Reckoning/reunion beats persist
-   * through. Best-effort: a storage failure is swallowed so it never breaks play
-   * (mirroring `SaveService`'s own fail-safe reads); the in-memory ledger still holds
-   * the flag for the rest of the session.
+   * flags other beats already wrote), and persist it via the shared {@link saveAutosave}
+   * queue — the same `SaveDataV3.scene.flags` seam the Reckoning/reunion beats persist
+   * through, now serialized so it never clobbers a concurrent economy write (#245).
+   * Best-effort: a storage failure is swallowed so it never breaks play; the in-memory
+   * ledger still holds the flag for the rest of the session.
    * @param progress - The narrative cursor + flags snapshot to persist.
    * @returns A promise that resolves once the write is attempted.
    */
   async #persistNarrative(progress: SceneProgress): Promise<void> {
-    try {
-      const save = await saveService.load();
-      await saveService.save(foldSceneProgress(save, progress));
-    } catch {
-      // Persistence is best-effort; the folded flag remains in the live ledger.
-    }
+    // Serialize behind the shared save queue (#245) so the narrative-flag merge never
+    // interleaves with an economy/region write and clobbers the grist it carries. The
+    // queue is itself best-effort — a storage failure leaves the flag in the live ledger.
+    await saveAutosave.mutate(save => foldSceneProgress(save, progress));
   }
 
   /**

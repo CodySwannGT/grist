@@ -54,6 +54,7 @@ import { PanelTint } from "../ui/chrome";
 import { WorldMapPanel, type WorldMapRowView } from "../ui/world-map-panel";
 import { isVerificationEnabled, verifyBridge } from "../uat/bridge";
 import { saveService } from "../services/save-service";
+import { saveAutosave } from "../services/save-autosave";
 import {
   getCurrentRegion,
   getRunState,
@@ -137,7 +138,9 @@ export class WorldMap extends Phaser.Scene {
     this.#grist = getRunState(this.registry).wallet.grist;
     if (onboardingAllowed() && !hasSeenWorldMapOnboarding(save)) {
       this.#onboarding = true;
-      await saveService.save(markWorldMapOnboardingSeen(save));
+      // Route the seen-flag write through the shared save queue (#245) so it can never
+      // land between an economy write's load and save and clobber the credited grist.
+      await saveAutosave.mutate(markWorldMapOnboardingSeen);
     }
     this.#project(save.worldState);
   }
@@ -345,10 +348,16 @@ export class WorldMap extends Phaser.Scene {
    * @returns A promise resolving once the flip is persisted and rendered.
    */
   async #applyReckoning(): Promise<void> {
+    // Route the world-turn flip through the shared save queue (#245) — it is a full
+    // read-modify-write against the save, so on its own chain it could load before an
+    // in-flight economy write committed and write the stale grist back. Re-project from
+    // the freshly-persisted world-state once the queued flip has landed.
+    await saveAutosave.mutate(save => ({
+      ...save,
+      worldState: reckon(save.worldState),
+    }));
     const save = await saveService.load();
-    const turned = reckon(save.worldState);
-    await saveService.save({ ...save, worldState: turned });
-    this.#project(turned);
+    this.#project(save.worldState);
   }
 
   /**
