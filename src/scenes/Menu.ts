@@ -28,7 +28,7 @@ import {
 } from "../consts";
 import { type WorldMapLaunchData } from "../world-map-consts";
 import { MenuColors, MenuLayout, MenuTextStyles } from "../menu-consts";
-import { addCursor, addPanel } from "../ui/chrome";
+import { addCursor } from "../ui/chrome";
 import {
   PAUSE_MENU_ENTRIES,
   PauseMenuEntryIds,
@@ -52,14 +52,14 @@ import { verifyBridge } from "../uat/bridge";
 import type { MenuView } from "../uat/menu-view";
 import { LedgerCodexPanel } from "../ui/ledger-codex-panel";
 import { HelpPanel } from "../ui/help-panel";
+import { PartyPanel } from "../ui/party-panel";
+import { MenuInfoPanel } from "../ui/menu-info-panel";
+import { projectPartyRoster } from "../logic/party-roster";
 
 /** The karma summary header line count (`formatMoralLedger` returns three lines). */
 const KARMA_HEADER_LINES = 3;
 /** The codex body pool size: karma header + the tally + one line per catalog choice. */
 const CODEX_LINE_SLOTS = KARMA_HEADER_LINES + 1 + LEDGER_CODEX_TOTAL;
-
-/** The number of body lines the reusable detail panel can show at once. */
-const PANEL_LINE_SLOTS = 4;
 
 /**
  * The short descriptive copy each in-menu panel entry shows (Party / Items / Map /
@@ -67,8 +67,10 @@ const PANEL_LINE_SLOTS = 4;
  * their own effects and are not keyed here.
  */
 const PANEL_DESCRIPTIONS: Readonly<Record<string, readonly string[]>> = {
-  [PauseMenuEntryIds.party]: ["Your party roster and bonds."],
   [PauseMenuEntryIds.items]: ["Carried items and key relics."],
+  // Party now opens the real roster panel (#249) — the live party read from the save
+  // (names, level, HP/AP, shard, and the roster-wide bench build) via the dense
+  // PartyPanel, not a one-line stub — so it is no longer keyed here.
   // Map now opens the World Map travel scene (#241) instead of a placeholder panel, so
   // it is no longer keyed here. System/Settings opens the controls & help reference
   // (#228) via the dense HelpPanel, so it is keyed nowhere here either.
@@ -89,14 +91,14 @@ export class Menu extends Phaser.Scene {
   /** The pooled per-entry label texts, parallel to {@link PAUSE_MENU_ENTRIES}. */
   #entryLabels: readonly Phaser.GameObjects.Text[] = [];
   #caret!: Phaser.GameObjects.Image;
-  #panelBox!: Phaser.GameObjects.NineSlice;
-  #panelTitle!: Phaser.GameObjects.Text;
-  /** The pooled detail-panel body lines (text set/cleared on render). */
-  #panelLines: readonly Phaser.GameObjects.Text[] = [];
+  /** The reusable detail-panel chrome (frame, title, description body lines). */
+  #infoPanel!: MenuInfoPanel;
   /** The Ledger codex panel (#221) — renders the recorded/pending catalog. */
   #codexPanel!: LedgerCodexPanel;
   /** The controls & help panel (#228) — the System/Settings controls reference. */
   #helpPanel!: HelpPanel;
+  /** The Party roster panel (#249) — renders the live party read from the save. */
+  #partyPanel!: PartyPanel;
 
   /** Register the scene key. */
   constructor() {
@@ -174,35 +176,17 @@ export class Menu extends Phaser.Scene {
    * @returns void
    */
   #buildPanel(): void {
-    this.#panelBox = addPanel(
-      this,
-      MenuLayout.panelX,
-      MenuLayout.panelY,
-      MenuLayout.panelWidth,
-      MenuLayout.panelHeight
-    ).setOrigin(0, 0);
-    this.#panelTitle = this.add.text(
-      MenuLayout.panelX + MenuLayout.panelPadX,
-      MenuLayout.panelTitleY,
-      "",
-      MenuTextStyles.panelTitle
-    );
-    this.#panelLines = Array.from(
-      { length: PANEL_LINE_SLOTS },
-      (_unused, line) =>
-        this.add.text(
-          MenuLayout.panelX + MenuLayout.panelPadX,
-          MenuLayout.panelBodyY + line * MenuLayout.panelLineGap,
-          "",
-          MenuTextStyles.panelBody
-        )
-    );
+    this.#infoPanel = new MenuInfoPanel(this);
     this.#codexPanel = new LedgerCodexPanel(
       this,
       MenuLayout.panelX + MenuLayout.panelPadX,
       CODEX_LINE_SLOTS
     );
     this.#helpPanel = new HelpPanel(
+      this,
+      MenuLayout.panelX + MenuLayout.panelPadX
+    );
+    this.#partyPanel = new PartyPanel(
       this,
       MenuLayout.panelX + MenuLayout.panelPadX
     );
@@ -219,6 +203,7 @@ export class Menu extends Phaser.Scene {
     return {
       ledgerCodex: () => this.#codexPanel.codex(),
       helpControls: () => this.#helpPanel.lines(),
+      party: () => this.#partyPanel.roster(),
     };
   }
 
@@ -338,6 +323,11 @@ export class Menu extends Phaser.Scene {
     }
     this.#openPanel = route.panel;
     this.#render();
+    if (route.panel === PauseMenuEntryIds.party) {
+      // The Party panel's roster body is filled asynchronously from the save (the
+      // same load-then-render path the Ledger route uses), so kick the read here.
+      void this.#loadParty();
+    }
   }
 
   /**
@@ -358,12 +348,37 @@ export class Menu extends Phaser.Scene {
         LEDGER_CODEX_CATALOG,
         save.scene?.flags ?? {}
       );
-      this.#clearPanelLines();
+      this.#infoPanel.clear();
       this.#codexPanel.show(codex, save.moralLedger);
     } catch {
       if (this.#openPanel === PauseMenuEntryIds.ledger) {
         this.#codexPanel.hide();
-        this.#showPanel("Ledger", ["Unable to load ledger."]);
+        this.#infoPanel.show("Ledger", ["Unable to load ledger."]);
+      }
+    }
+  }
+
+  /**
+   * Read the persisted save and, while the Party panel is still the open one, render
+   * the live **roster** (#249): every active party member with its name, level, HP/AP,
+   * equipped shard, and the roster-wide bench build, projected by the pure
+   * {@link projectPartyRoster} (which falls back to the starting party when the save
+   * carries none, so a fresh run still lists Wren + Tobi). Guarded against a panel the
+   * player has since closed or changed so a late load never clobbers the view.
+   * @returns A promise that resolves once the roster has been read and rendered.
+   */
+  async #loadParty(): Promise<void> {
+    try {
+      const save = await saveService.load();
+      if (this.#openPanel !== PauseMenuEntryIds.party) {
+        return;
+      }
+      this.#infoPanel.clear();
+      this.#partyPanel.show(projectPartyRoster(save));
+    } catch {
+      if (this.#openPanel === PauseMenuEntryIds.party) {
+        this.#partyPanel.hide();
+        this.#infoPanel.show("Party", ["Unable to load party."]);
       }
     }
   }
@@ -404,16 +419,25 @@ export class Menu extends Phaser.Scene {
       return;
     }
     this.#helpPanel.hide();
+    if (open === PauseMenuEntryIds.party) {
+      // The roster body is filled by #loadParty; show the frame + title now and leave
+      // the info-panel lines cleared (the party uses its own dense row pool instead).
+      this.#codexPanel.hide();
+      this.#infoPanel.showFrame("Party");
+      this.#infoPanel.clear();
+      return;
+    }
+    this.#partyPanel.hide();
     if (open === PauseMenuEntryIds.ledger) {
       // The codex body is filled by #loadLedger; show the frame + title now and leave
       // the info-panel lines cleared (the ledger uses the denser codex pool instead).
-      this.#showFrame("Ledger");
-      this.#clearPanelLines();
+      this.#infoPanel.showFrame("Ledger");
+      this.#infoPanel.clear();
       return;
     }
     this.#codexPanel.hide();
     const entry = PAUSE_MENU_ENTRIES.find(candidate => candidate.id === open);
-    this.#showPanel(entry?.label ?? "", PANEL_DESCRIPTIONS[open] ?? []);
+    this.#infoPanel.show(entry?.label ?? "", PANEL_DESCRIPTIONS[open] ?? []);
   }
 
   /**
@@ -425,58 +449,26 @@ export class Menu extends Phaser.Scene {
    */
   #showHelp(entryId: PauseMenuEntryId): void {
     this.#codexPanel.hide();
+    this.#partyPanel.hide();
     const entry = PAUSE_MENU_ENTRIES.find(
       candidate => candidate.id === entryId
     );
-    this.#showFrame(entry?.label ?? "");
-    this.#clearPanelLines();
+    this.#infoPanel.showFrame(entry?.label ?? "");
+    this.#infoPanel.clear();
     this.#helpPanel.show();
   }
 
   /**
-   * Show the detail panel frame (box + title) without touching either body pool.
-   * @param title - The panel title.
-   * @returns void
-   */
-  #showFrame(title: string): void {
-    this.#panelBox.setVisible(true);
-    this.#panelTitle.setVisible(true).setText(title);
-  }
-
-  /**
-   * Hide and clear the four-slot info-panel body lines (used by the non-ledger
-   * panels; the ledger renders through the codex pool instead).
-   * @returns void
-   */
-  #clearPanelLines(): void {
-    this.#panelLines.forEach(line => line.setVisible(false).setText(""));
-  }
-
-  /**
-   * Show the detail panel with a title and up to {@link PANEL_LINE_SLOTS} info body
-   * lines (extra lines are dropped; unused slots are cleared).
-   * @param title - The panel title.
-   * @param lines - The body lines to render.
-   * @returns void
-   */
-  #showPanel(title: string, lines: readonly string[]): void {
-    this.#showFrame(title);
-    this.#panelLines.forEach((line, index) => {
-      line.setVisible(true).setText(lines[index] ?? "");
-    });
-  }
-
-  /**
-   * Hide the detail panel and clear its retained text (both the info body lines and
-   * the codex panel, so the bridge's codex read goes null when the panel closes).
+   * Hide the detail panel and clear its retained text — the info-panel frame + body
+   * lines and all three dense body panels (codex / help / party), so the bridge's
+   * codex / help / party reads all go null when the panel closes.
    * @returns void
    */
   #hidePanel(): void {
-    this.#panelBox.setVisible(false);
-    this.#panelTitle.setVisible(false).setText("");
+    this.#infoPanel.hide();
     this.#codexPanel.hide();
     this.#helpPanel.hide();
-    this.#panelLines.forEach(line => line.setVisible(false).setText(""));
+    this.#partyPanel.hide();
   }
 
   /**

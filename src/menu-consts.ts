@@ -56,6 +56,30 @@ export const MenuLayout = {
   hintHitHeight: 18,
 } as const;
 
+/**
+ * The **Party** panel layout (#249) — the roster the pause menu's Party entry opens.
+ * One row per member (a small portrait faceset beside a compact stat line) stacked
+ * from just under the panel title, then the roster-wide bench-build lines below the
+ * roster. Sized so the Phase-1/Act-I party (2–4 members) shows its build lines
+ * comfortably; the late-game full roster fills the rows and the build lines fold away.
+ */
+export const PartyLayout = {
+  /** The first member row's baseline Y; rows stack down by `rowGap`. */
+  rowY: 72,
+  /** Vertical step between stacked member rows. */
+  rowGap: 15,
+  /** The square portrait faceset drawn at the left of each member row. */
+  portraitSize: 12,
+  /** X inset of the member's stat line from the portrait's right edge. */
+  lineInset: 4,
+  /** Vertical step between the bench-build lines stacked below the roster. */
+  buildLineGap: 9,
+  /** The number of bench-build lines the panel pools (spells / shards / augments). */
+  buildLineSlots: 3,
+  /** The max roster rows the panel pools (the full secondary roster). */
+  memberSlots: 7,
+} as const;
+
 /** Pause/main-menu placeholder-art and chrome colors (programmatic art only). */
 export const MenuColors = {
   backdrop: 0x141821,
@@ -113,5 +137,17 @@ export const MenuTextStyles = {
     fontFamily: "monospace",
     fontSize: "7px",
     color: MenuColors.panelBody,
+  },
+  /** A Party roster member's compact stat line (#249) — name + level + HP/AP + shard. */
+  partyMember: {
+    fontFamily: "monospace",
+    fontSize: "7px",
+    color: MenuColors.panelBody,
+  },
+  /** A Party roster-wide bench-build line (#249) — spells / shards / augments. */
+  partyBuild: {
+    fontFamily: "monospace",
+    fontSize: "7px",
+    color: MenuColors.entry,
   },
 } as const;
