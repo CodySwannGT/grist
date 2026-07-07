@@ -93,6 +93,13 @@ export class FieldHud {
   readonly #travelHint: Phaser.GameObjects.Text;
   /** The once-per-save travel signpost banner (#261), hidden until surfaced. */
   readonly #onboarding: Phaser.GameObjects.Text;
+  /**
+   * Whether the travel signpost has been dismissed for this scene lifetime (#261).
+   * Set the first time {@link hideOnboarding} fires (the player's first input) so a
+   * late, still-in-flight {@link showOnboarding} — the async claim resolving after the
+   * player already acted — can never re-raise the banner after first input.
+   */
+  #onboardingDismissed = false;
   #mapOpen = false;
 
   /**
@@ -180,16 +187,33 @@ export class FieldHud {
    * @returns void
    */
   showOnboarding(text: string): void {
+    // Never re-raise after the player's first input (the async claim can resolve late).
+    if (this.#onboardingDismissed) {
+      return;
+    }
     this.#onboarding.setText(text).setVisible(true);
   }
 
   /**
    * Dismiss the travel signpost banner (#261) — called on the player's first input, so
-   * the hint never lingers over play. Idempotent.
+   * the hint never lingers over play, and latch it dismissed so a late in-flight
+   * {@link showOnboarding} cannot re-raise it. Idempotent.
    * @returns void
    */
   hideOnboarding(): void {
+    this.#onboardingDismissed = true;
     this.#onboarding.setVisible(false);
+  }
+
+  /**
+   * Whether the travel signpost has been dismissed for this scene lifetime (#261) — true
+   * once the player's first input latched it. Lets the async claim skip marking the beat
+   * seen (and skip rendering) when the player already acted during the save I/O, so a
+   * shown-once beat is never "spent" on a landing the player never actually saw.
+   * @returns True once the banner has been dismissed this scene.
+   */
+  get onboardingDismissed(): boolean {
+    return this.#onboardingDismissed;
   }
 
   /**

@@ -157,8 +157,9 @@ export class Field extends Phaser.Scene {
     // Surface the once-per-save travel signpost (#261) for a first-time player who
     // just landed here from the tutorial: without it the intro Field dead-ends (only
     // [M]/[Esc] on screen, no cue that progression lives on the World Map). Async — it
-    // reads the save flag + the hint gate, so it may resolve a frame or two in.
-    void showFieldTravelHintIfDue(this.#hud);
+    // reads the save flag + the hint gate, so it may resolve a frame or two in; the
+    // guard bails if the player has already acted or left the scene during that I/O.
+    void showFieldTravelHintIfDue(this.#hud, this.#travelHintEligible);
 
     verifyBridge.attach(SceneKeys.Field, this.#bridgeView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
@@ -375,6 +376,16 @@ export class Field extends Phaser.Scene {
     this.#miniMapOpen = toggleMiniMap(this.#miniMapOpen);
     this.#hud.setMiniMapOpen(this.#miniMapOpen);
   };
+
+  /**
+   * Whether the once-per-save travel signpost may still surface after its async claim
+   * resolves (#261): the scene is still live AND the player has not already dismissed the
+   * banner with a first input. A stable arrow so the fire-and-forget claim in
+   * {@link create} re-checks the live scene state, never a stale snapshot.
+   * @returns True while the hint is still eligible to render.
+   */
+  readonly #travelHintEligible = (): boolean =>
+    this.scene.isActive() && !this.#hud.onboardingDismissed;
 
   /**
    * Place the room props: Wren's placeholder body, and — when the current room

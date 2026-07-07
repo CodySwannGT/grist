@@ -38,16 +38,22 @@ function travelHintAllowed(): boolean {
  * Claim the once-per-save travel signpost for this Field landing (#261): returns the
  * hint copy to surface when the gate allows it AND this save has not seen it yet — and,
  * in that case, folds the seen-flag through the shared save queue (#245, so it can never
- * clobber a concurrent economy write) so the beat never replays. Returns null when the
- * hint is gated off or already seen, so the scene shows nothing.
+ * clobber a concurrent economy write) so the beat never replays. The `stillEligible`
+ * guard is re-checked *after* the save load (which the caller fires and forgets during
+ * `Field.create`): if the player has already acted or left the scene during that I/O gap,
+ * the claim bails without marking the flag seen, so the beat is never "spent" unshown.
+ * Returns null when the hint is gated off, already seen, or no longer eligible.
+ * @param stillEligible - Re-checked post-load; false once first input / scene-exit lands.
  * @returns The hint copy to show, or null.
  */
-async function claimFieldTravelHint(): Promise<string | null> {
+async function claimFieldTravelHint(
+  stillEligible: () => boolean
+): Promise<string | null> {
   if (!travelHintAllowed()) {
     return null;
   }
   const save = await saveService.load();
-  if (hasSeenFieldTravelOnboarding(save)) {
+  if (!stillEligible() || hasSeenFieldTravelOnboarding(save)) {
     return null;
   }
   await saveAutosave.mutate(markFieldTravelOnboardingSeen);
@@ -57,13 +63,19 @@ async function claimFieldTravelHint(): Promise<string | null> {
 /**
  * Show the once-per-save travel signpost on the Field HUD when it is due (#261) — the
  * scene's create fires this and forgets it. Claims the hint (gate + save round-trip) and,
- * when one is returned, paints it on the HUD; a no-op when gated off or already seen.
+ * when one is returned AND the landing is still eligible (the player has not acted or left
+ * the scene during the save I/O), paints it on the HUD; a no-op otherwise. The HUD itself
+ * also latches dismissed on first input, so a late resolve can never re-raise the banner.
  * @param hud - The Field HUD to surface the banner on.
+ * @param stillEligible - True while the player has not yet acted and the scene is live.
  * @returns A promise that resolves once the hint has been claimed (and shown, if any).
  */
-export async function showFieldTravelHintIfDue(hud: FieldHud): Promise<void> {
-  const hint = await claimFieldTravelHint();
-  if (hint !== null) {
+export async function showFieldTravelHintIfDue(
+  hud: FieldHud,
+  stillEligible: () => boolean
+): Promise<void> {
+  const hint = await claimFieldTravelHint(stillEligible);
+  if (hint !== null && stillEligible()) {
     hud.showOnboarding(hint);
   }
 }
