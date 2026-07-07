@@ -8,14 +8,19 @@ import { describe, expect, it } from "vitest";
 
 import { DialogueLayout, GameView } from "../../src/consts";
 import {
+  dialogueCaptionFits,
+  dialogueCaptionMaxLines,
   dialogueChoiceFontPx,
   dialogueChoiceInnerWidth,
   dialogueChoiceLabelFitsAtBase,
   dialogueChoiceRect,
+  estimateCaptionLineCount,
   estimateChoiceLabelWidth,
 } from "../../src/ui/dialogue-layout";
 import { buildFinaleScript } from "../../src/content/scenes/finale";
 import { SIDE_MILL_SCRIPT } from "../../src/content/scenes/side-mill";
+import { CH1_SCRIPT } from "../../src/content/scenes/ch1";
+import { RECKONING_SCRIPT } from "../../src/content/scenes/reckoning";
 import { demoDialogueScript } from "../../src/uat/dialogue-view";
 import { EndingIds, type SceneDef } from "../../src/logic/narrative";
 
@@ -165,5 +170,111 @@ describe("dialogue choice label fit guard (#262)", () => {
 
   it("returns the base font for an empty label (totality)", () => {
     expect(dialogueChoiceFontPx("")).toBe(CHOICE_BASE_FONT_PX);
+  });
+});
+
+/**
+ * Collect every authored caption body (`node.text`) reachable in a scene-definition
+ * table. Lets the caption-fit guard assert against the real authored content — a new
+ * over-long caption anywhere fails this twin, not the player (#263, mirroring
+ * {@link choiceLabels}).
+ * @param table - A scene-definition table.
+ * @returns Every non-empty caption body authored in the table.
+ */
+function captionTexts(table: Readonly<Record<string, SceneDef>>): string[] {
+  return Object.values(table).flatMap(scene =>
+    scene.nodes.map(node => node.text).filter((text): text is string => !!text)
+  );
+}
+
+/**
+ * Every authored dialogue caption body in the shipped game: Ch.1, the side-mill side
+ * story, the Reckoning set-piece, the full finale (all four endings), and the UAT demo
+ * script. The longest wrap to four rows (the 206-char mill line, the 198-char Sallow
+ * line) — the box is sized to hold exactly those (#263).
+ */
+const AUTHORED_CAPTIONS: readonly string[] = [
+  ...captionTexts(CH1_SCRIPT),
+  ...captionTexts(SIDE_MILL_SCRIPT),
+  ...captionTexts(RECKONING_SCRIPT),
+  ...captionTexts(
+    buildFinaleScript([
+      EndingIds.sunder,
+      EndingIds.wake,
+      EndingIds.thirdWay,
+      EndingIds.letDie,
+    ])
+  ),
+  ...captionTexts(demoDialogueScript()),
+];
+
+describe("dialogue caption fit guard (#263)", () => {
+  it("derives the box's row capacity from the caption geometry", () => {
+    // Mirrors dialogueCaptionMaxLines' derivation with the module's row-height (9.3px)
+    // and bottom-pad (2px) constants — the box's usable rows from the caption top down.
+    const CAPTION_LINE_HEIGHT_PX = 9.3;
+    const CAPTION_BOTTOM_PAD_Y = 2;
+    const usable =
+      DialogueLayout.boxY +
+      DialogueLayout.boxHeight -
+      DialogueLayout.captionY -
+      CAPTION_BOTTOM_PAD_Y;
+    expect(dialogueCaptionMaxLines()).toBe(
+      Math.floor(usable / CAPTION_LINE_HEIGHT_PX)
+    );
+    // The box is sized so the longest authored caption (4 rows) fits.
+    expect(dialogueCaptionMaxLines()).toBe(4);
+  });
+
+  it("counts wrapped rows greedily, breaking on spaces and newlines", () => {
+    // A single short word is one row; an explicit newline forces a second.
+    expect(estimateCaptionLineCount("hello")).toBe(1);
+    expect(estimateCaptionLineCount("hello\nworld")).toBe(2);
+    // An empty / whitespace-only body still occupies a single row (totality).
+    expect(estimateCaptionLineCount("")).toBe(1);
+  });
+
+  it("matches the live-measured row count at the 3-row / 4-row boundary", () => {
+    // The 198-char Sallow line measured 4 rows (32.9px) on the live canvas; a 3-row
+    // finale line (the 159-char arrival) measured 24.6px. The estimate agrees — never
+    // under-counting — so the guard's verdict tracks the real render (#263).
+    const sallow =
+      "You came all this way to stand at the end of the world. Courteous. It is nearly finished — one last note, and the render is total. But you may set the note. I am, if nothing else, a fair accountant.";
+    const arrival =
+      "The heart of Aurel. No walls, just grey going up forever, and the corpse-reactor at the center of it all, singing wrong. And him, waiting. Of course he waited.";
+    expect(estimateCaptionLineCount(sallow)).toBe(4);
+    expect(estimateCaptionLineCount(arrival)).toBe(3);
+  });
+
+  it("fits EVERY authored caption within the box — the whole game", () => {
+    expect(AUTHORED_CAPTIONS.length).toBeGreaterThan(0);
+    for (const caption of AUTHORED_CAPTIONS) {
+      expect(
+        dialogueCaptionFits(caption),
+        `authored caption overflows the box (${estimateCaptionLineCount(
+          caption
+        )} rows > ${dialogueCaptionMaxLines()}): ${JSON.stringify(caption.slice(0, 60))}…`
+      ).toBe(true);
+    }
+  });
+
+  it("proves the longest authored caption reaches — but does not exceed — the box's row capacity", () => {
+    const [longest = ""] = [...AUTHORED_CAPTIONS].sort(
+      (a, b) => estimateCaptionLineCount(b) - estimateCaptionLineCount(a)
+    );
+    // The worst case really does use all four rows (so the box grow is load-bearing,
+    // not slack) — and still fits.
+    expect(estimateCaptionLineCount(longest)).toBe(dialogueCaptionMaxLines());
+    expect(dialogueCaptionFits(longest)).toBe(true);
+  });
+
+  it("rejects a caption one row past the box's capacity (the guard has teeth)", () => {
+    // A body long enough to wrap to five rows must fail — future authors get a red CI,
+    // not a player staring at a line below the border.
+    const fiveRows = "word ".repeat(80).trim();
+    expect(estimateCaptionLineCount(fiveRows)).toBeGreaterThan(
+      dialogueCaptionMaxLines()
+    );
+    expect(dialogueCaptionFits(fiveRows)).toBe(false);
   });
 });

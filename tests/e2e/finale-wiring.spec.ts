@@ -41,6 +41,7 @@ interface ChoiceRect {
 interface DialogueSnapshot {
   readonly scene: string;
   readonly caption: string;
+  readonly captionHeight: number;
   readonly branching: boolean;
   readonly done: boolean;
   readonly choices: readonly {
@@ -55,6 +56,12 @@ interface DialogueSnapshot {
 const VIEW_WIDTH = 384;
 /** The choice button's horizontal label pad (`DialogueLayout.choicePadX`). */
 const CHOICE_PAD_X = 6;
+/** The caption body's top edge (`DialogueLayout.captionY`). */
+const CAPTION_Y = 176;
+/** The caption box's bottom border (`DialogueLayout.boxY + boxHeight = 158 + 58`). */
+const BOX_BOTTOM = 216;
+/** A 4-row caption measures ~32.9px (CI Chromium); assert the tall finale beat is ≥3 rows. */
+const TALL_CAPTION_MIN_HEIGHT = 30;
 
 /**
  * Wait until the running game reports the given scene key.
@@ -321,6 +328,48 @@ test.describe("GRIST — finale wiring (#244, UAT)", () => {
       // A real label actually rendered (guards against a 0-width empty snapshot).
       expect(choice.labelWidth).toBeGreaterThan(0);
     }
+    expect(errors).toEqual([]);
+  });
+
+  test("[EVIDENCE: dialogue-caption-fit] every finale caption — including the 4-row Sallow/Sable beats — renders inside the box's bottom border", async ({
+    page,
+  }) => {
+    const errors = collectErrors(page);
+    await page.goto("/?scene=worldmap&uat=1");
+    await waitForBridge(page);
+    await page.evaluate(() => window.__VERIFY__?.clearSave());
+    // A merciful, fully-gathered run — plays the full confrontation, incl. the longest
+    // authored captions (the 198-char Sallow line, the 187-char Sable line) that spilled
+    // the 4th wrapped row below the old box's bottom border (#263).
+    await seedAshfallStanding(page, { karma: 3, wieldChoices: 0, reunions: 3 });
+    await page.goto("/?scene=worldmap&uat=1");
+    await waitForBridge(page);
+    await waitForScene(page, "WorldMap");
+
+    await enterFinaleFromMap(page);
+
+    // Walk the confrontation to the fork, checking EVERY caption's real rendered bottom
+    // stays within the framed panel (the bug: a 4-row caption drew its last row below
+    // the box's bottom edge). Track the tallest so we prove a genuine 4-row beat rendered.
+    let tallest = 0;
+    for (let guard = 0; guard < 20; guard += 1) {
+      const snap = await dialogue(page);
+      if (snap === null) break;
+      const captionBottom = CAPTION_Y + snap.captionHeight;
+      // The real rendered caption's bottom stays within the box's bottom border — no row
+      // spills below the framed panel, at any authored wrap length (the #263 bug).
+      expect(
+        captionBottom,
+        `caption (${snap.captionHeight}px tall) overflows the box: bottom ${captionBottom} > ${BOX_BOTTOM}\n  ${snap.caption}`
+      ).toBeLessThanOrEqual(BOX_BOTTOM);
+      tallest = Math.max(tallest, snap.captionHeight);
+      if (snap.branching || snap.done) break;
+      await page.evaluate(() => window.__VERIFY__?.advanceDialogue());
+      await page.waitForTimeout(KEY_DWELL);
+    }
+    // The confrontation really did render a tall (≥3-row, up to 4-row) caption — the
+    // assertion above was exercised on the beat #263 was filed against, not only short lines.
+    expect(tallest).toBeGreaterThanOrEqual(TALL_CAPTION_MIN_HEIGHT);
     expect(errors).toEqual([]);
   });
 });
