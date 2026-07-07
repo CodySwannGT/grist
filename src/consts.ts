@@ -60,6 +60,15 @@ export const SceneKeys = {
    * THE GRIST card that hands the run back to the Title.
    */
   Finale: "Finale",
+  /**
+   * The Reckoning world-turn set-piece (#251, playing #125) — reached by selecting **The
+   * Reckoning** hook on the Act I World Map (and the `?scene=reckoning` UAT seam). It mounts
+   * the dialogue presenter over the authored reckoning script (`content/scenes/reckoning`):
+   * Sallow overloads Aurel's corpse-reactor, the world turns to Ashfall (the flip commits at
+   * this authored beat), the party scatters and Sable is taken, and the run lands back on the
+   * now-transformed World Map so the Ashfall re-skin reads as the consequence just watched.
+   */
+  Reckoning: "Reckoning",
 } as const;
 
 /**

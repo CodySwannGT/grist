@@ -51,6 +51,19 @@ export interface FinaleLaunchData {
 }
 
 /**
+ * The typed scene-data the World Map hands to the Reckoning set-piece when the player selects
+ * **The Reckoning** hook (#251): the World Map's *own* onward back target, carried forward so
+ * the transformed Ashfall map the set-piece lands the run back on keeps the same exit. The
+ * set-piece always plays through to the World Map on completion — `returnTo` is that restored
+ * map's back target, not the set-piece's destination. Absent when reached standalone via the
+ * `?scene=reckoning` UAT seam.
+ */
+export interface ReckoningLaunchData {
+  /** The World Map's onward back target, preserved across the world-turn. */
+  readonly returnTo?: string;
+}
+
+/**
  * World-map surface layout in logical (384×216) pixels (#241). The travel front door
  * is a full-screen list surface (the Menu/Bench chrome pattern): a title banner, a
  * grist readout, a single navigable column of status-graded region rows and Act nodes,
