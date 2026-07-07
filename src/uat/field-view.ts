@@ -15,6 +15,19 @@ export interface VerifyFieldPosition {
   readonly y: number;
 }
 
+/**
+ * A read-only snapshot of one summonable mini-map node — its room, display name,
+ * visit state (current / visited / unvisited), and, for a node still locked ahead
+ * in the descent, the cue that explains why (#250). Empty `lockReason` means the
+ * node is reachable. Lets the field e2e assert a locked node surfaces its reason.
+ */
+export interface VerifyMiniMapNode {
+  readonly room: string;
+  readonly name: string;
+  readonly state: string;
+  readonly lockReason: string;
+}
+
 /** A read-only snapshot of the running field session for assertions. */
 export interface VerifyFieldState {
   readonly scene: string;
@@ -36,6 +49,12 @@ export interface VerifyFieldState {
   readonly contextPrompt: string | null;
   /** Whether the summonable mini-map overlay is currently open (#107). */
   readonly miniMapOpen: boolean;
+  /**
+   * The summonable mini-map's nodes (A→B→C), each with its visit state and — for
+   * a locked node still ahead in the descent — the cue that explains why it can't
+   * be reached yet (#250).
+   */
+  readonly miniMapNodes: readonly VerifyMiniMapNode[];
 }
 
 /**
@@ -63,6 +82,8 @@ export interface FieldView {
   readonly contextPrompt: () => string | null;
   /** Whether the summonable mini-map overlay is open (#107). */
   readonly miniMapOpen: () => boolean;
+  /** The mini-map nodes with their visit state + locked-node cues (#250). */
+  readonly miniMapNodes: () => readonly VerifyMiniMapNode[];
   /** Summon or dismiss the mini-map overlay (the "agent toggled the map" action). */
   readonly toggleMiniMap: () => void;
   /** Examine the nearest examinable prop now (the canonical "agent examined it"). */
@@ -94,5 +115,6 @@ export function toVerifyFieldState(
     pendingChoiceShard: view.pendingChoiceShard(),
     contextPrompt: view.contextPrompt(),
     miniMapOpen: view.miniMapOpen(),
+    miniMapNodes: view.miniMapNodes(),
   };
 }

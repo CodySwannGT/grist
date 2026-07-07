@@ -33,7 +33,9 @@ import {
   RoomVisitStates,
   contextPromptFor,
   gristReadoutLabel,
+  miniMapLockCue,
   miniMapModel,
+  miniMapNodeLabel,
   type FieldState,
   type MiniMapNode,
   type RoomVisitState,
@@ -79,6 +81,8 @@ export class FieldHud {
   readonly #mapPanel: Phaser.GameObjects.Rectangle;
   readonly #mapTitle: Phaser.GameObjects.Text;
   readonly #nodeRows: readonly NodeRow[];
+  /** The footer "why is the next node locked" cue line (#250). */
+  readonly #mapDetail: GuardedText;
   /** The summon hint (kept so it can be hidden while the map is open). */
   readonly #hint: Phaser.GameObjects.Text;
   /** The pause-menu opener hint (#233), stacked under the map hint, top-right. */
@@ -136,6 +140,7 @@ export class FieldHud {
     this.#mapPanel = map.panel;
     this.#mapTitle = map.title;
     this.#nodeRows = map.rows;
+    this.#mapDetail = map.detail;
   }
 
   /**
@@ -148,6 +153,7 @@ export class FieldHud {
     readonly panel: Phaser.GameObjects.Rectangle;
     readonly title: Phaser.GameObjects.Text;
     readonly rows: readonly NodeRow[];
+    readonly detail: GuardedText;
   } {
     const panel = scene.add
       .rectangle(
@@ -171,7 +177,20 @@ export class FieldHud {
       .setOrigin(0.5, 0)
       .setDepth(FieldHudLayout.mapDepth)
       .setVisible(false);
-    return { panel, title, rows: this.#buildNodeRows(scene) };
+    // The footer "why is the next node locked" cue, centered under the node list
+    // (#250) — a churn-free guarded text so a steady map repaints nothing.
+    const detail = makeText(
+      scene,
+      FieldHudLayout.mapPanelX + FieldHudLayout.mapPanelWidth / 2,
+      FieldHudLayout.mapDetailY,
+      0.5,
+      0.5
+    );
+    detail.object
+      .setStyle(FieldHudTextStyles.mapDetail)
+      .setDepth(FieldHudLayout.mapDepth)
+      .setVisible(false);
+    return { panel, title, rows: this.#buildNodeRows(scene), detail };
   }
 
   /**
@@ -245,8 +264,10 @@ export class FieldHud {
   }
 
   /**
-   * Paint each mini-map node row from the model: marker fill + label text/color
-   * by visit state. Only invoked while the overlay is open.
+   * Paint each mini-map node row from the model: marker fill + label (with the
+   * "— LOCKED" tag on a locked node) / color by visit state, then the footer cue
+   * that explains the next locked node — so a dimmed node no longer dead-airs a
+   * curious player (#250). Only invoked while the overlay is open.
    * @param nodes - The ordered mini-map nodes.
    * @returns void
    */
@@ -257,8 +278,13 @@ export class FieldHud {
         return;
       }
       row.marker.setFillStyle(NODE_FILL[node.state]);
-      row.label.set(node.name, NODE_TEXT[node.state]);
+      row.label.set(miniMapNodeLabel(node), NODE_TEXT[node.state]);
     });
+    const cue = miniMapLockCue(nodes);
+    this.#mapDetail.object.setVisible(cue !== "");
+    if (cue !== "") {
+      this.#mapDetail.set(cue);
+    }
   }
 
   /**
@@ -278,6 +304,11 @@ export class FieldHud {
       row.marker.setVisible(open);
       row.label.object.setVisible(open);
     });
+    // The footer cue is re-shown (and re-set) by the next sync's #renderNodes when
+    // there is a locked node; closing the map always hides it.
+    if (!open) {
+      this.#mapDetail.object.setVisible(false);
+    }
   }
 
   /**
