@@ -13,6 +13,7 @@
  * @module uat/menu-view
  */
 import type { LedgerCodexView } from "../logic/narrative";
+import type { PartyRosterView } from "../logic/party-roster";
 
 /**
  * The live link the Menu scene registers with the bridge (#221). The scene exposes
@@ -31,6 +32,12 @@ export interface MenuView {
    * list (the real bindings + the AP/Grist legend) is reachable from the pause menu.
    */
   readonly helpControls: () => readonly string[] | null;
+  /**
+   * The roster the open Party panel rendered (#249), or null when that panel is not
+   * open / its save has not resolved yet. Lets an e2e prove the real party (names +
+   * HP/AP, and a reunited member) is surfaced from the pause menu, not a stub.
+   */
+  readonly party: () => PartyRosterView | null;
 }
 
 /**
@@ -77,6 +84,15 @@ export class MenuCell {
   helpControls(): readonly string[] | null {
     return this.#view?.helpControls() ?? null;
   }
+
+  /**
+   * The roster the open Party panel rendered (#249), or null outside the Menu scene /
+   * before a Party panel has loaded.
+   * @returns The roster view, or null.
+   */
+  party(): PartyRosterView | null {
+    return this.#view?.party() ?? null;
+  }
 }
 
 /** The pause/main-menu slice of the `__VERIFY__` surface, spread into it. */
@@ -85,6 +101,8 @@ export interface MenuApi {
   readonly menuLedgerCodex: () => LedgerCodexView | null;
   /** The controls & help reference the open System/Settings panel rendered (#228). */
   readonly menuHelpControls: () => readonly string[] | null;
+  /** The roster the open Party panel rendered (#249), or null. */
+  readonly menuParty: () => PartyRosterView | null;
 }
 
 /**
@@ -98,5 +116,6 @@ export function menuApi(menu: MenuCell): MenuApi {
   return {
     menuLedgerCodex: () => menu.ledgerCodex(),
     menuHelpControls: () => menu.helpControls(),
+    menuParty: () => menu.party(),
   };
 }
