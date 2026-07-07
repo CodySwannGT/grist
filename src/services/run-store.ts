@@ -17,10 +17,12 @@ import { type FieldState } from "../logic/field";
 import { type RegionRunState } from "../logic/region";
 import { type RegionId } from "../content";
 import {
+  foldLearning,
   foldRunEconomy,
   foldSceneProgress,
   type CurrentSave,
 } from "../logic/save";
+import { toPersistedLearning } from "../logic/spell-learning";
 import {
   recordRegionProgress,
   regionProgressFlags,
@@ -98,27 +100,37 @@ export function setRunState(registry: Registry, run: RunState): void {
 }
 
 /**
- * Write a run's earned economy THROUGH to the persisted save (#235) so it survives a
- * reload and **Continue** restores it — the write side of the wallet/build persistence
- * the owner decision requires (`runStateFromSave` is the read side). Folds the run's grist
- * wallet + bench build into the loaded save via the pure {@link foldRunEconomy} projection
- * (preserving scene progress, party, world-state, and the rng lineage). Serialized behind
+ * Write a run's earned economy + learning progression THROUGH to the persisted save
+ * (#235, #264) so they survive a reload and **Continue** restores them — the write side
+ * of the wallet/build/learning persistence the owner decision requires (`runStateFromSave`
+ * is the read side). Folds the run's grist wallet + bench build via the pure
+ * {@link foldRunEconomy} projection AND its spell-learning progression via
+ * {@link foldLearning} (#264: so an equipped shard's learning no longer resets on Continue,
+ * which left the Bench reading "equipped (learning Cinder)" and "Cinder: not begun" at
+ * once) — both into the loaded save, preserving scene progress, party, world-state, and the
+ * rng lineage. The two folds compose in ONE mutation so the write is a single atomic
+ * read-modify-write, never interleaving learning and economy against a stale snapshot.
+ * Serialized behind
  * the shared {@link saveAutosave} queue — the ONE choke point every read-modify-write save
  * shares (#245) — so it never races the region-progress or world-turn write that lands in
  * the same beat (a region battle win credits grist AND advances the region cursor; before
  * the unified queue the region write, having loaded before this one committed, clobbered
  * the credited grist with the stale pre-win balance). Best-effort: a storage failure is
  * swallowed so it never breaks play — the live run still holds the economy for the session.
- * @param run - The live run whose economy to persist.
+ * @param run - The live run whose economy + learning progression to persist.
  * @returns A promise that resolves once this write (after any queued ahead of it) is attempted.
  */
 export function persistRunEconomy(run: RunState): Promise<void> {
+  const learning = toPersistedLearning(run.learning);
   return saveAutosave.mutate(save =>
-    foldRunEconomy(save, {
-      grist: run.wallet.grist,
-      statBonuses: run.statBonuses,
-      equippedShards: run.equippedShards,
-    })
+    foldLearning(
+      foldRunEconomy(save, {
+        grist: run.wallet.grist,
+        statBonuses: run.statBonuses,
+        equippedShards: run.equippedShards,
+      }),
+      learning
+    )
   );
 }
 

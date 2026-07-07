@@ -11,7 +11,9 @@ import {
   isLearned,
   isLearning,
   learningProgress,
+  learningStateFromPersisted,
   newLearningState,
+  toPersistedLearning,
 } from "../../src/logic/spell-learning";
 
 /**
@@ -256,5 +258,84 @@ describe("spell-learning — progress queries", () => {
       LearningTuning.pointsToLearn
     );
     expect(isLearning(completed, SpellIds.cinder)).toBe(false);
+  });
+});
+
+describe("spell-learning — persistence projection (#264)", () => {
+  it("projects an in-progress spell to its [0,1) fraction", () => {
+    // Marrow teaches cinder + render; accelerate advances only cinder to 50%.
+    const half = accelerateLearning(withMarrowEquipped(), SpellIds.cinder);
+    const persisted = toPersistedLearning(half);
+    expect(persisted.learned).toEqual([]);
+    expect(persisted.learning).toContainEqual({
+      spell: SpellIds.cinder,
+      progress: 0.5,
+    });
+  });
+
+  it("projects a just-equipped (0%) spell to progress 0", () => {
+    expect(toPersistedLearning(withMarrowEquipped()).learning).toContainEqual({
+      spell: SpellIds.cinder,
+      progress: 0,
+    });
+  });
+
+  it("projects a completed spell into the learned list (never in learning)", () => {
+    const done = earnLearningPoints(
+      withMarrowEquipped(),
+      LearningTuning.pointsToLearn
+    );
+    const persisted = toPersistedLearning(done);
+    expect(persisted.learned).toContain(SpellIds.cinder);
+    expect(persisted.learning).toEqual([]);
+  });
+
+  it("round-trips a mid-progress state through project → rehydrate", () => {
+    const half = accelerateLearning(withMarrowEquipped(), SpellIds.cinder);
+    const persisted = toPersistedLearning(half);
+    const rehydrated = learningStateFromPersisted(
+      persisted.learned,
+      persisted.learning
+    );
+    expect(rehydrated).toEqual(half);
+    expect(isLearning(rehydrated, SpellIds.cinder)).toBe(true);
+    expect(learningProgress(rehydrated, SpellIds.cinder)).toBe(0.5);
+  });
+
+  it("rehydrates a just-equipped (0%) spell as in-progress, not not-begun", () => {
+    const rehydrated = learningStateFromPersisted(
+      [],
+      [{ spell: SpellIds.cinder, progress: 0 }]
+    );
+    // The #264 fix: the Bench's "begun" test (isLearning || progress>0) must be true,
+    // so an equipped shard never reads "not begun (equip the shard)" after Continue.
+    expect(isLearning(rehydrated, SpellIds.cinder)).toBe(true);
+  });
+
+  it("drops an unrecognized spell id from a foreign/corrupt save (total)", () => {
+    const rehydrated = learningStateFromPersisted(
+      ["not-a-spell"],
+      [{ spell: "also-bogus", progress: 0.4 }]
+    );
+    expect(rehydrated).toEqual(newLearningState());
+  });
+
+  it("drops an in-progress entry that duplicates an already-learned spell", () => {
+    const rehydrated = learningStateFromPersisted(
+      [SpellIds.cinder],
+      [{ spell: SpellIds.cinder, progress: 0.4 }]
+    );
+    expect(rehydrated.learned).toEqual([SpellIds.cinder]);
+    expect(rehydrated.learning).toEqual([]);
+  });
+
+  it("clamps a fraction at/over 1 below the bar so it stays in-progress", () => {
+    const rehydrated = learningStateFromPersisted(
+      [],
+      [{ spell: SpellIds.cinder, progress: 1 }]
+    );
+    expect(isLearning(rehydrated, SpellIds.cinder)).toBe(true);
+    expect(isLearned(rehydrated, SpellIds.cinder)).toBe(false);
+    expect(learningProgress(rehydrated, SpellIds.cinder)).toBeLessThan(1);
   });
 });
