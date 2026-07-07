@@ -153,6 +153,25 @@ export function resolveRegionVariant(
 }
 
 /**
+ * The battle-banner title for a fight originating in `region` under `state` (#248) —
+ * the live world-state variant's authored display name, upper-cased to match the
+ * battle banner's chrome. Content-as-data: the name is the region's own authored
+ * {@link RegionVariant.name} (e.g. "The Marrow Reach" → "THE MARROW REACH", "Upper
+ * Vanta — the Grey Crown & the Shuttered Tiers" → its Ashfall reading), so the banner
+ * changes as the player travels AND turns with the Reckoning, with no new hardcoded
+ * strings. Pure — reads through {@link resolveRegionVariant}; the seed never enters.
+ * @param region - The region the encounter is fought in.
+ * @param state - The current world-state (the variant to read).
+ * @returns The upper-cased variant name to render as the battle banner.
+ */
+export function regionBattleTitle(
+  region: RegionDef,
+  state: WorldState
+): string {
+  return resolveRegionVariant(region, state).name.toUpperCase();
+}
+
+/**
  * Whether a single variant is structurally complete: a non-blank name, at least
  * one key location, a non-empty encounter table. A blank/empty variant is an
  * authoring slip the {@link validateRegion} surfaces as a named error. Pure.

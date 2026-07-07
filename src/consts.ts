@@ -223,6 +223,15 @@ export interface BattleLaunchData {
    * the win flows back into the region's playlist progression rather than the Field.
    */
   readonly returnTo?: string;
+  /**
+   * The battle banner to render (#248) — the contextual title of the fight, derived
+   * from the originating region's live world-state variant name (via
+   * {@link import("./content").regionBattleTitle}) so a region encounter reads
+   * "THE MARROW REACH" / "UPPER VANTA — …" rather than the fixed dungeon banner.
+   * Absent on a Field/standalone launch, where the Battle scene keeps its authored
+   * default ("MARROW DESCENT", the Marrow-descent tutorial's own name).
+   */
+  readonly title?: string;
 }
 
 /**

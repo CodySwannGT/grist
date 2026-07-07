@@ -21,6 +21,7 @@ import { SceneKeys, type BattleLaunchData } from "../consts";
 import { type RegionLaunchData } from "../world-map-consts";
 import {
   REGIONS,
+  regionBattleTitle,
   resolveRegionVariant,
   type EncounterId,
   type RegionId,
@@ -114,10 +115,15 @@ export function engageRegionEncounter(
   if (encounterId === null) {
     return false;
   }
+  // Derive the battle banner from the region's live world-state variant (#248) so the
+  // fight reads its region ("THE MARROW REACH", "UPPER VANTA — …") — and turns with the
+  // Reckoning — rather than the fixed "MARROW DESCENT" the Battle scene defaults to.
+  const region = REGIONS[session.run.regionId as RegionId];
   const launch: BattleLaunchData = {
     encounterId,
     seed: session.run.rngState,
     returnTo: SceneKeys.Region,
+    title: regionBattleTitle(region, session.run.worldState),
   };
   setRegionSession(registry, session);
   transitionToScene(scene, SceneKeys.Battle, launch);
