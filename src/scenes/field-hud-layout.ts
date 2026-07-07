@@ -49,11 +49,17 @@ export const FieldHudLayout = {
   mapTitleY: 72,
   /** First room node's center inside the panel; nodes stack down by `mapRowH`. */
   mapNodeX: 132,
-  mapFirstNodeY: 96,
-  mapRowH: 16,
+  mapFirstNodeY: 92,
+  mapRowH: 15,
   /** Node marker (dot) radius and its label offset from the marker center. */
   mapNodeRadius: 4,
   mapLabelDx: 12,
+  /**
+   * The footer detail line — the "why is this node locked" cue for the next
+   * locked room (#250), centered near the panel's bottom below the node list.
+   * Mirrors the World Map panel's `#detail` footer.
+   */
+  mapDetailY: 141,
   /** Depth the mini-map overlay sits at (above the field, below nothing else). */
   mapDepth: 150,
 } as const;
@@ -74,6 +80,8 @@ export const FieldHudColors = {
   mapPanelStroke: GristPalette.line,
   /** The mini-map title text. */
   mapTitle: GRIST_GOLD_CSS,
+  /** The mini-map footer "why locked" detail line (#250) — the dim cue tone. */
+  mapDetail: "#9be7c4",
   /** Room-node label colors by visit state. */
   nodeCurrentText: GRIST_GOLD_CSS,
   nodeVisitedText: "#e8e8ea",
@@ -119,5 +127,11 @@ export const FieldHudTextStyles = {
     fontFamily: "monospace",
     fontSize: "8px",
     color: FieldHudColors.nodeVisitedText,
+  },
+  /** The mini-map footer "why locked" detail line (#250). */
+  mapDetail: {
+    fontFamily: "monospace",
+    fontSize: "8px",
+    color: FieldHudColors.mapDetail,
   },
 } as const;

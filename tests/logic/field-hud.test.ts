@@ -22,7 +22,9 @@ import {
   RoomVisitStates,
   contextPromptFor,
   gristReadoutLabel,
+  miniMapLockCue,
   miniMapModel,
+  miniMapNodeLabel,
   toggleMiniMap,
 } from "../../src/logic/field/hud";
 
@@ -101,6 +103,55 @@ describe("field HUD — mini-map model", () => {
       expect(current).toHaveLength(1);
       expect(current[0]?.room).toBe(room);
     }
+  });
+});
+
+describe("field HUD — mini-map lock cues (#250)", () => {
+  /** The cue for The Drip, gated on clearing Warren Street (the first room). */
+  const DRIP_CUE = "Locked — clear Warren Street";
+  /** The cue for The Cage, gated on clearing The Drip. */
+  const CAGE_CUE = "Locked — clear The Drip";
+
+  it("names each locked node's predecessor room at the start of the descent", () => {
+    // From Room A the two rooms ahead are locked; each cue names the room
+    // immediately before it (mirrors the World Map's "Locked — finish <region>").
+    const model = miniMapModel(startField(SEED));
+    expect(model[0]?.lockReason).toBe("");
+    expect(model[1]?.lockReason).toBe(DRIP_CUE);
+    expect(model[2]?.lockReason).toBe(CAGE_CUE);
+  });
+
+  it("clears the cue for a node once it becomes reachable (current/visited)", () => {
+    const model = miniMapModel(fieldAtRoom(MarrowRoomIds.b));
+    // Warren Street is now behind Wren, The Drip is current — both reachable.
+    expect(model[0]?.lockReason).toBe("");
+    expect(model[1]?.lockReason).toBe("");
+    // The Cage is still ahead, gated on clearing The Drip.
+    expect(model[2]?.lockReason).toBe(CAGE_CUE);
+  });
+
+  it("locks nothing in the final room", () => {
+    const model = miniMapModel(fieldAtRoom(MarrowRoomIds.c));
+    expect(model.every(node => node.lockReason === "")).toBe(true);
+  });
+
+  it("tags a locked node's overlay label with '— LOCKED' and leaves reachable ones bare", () => {
+    const model = miniMapModel(startField(SEED));
+    expect(miniMapNodeLabel(model[0]!)).toBe("Warren Street");
+    expect(miniMapNodeLabel(model[1]!)).toBe("The Drip — LOCKED");
+    expect(miniMapNodeLabel(model[2]!)).toBe("The Cage — LOCKED");
+  });
+
+  it("surfaces the next locked node's cue as the single footer detail line", () => {
+    // Mirrors the World Map footer: one cue at a time — the player's next objective.
+    expect(miniMapLockCue(miniMapModel(startField(SEED)))).toBe(DRIP_CUE);
+    expect(miniMapLockCue(miniMapModel(fieldAtRoom(MarrowRoomIds.b)))).toBe(
+      CAGE_CUE
+    );
+  });
+
+  it("shows no footer cue once nothing is locked (the final room)", () => {
+    expect(miniMapLockCue(miniMapModel(fieldAtRoom(MarrowRoomIds.c)))).toBe("");
   });
 });
 

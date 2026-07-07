@@ -38,6 +38,8 @@ export {
   type RoomVisitState,
   type MiniMapNode,
   miniMapModel,
+  miniMapNodeLabel,
+  miniMapLockCue,
   contextPromptFor,
   gristReadoutLabel,
   toggleMiniMap,

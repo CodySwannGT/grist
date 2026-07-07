@@ -14,7 +14,7 @@
  * @module scenes/field-bridge-view
  */
 import type Phaser from "phaser";
-import { type FieldState, loreForProp } from "../logic/field";
+import { type FieldState, loreForProp, miniMapModel } from "../logic/field";
 import { contextPromptFor } from "../logic/field";
 import { type FieldView } from "../uat/bridge";
 
@@ -84,6 +84,13 @@ export function makeFieldView(accessors: FieldViewAccessors): FieldView {
         loreOnScreen(accessors) !== null
       ),
     miniMapOpen: () => accessors.miniMapOpen(),
+    miniMapNodes: () =>
+      miniMapModel(accessors.state()).map(node => ({
+        room: node.room,
+        name: node.name,
+        state: node.state,
+        lockReason: node.lockReason,
+      })),
     toggleMiniMap: () => accessors.toggleMiniMap(),
     examineNearest: () => accessors.examineNearest(),
     engage: () => accessors.engage(),

@@ -483,4 +483,47 @@ test.describe("GRIST — field scene verification (UAT)", () => {
 
     expect(errors).toEqual([]);
   });
+
+  test("[field-hud-minimap-lock-reason] a locked mini-map node surfaces why it is locked (#250)", async ({
+    page,
+  }) => {
+    // [EVIDENCE: field-hud-minimap-lock-reason] The Drip / The Cage render dimmed
+    // on the summonable Marrow map with no lock indicator or reason, dead-airing a
+    // curious player (#250). This proves — off the live bridge — that a locked node
+    // now carries a "why locked" cue naming the room that opens it (mirroring the
+    // World Map's locked-region copy), rather than doing nothing silently.
+    const errors: string[] = [];
+    page.on("console", message => {
+      if (message.type() === "error") {
+        errors.push(message.text());
+      }
+    });
+    page.on("pageerror", error => errors.push(error.message));
+
+    await bootField(page);
+    await focusCanvas(page);
+
+    // Summon the map so the overlay (and its locked nodes) is live.
+    await pressMap(page);
+    await expect
+      .poll(
+        () => page.evaluate(() => window.__VERIFY__?.field()?.miniMapOpen),
+        { timeout: SEEN_TIMEOUT }
+      )
+      .toBe(true);
+
+    // The Drip — the node immediately ahead of Warren Street — is locked and its
+    // cue names the room that opens it. The current room carries no cue.
+    const nodes = await page.evaluate(
+      () => window.__VERIFY__?.field()?.miniMapNodes
+    );
+    expect(nodes?.[0]?.name).toBe("Warren Street");
+    expect(nodes?.[0]?.lockReason).toBe("");
+    expect(nodes?.[1]?.name).toBe("The Drip");
+    expect(nodes?.[1]?.lockReason).toBe("Locked — clear Warren Street");
+    expect(nodes?.[2]?.name).toBe("The Cage");
+    expect(nodes?.[2]?.lockReason).toBe("Locked — clear The Drip");
+
+    expect(errors).toEqual([]);
+  });
 });
