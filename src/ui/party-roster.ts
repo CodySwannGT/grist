@@ -48,7 +48,10 @@ export function partyBuildLines(build: PartyBuildView): readonly string[] {
     ...build.learned.map(name => `${name} ✓`),
   ];
   const augments = (Object.keys(build.statBonuses) as (keyof Stats)[]).map(
-    axis => `+${build.statBonuses[axis]} ${axis.toUpperCase()}`
+    axis => {
+      const value = build.statBonuses[axis] ?? 0;
+      return `${value >= 0 ? "+" : ""}${value} ${axis.toUpperCase()}`;
+    }
   );
   return [
     ...(spells.length > 0 ? [`Spells: ${spells.join(", ")}`] : []),

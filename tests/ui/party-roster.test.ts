@@ -73,6 +73,18 @@ describe("partyBuildLines", () => {
     expect(lines.some(line => line.includes("+2 SPD"))).toBe(true);
   });
 
+  it("formats a negative augment without a double sign", () => {
+    const build: PartyBuildView = {
+      learned: [],
+      learning: [],
+      benchShards: [],
+      statBonuses: { spd: -2 },
+    };
+    const lines = partyBuildLines(build);
+    expect(lines.some(line => line.includes("-2 SPD"))).toBe(true);
+    expect(lines.some(line => line.includes("+-2"))).toBe(false);
+  });
+
   it("emits nothing for an empty build (no scaffolding on a fresh run)", () => {
     const empty: PartyBuildView = {
       learned: [],
