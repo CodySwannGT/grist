@@ -71,7 +71,11 @@ import {
 
 /** Fallback seed when none is supplied via the verification bridge / `?seed=`. */
 const DEFAULT_SEED = 0x9e3779b1;
-/** The slice's battle title (static chrome). */
+/**
+ * The default battle banner — the Marrow-descent tutorial's own authored name (#248).
+ * A Field/standalone launch keeps it; a region encounter overrides it via
+ * {@link BattleLaunchData.title} with its contextual, world-state-aware region banner.
+ */
 const TITLE = "MARROW DESCENT";
 const TITLE_STYLE = {
   fontFamily: "monospace",
@@ -144,6 +148,13 @@ export class Battle extends Phaser.Scene {
   /** The encounter this run resolved (default for a standalone boot, or launched). */
   #encounter: EncounterDef = DEFAULT_ENCOUNTER;
   /**
+   * The banner rendered top-center (#248): the launched region's contextual title
+   * ({@link BattleLaunchData.title}) when a region encounter set it, else the authored
+   * {@link TITLE} default for a Field/standalone launch. Exposed to the verification
+   * bridge so an e2e can prove a region battle shows its region, not "MARROW DESCENT".
+   */
+  #title: string = TITLE;
+  /**
    * Whether this scene was launched by the Field (vs a standalone boot). Only a
    * field-launched battle consumes its result and returns to the Field — the
    * standalone boot stays on the resolved battle so the existing battle tests are
@@ -195,6 +206,9 @@ export class Battle extends Phaser.Scene {
     // shipped default — every existing battle test — is unchanged.
     this.#encounter = launchedEncounter ?? urlEncounter() ?? DEFAULT_ENCOUNTER;
     this.#launchSeed = this.#fromField ? (data?.seed ?? DEFAULT_SEED) : null;
+    // The banner: a region encounter threads its contextual title (#248); a Field or
+    // standalone boot has none, so the authored default stands.
+    this.#title = data?.title ?? TITLE;
     // Where a launched fight returns on resolution: the Field by default (every
     // existing Field↔Battle launch is unchanged), or the caller-named scene (the
     // Region, for a world-map region encounter — #241).
@@ -223,7 +237,9 @@ export class Battle extends Phaser.Scene {
     if (this.#fromField) {
       fadeSceneIn(this);
     }
-    this.add.text(GameView.width / 2, 6, TITLE, TITLE_STYLE).setOrigin(0.5, 0);
+    this.add
+      .text(GameView.width / 2, 6, this.#title, TITLE_STYLE)
+      .setOrigin(0.5, 0);
     this.#partyViews = this.#buildSide(BattleSides.party, state.party);
     this.#enemyViews = this.#buildSide(BattleSides.enemies, state.enemies);
     this.#wireEnemyTargets();
@@ -472,6 +488,7 @@ export class Battle extends Phaser.Scene {
         };
       },
       hud: () => this.#controller.model(),
+      title: () => this.#title,
       hash: () => hashState(this.#runner.state()),
       fx: () => this.#lastFx,
       onboarding: () => this.#onboarding.snapshot(),

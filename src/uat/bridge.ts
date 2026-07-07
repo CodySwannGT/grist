@@ -94,6 +94,8 @@ export interface BattleView {
   readonly state: () => BattleState | null;
   readonly resolution: () => VerifyResolution;
   readonly hud: () => HudModel | null;
+  /** The battle banner: the launched region's contextual title, or the default (#248). */
+  readonly title: () => string | null;
   readonly hash: () => string | null;
   /** The last FX the stage played (element action strip or Break burst), #201. */
   readonly fx: () => FxSelection | null;
@@ -128,6 +130,12 @@ interface VerifyApi
   readonly state: () => VerifyBattleState | null;
   readonly resolution: () => VerifyResolution | null;
   readonly hud: () => HudModel | null;
+  /**
+   * The battle banner (#248) — the launched region's contextual, world-state-aware title,
+   * or the "MARROW DESCENT" default; null outside a battle. Dispatched to the BattleView
+   * so a region-battle e2e can assert the banner reflects its region.
+   */
+  readonly title: () => string | null;
   readonly hash: () => string | null;
   /**
    * The last battle FX the stage played — the resolved action's element-read
@@ -280,10 +288,15 @@ class VerifyController {
   #view: BattleView | null = null;
   #fieldView: FieldView | null = null;
   /**
-   * The standalone terminal victory/defeat summary read (#225), spread into
-   * `__VERIFY__` — null while the fight is live / off a battle scene.
+   * The battle-view chrome reads spread into `__VERIFY__` — the standalone terminal
+   * victory/defeat summary (#225, null off a battle / while the fight is live) and the
+   * banner title (#248, the launched region's contextual title or the default). Both
+   * dispatch to the attached {@link BattleView}; grouped so the bridge stays under budget.
    */
-  readonly summaryApi = { summary: () => this.#view?.summary() ?? null };
+  readonly summaryApi = {
+    summary: () => this.#view?.summary() ?? null,
+    title: () => this.#view?.title() ?? null,
+  };
   /**
    * The first-battle onboarding snapshot (#228) — null outside a battle scene.
    * @returns The onboarding snapshot, or null.
@@ -463,9 +476,7 @@ class VerifyController {
    * the sim and that input was routed through the semantic InputService.
    * @returns The HUD model or null.
    */
-  hud(): HudModel | null {
-    return this.#view?.hud() ?? null;
-  }
+  readonly hud = (): HudModel | null => this.#view?.hud() ?? null;
 
   /**
    * The last battle FX the stage played (element-read action strip or Break
@@ -474,9 +485,7 @@ class VerifyController {
    * (#201).
    * @returns The last FX selection, or null.
    */
-  fx(): FxSelection | null {
-    return this.#view?.fx() ?? null;
-  }
+  readonly fx = (): FxSelection | null => this.#view?.fx() ?? null;
 
   /**
    * The stable digest of the live scene — the {@link BattleState} hash in a battle,
