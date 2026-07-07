@@ -14,6 +14,7 @@ import { MenuLayout, MenuTextStyles } from "../menu-consts";
 import type { LedgerCodexView } from "../logic/narrative";
 import type { MoralLedger } from "../logic/save/types";
 import { formatLedgerCodexPanel } from "./ledger-codex";
+import { codexWrapWidth } from "./menu-panel-fit";
 
 /**
  * Pools the codex body lines and renders a projected codex into them. Built once with
@@ -24,34 +25,40 @@ import { formatLedgerCodexPanel } from "./ledger-codex";
 export class LedgerCodexPanel {
   /** The pooled body lines (karma header + tally + one per catalog row). */
   readonly #lines: readonly Phaser.GameObjects.Text[];
+  /** The left x of the panel body (the panel's padded inset) — the flow's x anchor. */
+  readonly #x: number;
   /** The codex currently shown, or null while hidden. */
   #codex: LedgerCodexView | null = null;
 
   /**
-   * Build the pooled codex body lines under the detail panel, laid out from
-   * {@link MenuLayout.codexBodyY} stepping by {@link MenuLayout.codexLineGap}. Hidden
-   * until {@link show}.
+   * Build the pooled codex body lines under the detail panel. Each line word-wraps to
+   * the panel's inner width ({@link codexWrapWidth}) so a long recorded line never
+   * clips the panel's right border (#265); {@link show} then *flows* the lines by their
+   * rendered height so a wrapped (multi-row) line never overlaps the next. Hidden until
+   * {@link show}.
    * @param scene - The owning scene.
    * @param x - The left x of the panel body (the panel's padded inset).
    * @param slots - The number of body lines to pool (karma header + tally + catalog).
    */
   constructor(scene: Phaser.Scene, x: number, slots: number) {
+    this.#x = x;
     this.#lines = Array.from({ length: slots }, (_unused, line) =>
       scene.add
-        .text(
-          x,
-          MenuLayout.codexBodyY + line * MenuLayout.codexLineGap,
-          "",
-          MenuTextStyles.codexLine
-        )
+        .text(x, MenuLayout.codexBodyY + line * MenuLayout.codexLineGap, "", {
+          ...MenuTextStyles.codexLine,
+          wordWrap: { width: codexWrapWidth() },
+        })
         .setVisible(false)
     );
   }
 
   /**
-   * Show the projected codex: render the karma header, the `Recorded: N of M` tally,
-   * and every catalog row (recorded-with-line or pending) into the pooled lines. Extra
-   * lines beyond the pool are dropped; unused slots are cleared and hidden.
+   * Show the projected codex: render the compact karma header, the `Recorded: N of M`
+   * tally, and every catalog row (recorded-with-line or pending) into the pooled lines,
+   * each wrapped to the panel width and flowed down from {@link MenuLayout.codexBodyY}
+   * by its rendered height (so a two-row recorded line pushes the next row down rather
+   * than overlapping it). Extra lines beyond the pool are dropped; unused slots are
+   * cleared and hidden.
    * @param codex - The projected codex view.
    * @param ledger - The moral ledger summarized in the header.
    * @returns void
@@ -59,10 +66,33 @@ export class LedgerCodexPanel {
   show(codex: LedgerCodexView, ledger: MoralLedger): void {
     this.#codex = codex;
     const text = formatLedgerCodexPanel(codex, ledger);
-    this.#lines.forEach((line, index) => {
+    // Flow: thread the running y through the pooled lines, advancing past each visible
+    // line's rendered (wrapped) height so a two-row line never overlaps the next.
+    this.#lines.reduce((cursorY: number, line, index) => {
       const value = text[index] ?? "";
-      line.setText(value).setVisible(value !== "");
-    });
+      if (value === "") {
+        line.setVisible(false).setText("");
+        return cursorY;
+      }
+      line.setText(value).setPosition(this.#x, cursorY).setVisible(true);
+      return cursorY + line.height + MenuLayout.codexRowGap;
+    }, MenuLayout.codexBodyY as number);
+  }
+
+  /**
+   * The right-edge x of the widest visible codex line — its left x plus its rendered
+   * (wrapped) width — or null while the codex is hidden. The verification bridge reads
+   * this against the panel's inner right bound so an e2e can prove no codex line clips
+   * the panel's right border (#265).
+   * @returns The widest line's right edge, or null when hidden.
+   */
+  maxLineRight(): number | null {
+    if (this.#codex === null) {
+      return null;
+    }
+    return this.#lines
+      .filter(line => line.visible)
+      .reduce((max, line) => Math.max(max, line.x + line.width), 0);
   }
 
   /**

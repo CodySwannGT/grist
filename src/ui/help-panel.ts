@@ -19,6 +19,7 @@ import {
   CONTROLS_HELP_LINE_COUNT,
   controlsHelpDisplay,
 } from "../logic/controls-help";
+import { codexWrapWidth } from "./menu-panel-fit";
 
 /**
  * Pools the reference body lines and renders the controls help into them. Built
@@ -44,12 +45,10 @@ export class HelpPanel {
       { length: CONTROLS_HELP_LINE_COUNT },
       (_unused, line) =>
         scene.add
-          .text(
-            x,
-            MenuLayout.codexBodyY + line * MenuLayout.codexLineGap,
-            "",
-            MenuTextStyles.codexLine
-          )
+          .text(x, MenuLayout.codexBodyY + line * MenuLayout.codexLineGap, "", {
+            ...MenuTextStyles.codexLine,
+            wordWrap: { width: codexWrapWidth() },
+          })
           .setVisible(false)
     );
   }
@@ -92,5 +91,21 @@ export class HelpPanel {
    */
   lines(): readonly string[] | null {
     return this.#shown;
+  }
+
+  /**
+   * The right-edge x of the widest visible reference line — its left x plus its
+   * rendered width — or null while the panel is hidden. The verification bridge reads
+   * this against the panel's inner right bound so an e2e can prove no reference line
+   * clips the panel's right border (#265).
+   * @returns The widest line's right edge, or null when hidden.
+   */
+  maxLineRight(): number | null {
+    if (this.#shown === null) {
+      return null;
+    }
+    return this.#lines
+      .filter(line => line.visible)
+      .reduce((max, line) => Math.max(max, line.x + line.width), 0);
   }
 }

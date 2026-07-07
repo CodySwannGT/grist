@@ -204,6 +204,18 @@ export function resolveMenuCancel(
 }
 
 /**
+ * The one-word **lean** of a {@link MoralLedger}: which way its net karma tips — `Free`
+ * (positive), `Wield` (negative), or `Balanced` (zero). Shared by the classic Ledger
+ * route header ({@link formatMoralLedger}) and the compact codex header
+ * (`ui/ledger-codex`) so both name the lean identically.
+ * @param ledger - The moral ledger to summarize.
+ * @returns The lean word.
+ */
+export function moralLedgerLean(ledger: MoralLedger): string {
+  return ledger.karma > 0 ? "Free" : ledger.karma < 0 ? "Wield" : "Balanced";
+}
+
+/**
  * Format a {@link MoralLedger} into the human-readable lines the **Ledger** panel
  * renders (#98): the net karma with its lean, and the per-mode resolution tally.
  * Pure — the scene reads the live ledger (from the save) and renders these lines;
@@ -212,10 +224,8 @@ export function resolveMenuCancel(
  * @returns The ordered display lines for the ledger panel.
  */
 export function formatMoralLedger(ledger: MoralLedger): readonly string[] {
-  const lean =
-    ledger.karma > 0 ? "Free" : ledger.karma < 0 ? "Wield" : "Balanced";
   return [
-    `Karma: ${ledger.karma >= 0 ? "+" : ""}${ledger.karma} (${lean})`,
+    `Karma: ${ledger.karma >= 0 ? "+" : ""}${ledger.karma} (${moralLedgerLean(ledger)})`,
     `Freed: ${ledger.freeChoices}`,
     `Wielded: ${ledger.wieldChoices}`,
   ];

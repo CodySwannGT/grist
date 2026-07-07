@@ -14,7 +14,7 @@
  * @module ui/ledger-codex
  */
 import type { LedgerCodexRow, LedgerCodexView } from "../logic/narrative";
-import { formatMoralLedger } from "../logic/pause-menu";
+import { moralLedgerLean } from "../logic/pause-menu";
 import type { MoralLedger } from "../logic/save/types";
 
 /** The bullet prefix for a recorded codex row. */
@@ -40,9 +40,23 @@ export function ledgerCodexRowLine(row: LedgerCodexRow): string {
 }
 
 /**
- * Format the whole Ledger codex panel into ordered display lines: the karma summary
- * header (kept from #98, additive), the `Recorded: N of M` tally, then one line per
- * codex row in authored order. Pure — the scene renders these lines verbatim.
+ * Format the karma summary as a single **compact** header line — the net karma with its
+ * lean, then the freed / wielded counts — instead of the classic ledger route's three
+ * stacked lines (#98). The codex panel keeps the same karma facts but on one line so the
+ * denser codex body (which flows each recorded row to wrapped rows, #265) has the
+ * vertical room to show a fully-recorded catalog without spilling past the panel.
+ * @param ledger - The moral ledger to summarize.
+ * @returns The one-line karma summary.
+ */
+export function formatCodexKarmaLine(ledger: MoralLedger): string {
+  const sign = ledger.karma >= 0 ? "+" : "";
+  return `Karma ${sign}${ledger.karma} (${moralLedgerLean(ledger)})  Freed ${ledger.freeChoices}  Wielded ${ledger.wieldChoices}`;
+}
+
+/**
+ * Format the whole Ledger codex panel into ordered display lines: the compact karma
+ * summary header, the `Recorded: N of M` tally, then one line per codex row in authored
+ * order. Pure — the scene renders these lines (wrapping each to the panel width).
  * @param codex - The projected codex view.
  * @param ledger - The moral ledger to summarize in the header.
  * @returns The ordered panel display lines.
@@ -52,7 +66,7 @@ export function formatLedgerCodexPanel(
   ledger: MoralLedger
 ): readonly string[] {
   return [
-    ...formatMoralLedger(ledger),
+    formatCodexKarmaLine(ledger),
     codex.tally,
     ...codex.rows.map(ledgerCodexRowLine),
   ];

@@ -16,6 +16,19 @@ import type { LedgerCodexView } from "../logic/narrative";
 import type { PartyRosterView } from "../logic/party-roster";
 
 /**
+ * The rendered fit of the open detail panel's body (#265): the right-edge x of its
+ * widest visible line and the panel's inner right bound. `right <= bound` proves no
+ * row clips the panel's right border — the empirical guard the QA finding needs, read
+ * from the live Phaser text objects rather than re-simulated.
+ */
+export interface MenuPanelFit {
+  /** The right-edge x of the widest visible body line. */
+  readonly right: number;
+  /** The panel's inner right bound (a line must stay left of this). */
+  readonly bound: number;
+}
+
+/**
  * The live link the Menu scene registers with the bridge (#221). The scene exposes
  * the codex it projected for the open Ledger panel (or null when no Ledger panel is
  * open / its save has not resolved yet). Kept separate from the gameplay views so no
@@ -38,6 +51,11 @@ export interface MenuView {
    * HP/AP, and a reunited member) is surfaced from the pause menu, not a stub.
    */
   readonly party: () => PartyRosterView | null;
+  /**
+   * The rendered fit of whichever dense body panel is open (codex / party / help), or
+   * null when none is. Lets an e2e prove no row clips the panel's right border (#265).
+   */
+  readonly panelFit: () => MenuPanelFit | null;
 }
 
 /**
@@ -93,6 +111,15 @@ export class MenuCell {
   party(): PartyRosterView | null {
     return this.#view?.party() ?? null;
   }
+
+  /**
+   * The rendered fit of the open dense body panel (#265), or null outside the Menu
+   * scene / when no dense panel is open.
+   * @returns The panel fit, or null.
+   */
+  panelFit(): MenuPanelFit | null {
+    return this.#view?.panelFit() ?? null;
+  }
 }
 
 /** The pause/main-menu slice of the `__VERIFY__` surface, spread into it. */
@@ -103,6 +130,8 @@ export interface MenuApi {
   readonly menuHelpControls: () => readonly string[] | null;
   /** The roster the open Party panel rendered (#249), or null. */
   readonly menuParty: () => PartyRosterView | null;
+  /** The rendered fit of the open dense body panel (#265), or null. */
+  readonly menuPanelFit: () => MenuPanelFit | null;
 }
 
 /**
@@ -117,5 +146,6 @@ export function menuApi(menu: MenuCell): MenuApi {
     menuLedgerCodex: () => menu.ledgerCodex(),
     menuHelpControls: () => menu.helpControls(),
     menuParty: () => menu.party(),
+    menuPanelFit: () => menu.panelFit(),
   };
 }

@@ -25,6 +25,7 @@ import {
   type PartyRosterView,
 } from "../logic/party-roster";
 import { partyBuildLines, partyMemberLine } from "./party-roster";
+import { partyLineWrapWidth } from "./menu-panel-fit";
 
 /**
  * The portrait atlas faceset each member's row shows. Only the named cast the
@@ -111,7 +112,10 @@ export class PartyPanel {
       .setDisplaySize(PartyLayout.portraitSize, PartyLayout.portraitSize)
       .setVisible(false);
     const line = scene.add
-      .text(lineX, y, "", MenuTextStyles.partyMember)
+      .text(lineX, y, "", {
+        ...MenuTextStyles.partyMember,
+        wordWrap: { width: partyLineWrapWidth() },
+      })
       .setVisible(false);
     return { portrait, line };
   }
@@ -141,6 +145,24 @@ export class PartyPanel {
       const text = lines[index] ?? "";
       slot.setVisible(text !== "").setText(text);
     });
+  }
+
+  /**
+   * The right-edge x of the widest visible party line — a member stat line or a
+   * bench-build line, its left x plus its rendered (wrapped) width — or null while the
+   * panel is hidden. The verification bridge reads this against the panel's inner right
+   * bound so an e2e can prove no party row clips the panel's right border (#265).
+   * @returns The widest line's right edge, or null when hidden.
+   */
+  maxLineRight(): number | null {
+    if (this.#roster === null) {
+      return null;
+    }
+    const texts = [
+      ...this.#rows.map(row => row.line),
+      ...this.#buildLines,
+    ].filter(line => line.visible);
+    return texts.reduce((max, line) => Math.max(max, line.x + line.width), 0);
   }
 
   /**
