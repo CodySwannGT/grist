@@ -38,6 +38,7 @@ import {
 } from "../world-map-consts";
 import {
   REGIONS,
+  regionDisplayName,
   resolveRegionVariant,
   type RegionDef,
   type RegionId,
@@ -313,17 +314,48 @@ export class Region extends Phaser.Scene {
    * @returns void
    */
   #buildSideView(state: RegionRunState): void {
-    this.add
-      .text(GameView.width / 2, RegionLayout.titleY, state.regionId, {
-        ...RegionTextStyles.title,
-      })
+    const title = this.add
+      .text(
+        GameView.width / 2,
+        RegionLayout.titleY,
+        regionDisplayName(this.#region, state.worldState),
+        {
+          ...RegionTextStyles.title,
+        }
+      )
       .setOrigin(0.5, 0);
+    this.#fitTitle(title);
     this.#caption = this.add
       .text(GameView.width / 2, RegionLayout.captionY, "", {
         ...RegionTextStyles.caption,
       })
       .setOrigin(0.5, 0);
     this.#render(state);
+  }
+
+  /**
+   * Shrink the region-name banner (#247) by whole-pixel font steps until it fits
+   * within {@link RegionLayout.titleMaxWidth} — so the longest authored display name
+   * clears the play-mode "‹ Map" back button instead of running under it, while a
+   * short name keeps the full 12px chrome. Integer steps (never a fractional scale)
+   * keep the pixel type crisp; it stops at {@link RegionLayout.titleMinFontPx}, at
+   * which even the longest authored name still fits the cap (proven by the
+   * region-display-name unit twin's banner-fit case).
+   * @param title - The centered region-name text object to fit.
+   * @returns void
+   */
+  #fitTitle(title: Phaser.GameObjects.Text): void {
+    if (title.width <= RegionLayout.titleMaxWidth) {
+      return;
+    }
+    // A string's render width scales linearly with its font size, so the largest
+    // whole-pixel size that fits the cap is a single arithmetic step from the base
+    // measurement (floored so it never overshoots), clamped to the readable floor.
+    const baseFont = Number.parseInt(RegionTextStyles.title.fontSize, 10);
+    const scaled = Math.floor(
+      (baseFont * RegionLayout.titleMaxWidth) / title.width
+    );
+    title.setFontSize(Math.max(RegionLayout.titleMinFontPx, scaled));
   }
 
   /**

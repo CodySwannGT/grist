@@ -601,6 +601,19 @@ export const RegionLayout = {
   horizonY: 132,
   /** Centered region-name banner Y. */
   titleY: 8,
+  /**
+   * Max render width (px) for the centered region-name banner (#247). The banner
+   * renders the region's authored display name, which runs far longer than the old
+   * raw slug — long enough to collide with the play-mode "‹ Map" back button in the
+   * top-right (its panel left edge sits at x≈310). Titles wider than this are shrunk
+   * to fit (integer font steps, so they stay pixel-crisp) so the longest authored name
+   * ("Upper Vanta — the Grey Crown & the Shuttered Tiers") clears the button while a
+   * short name keeps the full 12px chrome. Centered at GameView.width/2, this keeps the
+   * right edge at ≤304px — a 6px gap from the button.
+   */
+  titleMaxWidth: 224,
+  /** Smallest font size (px) the region-name banner shrinks to before it stops. */
+  titleMinFontPx: 7,
   /** Phase/progress caption Y (under the title). */
   captionY: 24,
   /** The first encounter marker's center; subsequent markers step right by `markerGap`. */

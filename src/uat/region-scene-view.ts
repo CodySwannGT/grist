@@ -16,6 +16,7 @@
  * gameplay state — a thin test seam.
  * @module uat/region-scene-view
  */
+import { REGIONS, regionDisplayName, type RegionId } from "../content";
 import { type RegionAction, type RegionRunState } from "../logic/region";
 import { type VerifyResolution } from "./bridge";
 
@@ -43,6 +44,14 @@ export interface VerifyRegionSceneState {
   readonly runtimeScene: string;
   readonly regionId: string;
   readonly worldState: string;
+  /**
+   * The human-facing region name the scene banner renders (#247) — the live
+   * world-state variant's authored {@link import("../content").regionDisplayName},
+   * NOT the raw `regionId` slug. Resolved through the same shared name seam the
+   * World-Map row and the battle banner use, so the region-play title can never
+   * drift from the map. `""` when boot threw (no session to name).
+   */
+  readonly title: string;
   /** The deterministic backdrop asset key the scene booted against. */
   readonly backdrop: string;
   readonly cursor: number;
@@ -91,6 +100,7 @@ function failedSnapshot(scene: string, error: string): VerifyRegionSceneState {
     runtimeScene: "",
     regionId: "",
     worldState: "",
+    title: "",
     backdrop: "",
     cursor: 0,
     cleared: [],
@@ -124,6 +134,10 @@ function toVerifyRegionSceneState(
     runtimeScene: state.scene,
     regionId: state.regionId,
     worldState: state.worldState,
+    title: regionDisplayName(
+      REGIONS[state.regionId as RegionId],
+      state.worldState
+    ),
     backdrop: state.backdrop,
     cursor: state.cursor,
     cleared: [...state.cleared],
