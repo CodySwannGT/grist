@@ -59,11 +59,12 @@ export interface MiniMapNode {
   readonly state: RoomVisitState;
   /**
    * The one-line "why is this locked" cue for a node still ahead in the linear
-   * descent: it opens once the room immediately before it is cleared, so the cue
-   * names that predecessor (mirrors the World Map's `regionUnlockCue` — "Locked —
-   * finish <region>"). Empty for the reachable current/visited nodes. Lets the
-   * summonable overlay explain a dimmed node instead of dead-airing a curious
-   * player who wonders why The Drip / The Cage can't be picked (#250).
+   * descent. The intro Field has no in-scene action that clears a room — the descent
+   * only advances through the World Map's travel front door — so the cue points the
+   * player *there* (mirroring the World Map's own "open the road onward" copy) rather
+   * than naming a "clear <room>" field action that does not exist and reads as a
+   * soft-lock (#261; supersedes the misleading #250 predecessor cue). Empty for the
+   * reachable current/visited nodes.
    */
   readonly lockReason: string;
 }
@@ -88,25 +89,27 @@ export function miniMapModel(state: FieldState): readonly MiniMapNode[] {
 }
 
 /**
- * The lock cue for the node at `index` given the current room's `currentIndex`
- * in the linear descent. A room still ahead of Wren is locked until the room
- * immediately before it is cleared, so its cue names that predecessor — the same
- * "name the gate" idiom the World Map's `regionUnlockCue` uses ("Locked — finish
- * <region>"), phrased "clear" for the Marrow's per-room encounter gate. The
- * current room and rooms already passed are reachable, so their cue is empty.
- * Pure.
+ * The cue every locked descent node surfaces (#261): the intro Field exposes no
+ * keyboard/pointer action that clears a room, so the old "Locked — clear <room>" cue
+ * implied a field action that does not exist and dead-ended new players. The real road
+ * onward is the World Map's travel front door, so the cue points there — echoing the
+ * World Map's own "open the road onward" copy and the `[T] travel` HUD affordance.
+ */
+const WORLD_MAP_TRAVEL_CUE = "Locked — travel on from the world map";
+
+/**
+ * The lock cue for the node at `index` given the current room's `currentIndex` in the
+ * linear descent. A room still ahead of Wren is locked; because no in-scene action
+ * advances the descent, every locked node shares one cue that points the player at the
+ * World Map (the true road onward), rather than naming a non-existent "clear <room>"
+ * field action (#261). The current room and rooms already passed are reachable, so
+ * their cue is empty. Pure.
  * @param index - The node's index in {@link MARROW_ROOM_ORDER}.
  * @param currentIndex - The current room's index.
  * @returns The lock cue, or "" when the node is reachable.
  */
 function roomUnlockCue(index: number, currentIndex: number): string {
-  if (index <= currentIndex) {
-    return "";
-  }
-  const predecessor = MARROW_ROOM_ORDER[index - 1];
-  return predecessor === undefined
-    ? "Locked"
-    : `Locked — clear ${MARROW_MAP[predecessor].name}`;
+  return index <= currentIndex ? "" : WORLD_MAP_TRAVEL_CUE;
 }
 
 /** The suffix tag that marks a locked node in the overlay list — the visible

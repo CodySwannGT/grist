@@ -44,6 +44,8 @@ import {
   type FieldMoveDir,
 } from "../services/field-input-map";
 import { getRunState } from "../services/run-store";
+import { showFieldTravelHintIfDue } from "./field-travel-hint";
+import { wireFieldPointer } from "./field-pointer";
 import { drawFieldBackdrop, drawFieldChrome } from "./field-chrome";
 import { FieldHud } from "./field-hud";
 import { makeFieldView } from "./field-bridge-view";
@@ -54,6 +56,7 @@ import {
   engageEncounter,
   launchPendingBattle,
   openPauseMenu,
+  openWorldMap,
   resumeFieldFromMenu,
   resumeFieldSession,
 } from "./field-launch";
@@ -140,14 +143,23 @@ export class Field extends Phaser.Scene {
     drawFieldBackdrop(this);
     this.#buildProps();
     this.#buildHud();
-    this.#hud = new FieldHud(this, this.#toggleMiniMap, () =>
-      this.#input.tapOpenMenu()
+    this.#hud = new FieldHud(
+      this,
+      this.#toggleMiniMap,
+      () => this.#input.tapOpenMenu(),
+      () => this.#input.tapOpenWorldMap()
     );
-    this.#wirePointer();
+    wireFieldPointer(this, this.#sign, this.#input);
 
     eventsCenter.on(FieldEvents.Input, this.#onIntent);
     this.#syncWren();
     this.#syncHud();
+    // Surface the once-per-save travel signpost (#261) for a first-time player who
+    // just landed here from the tutorial: without it the intro Field dead-ends (only
+    // [M]/[Esc] on screen, no cue that progression lives on the World Map). Async — it
+    // reads the save flag + the hint gate, so it may resolve a frame or two in; the
+    // guard bails if the player has already acted or left the scene during that I/O.
+    void showFieldTravelHintIfDue(this.#hud, this.#travelHintEligible);
 
     verifyBridge.attach(SceneKeys.Field, this.#bridgeView());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.#shutdown());
@@ -171,6 +183,9 @@ export class Field extends Phaser.Scene {
     const dir = this.#activeDirection();
     const len = Math.hypot(dir.dx, dir.dy);
     if (len > 0) {
+      // Moving is deliberate input too — clear the first-landing travel signpost (#261)
+      // the moment the player walks (held keys never reach #onIntent, so dismiss here).
+      this.#hud.hideOnboarding();
       // Step (normalized so every heading walks at the same speed — a raw held
       // diagonal would move ~41% faster) then clamp to the walkable floor band.
       const next = clampWrenToFloor(
@@ -233,6 +248,9 @@ export class Field extends Phaser.Scene {
    * @returns void
    */
   readonly #onIntent = (intent: FieldIntent, _device: string): void => {
+    // Any deliberate input dismisses the first-landing travel signpost (#261) so it
+    // never lingers over play — mirrors the World Map hint's "first input clears it".
+    this.#hud.hideOnboarding();
     if (intent.kind === "move-to") {
       this.#moveTo = { x: intent.x, y: intent.y };
       return;
@@ -244,6 +262,11 @@ export class Field extends Phaser.Scene {
     }
     if (intent.kind === "toggle-map") {
       this.#toggleMiniMap();
+    }
+    if (intent.kind === "open-world-map") {
+      // The intro Field's first-class road onward (#261) — open the World Map directly.
+      openWorldMap(this);
+      return;
     }
     if (intent.kind === "open-menu") {
       // Esc hands off to the pause Menu (#233), stashing the live session + Wren's
@@ -355,6 +378,16 @@ export class Field extends Phaser.Scene {
   };
 
   /**
+   * Whether the once-per-save travel signpost may still surface after its async claim
+   * resolves (#261): the scene is still live AND the player has not already dismissed the
+   * banner with a first input. A stable arrow so the fire-and-forget claim in
+   * {@link create} re-checks the live scene state, never a stale snapshot.
+   * @returns True while the hint is still eligible to render.
+   */
+  readonly #travelHintEligible = (): boolean =>
+    this.scene.isActive() && !this.#hud.onboardingDismissed;
+
+  /**
    * Place the room props: Wren's placeholder body, and — when the current room
    * has an examinable lore prop — its tappable, glyphed marker. Rooms with no
    * authored lore prop (the descent) render no marker at all, so the scene never
@@ -425,32 +458,6 @@ export class Field extends Phaser.Scene {
   }
 
   /**
-   * Wire the pointer: tapping the floor sets a tap-to-move destination (mapped
-   * from the pointer's logical coords) and — when the current room has an
-   * examinable prop marker — tapping that marker examines it. Both routed through
-   * the semantic {@link FieldInputService}, so no raw pointer math leaks past it.
-   * @returns void
-   */
-  #wirePointer(): void {
-    this.#sign
-      ?.setInteractive({ useHandCursor: true })
-      .on(Phaser.Input.Events.POINTER_DOWN, (pointer: Phaser.Input.Pointer) => {
-        // Tapping the marker first walks to it, then examines — the tap is a
-        // semantic move-to + examine, never a raw coordinate read in gameplay.
-        this.#input.tapMoveTo(FieldLayout.signX, FieldLayout.signY);
-        this.#input.tapExamine();
-        pointer.event?.stopPropagation();
-      });
-    this.input.on(
-      Phaser.Input.Events.POINTER_DOWN,
-      (pointer: Phaser.Input.Pointer) => {
-        // pointer.worldX/Y are already in the scene's logical (384×216) space.
-        this.#input.tapMoveTo(pointer.worldX, pointer.worldY);
-      }
-    );
-  }
-
-  /**
    * Mirror Wren's logical position onto her sprite. Allocation-free.
    * @returns void
    */
@@ -478,6 +485,7 @@ export class Field extends Phaser.Scene {
       shards: () => this.#run.shards,
       pendingChoiceShard: () => this.#run.pendingChoiceShard,
       miniMapOpen: () => this.#miniMapOpen,
+      onboardingHint: () => this.#hud.onboardingText(),
       toggleMiniMap: () => this.#toggleMiniMap(),
       examineNearest: () => this.#bridgeExamine(),
       engage: () => {

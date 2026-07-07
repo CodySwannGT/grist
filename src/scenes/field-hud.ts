@@ -66,6 +66,8 @@ const NODE_TEXT: Readonly<Record<RoomVisitState, string>> = {
 const MAP_HINT = "[M] map";
 /** The pause-menu opener hint (advertises the Esc opener, #233). */
 const MENU_HINT = "[Esc] menu";
+/** The travel front-door hint (advertises the World Map opener, #261). */
+const TRAVEL_HINT = "[T] travel";
 /** The mini-map overlay title. */
 const MAP_TITLE = "Marrow";
 
@@ -87,6 +89,17 @@ export class FieldHud {
   readonly #hint: Phaser.GameObjects.Text;
   /** The pause-menu opener hint (#233), stacked under the map hint, top-right. */
   readonly #menuHint: Phaser.GameObjects.Text;
+  /** The World Map travel hint (#261), stacked under the menu hint, top-right. */
+  readonly #travelHint: Phaser.GameObjects.Text;
+  /** The once-per-save travel signpost banner (#261), hidden until surfaced. */
+  readonly #onboarding: Phaser.GameObjects.Text;
+  /**
+   * Whether the travel signpost has been dismissed for this scene lifetime (#261).
+   * Set the first time {@link hideOnboarding} fires (the player's first input) so a
+   * late, still-in-flight {@link showOnboarding} — the async claim resolving after the
+   * player already acted — can never re-raise the banner after first input.
+   */
+  #onboardingDismissed = false;
   #mapOpen = false;
 
   /**
@@ -96,11 +109,13 @@ export class FieldHud {
    * @param scene - The owning Field scene.
    * @param onSummon - Called when the touch summon button is tapped.
    * @param onOpenMenu - Called when the touch menu-opener button is tapped (#233).
+   * @param onTravel - Called when the touch travel button is tapped (#261).
    */
   constructor(
     scene: Phaser.Scene,
     onSummon: () => void,
-    onOpenMenu: () => void
+    onOpenMenu: () => void,
+    onTravel: () => void
   ) {
     this.#grist = makeText(
       scene,
@@ -111,16 +126,23 @@ export class FieldHud {
     );
     this.#grist.object.setStyle(FieldHudTextStyles.grist).setDepth(HUD_DEPTH);
 
-    // Two stacked top-right hints — "[M] map" and "[Esc] menu" (#233) — each with a
-    // matching transparent hit-rect so touch players (no keyboard) get both openers.
-    // The rects are sized to `hintHitHeight` so they never overlap, keeping each
-    // opener independently tappable; the menu tap is ignored while the map is open.
+    // Three stacked top-right hints — "[M] map", "[Esc] menu" (#233), and "[T] travel"
+    // (#261) — each with a matching transparent hit-rect so touch players (no keyboard)
+    // get every opener. The rects are sized to `hintHitHeight` so they never overlap,
+    // keeping each opener independently tappable; the menu and travel taps are ignored
+    // while the map is open (its overlay takes the screen).
     this.#hint = hintText(scene, FieldHudLayout.hintY, MAP_HINT);
     this.#menuHint = hintText(scene, FieldHudLayout.menuHintY, MENU_HINT);
+    this.#travelHint = hintText(scene, FieldHudLayout.travelHintY, TRAVEL_HINT);
     hintButton(scene, FieldHudLayout.hintY, onSummon);
     hintButton(scene, FieldHudLayout.menuHintY, () => {
       if (!this.#mapOpen) {
         onOpenMenu();
+      }
+    });
+    hintButton(scene, FieldHudLayout.travelHintY, () => {
+      if (!this.#mapOpen) {
+        onTravel();
       }
     });
 
@@ -141,6 +163,67 @@ export class FieldHud {
     this.#mapTitle = map.title;
     this.#nodeRows = map.rows;
     this.#mapDetail = map.detail;
+
+    // The once-per-save travel signpost (#261) — built hidden, surfaced by
+    // #showOnboarding when the player first lands in the intro Field, dismissed on
+    // their first input. A plain centered line above the bottom examine band.
+    this.#onboarding = scene.add
+      .text(
+        FieldHudLayout.onboardingX,
+        FieldHudLayout.onboardingY,
+        "",
+        FieldHudTextStyles.onboarding
+      )
+      .setOrigin(0.5)
+      .setDepth(HUD_DEPTH)
+      .setVisible(false);
+  }
+
+  /**
+   * Surface the once-per-save travel signpost banner (#261): the first-landing hint
+   * that tells a dead-ended new player how to reach the World Map. Shown by the scene
+   * only when the pure onboarding flag is unseen and the hint gate allows it.
+   * @param text - The hint copy to show.
+   * @returns void
+   */
+  showOnboarding(text: string): void {
+    // Never re-raise after the player's first input (the async claim can resolve late).
+    if (this.#onboardingDismissed) {
+      return;
+    }
+    this.#onboarding.setText(text).setVisible(true);
+  }
+
+  /**
+   * Dismiss the travel signpost banner (#261) — called on the player's first input, so
+   * the hint never lingers over play, and latch it dismissed so a late in-flight
+   * {@link showOnboarding} cannot re-raise it. Idempotent.
+   * @returns void
+   */
+  hideOnboarding(): void {
+    this.#onboardingDismissed = true;
+    this.#onboarding.setVisible(false);
+  }
+
+  /**
+   * Whether the travel signpost has been dismissed for this scene lifetime (#261) — true
+   * once the player's first input latched it. Lets the async claim skip marking the beat
+   * seen (and skip rendering) when the player already acted during the save I/O, so a
+   * shown-once beat is never "spent" on a landing the player never actually saw.
+   * @returns True once the banner has been dismissed this scene.
+   */
+  get onboardingDismissed(): boolean {
+    return this.#onboardingDismissed;
+  }
+
+  /**
+   * The travel signpost copy currently on screen, or null when the banner is hidden
+   * (#261) — the model the verification bridge surfaces so an e2e can prove it shows
+   * once and then clears, without a separate flag on the scene.
+   * @returns The visible hint text, or null.
+   */
+  onboardingText(): string | null {
+    return this.#onboarding.visible ? this.#onboarding.text : null;
   }
 
   /**
@@ -300,6 +383,7 @@ export class FieldHud {
     this.#mapTitle.setVisible(open);
     this.#hint.setVisible(!open);
     this.#menuHint.setVisible(!open);
+    this.#travelHint.setVisible(!open);
     this.#nodeRows.forEach(row => {
       row.marker.setVisible(open);
       row.label.object.setVisible(open);

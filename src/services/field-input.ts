@@ -147,6 +147,17 @@ export class FieldInputService {
   }
 
   /**
+   * Publish a touch/pointer open-world-map (tapping the HUD's "[T] travel"
+   * affordance), so touch players — who have no `T` key — reach the travel front
+   * door too (#261), at parity with the map-summon and menu-opener buttons. The
+   * Field scene handles the intent identically to the keyboard `T`.
+   * @returns void
+   */
+  tapOpenWorldMap(): void {
+    this.#emit({ kind: "open-world-map" }, InputDevices.pointer);
+  }
+
+  /**
    * Emit a device-tagged field intent on the EventsCenter bus.
    * @param intent - The semantic field intent.
    * @param device - The originating device.

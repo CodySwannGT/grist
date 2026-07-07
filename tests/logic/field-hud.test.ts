@@ -106,19 +106,30 @@ describe("field HUD — mini-map model", () => {
   });
 });
 
-describe("field HUD — mini-map lock cues (#250)", () => {
-  /** The cue for The Drip, gated on clearing Warren Street (the first room). */
-  const DRIP_CUE = "Locked — clear Warren Street";
-  /** The cue for The Cage, gated on clearing The Drip. */
-  const CAGE_CUE = "Locked — clear The Drip";
+describe("field HUD — mini-map lock cues (#250/#261)", () => {
+  /**
+   * Every locked descent node now points the player at the World Map, not a
+   * non-existent "clear <room>" field action (#261): the intro Field has no in-scene
+   * input that advances the descent, so the old predecessor cue dead-ended new players.
+   */
+  const TRAVEL_CUE = "Locked — travel on from the world map";
 
-  it("names each locked node's predecessor room at the start of the descent", () => {
-    // From Room A the two rooms ahead are locked; each cue names the room
-    // immediately before it (mirrors the World Map's "Locked — finish <region>").
+  it("points every locked node at the World Map at the start of the descent (#261)", () => {
+    // From Room A the two rooms ahead are locked; both cues point at the real road
+    // onward (the World Map) rather than implying an in-field "clear" action.
     const model = miniMapModel(startField(SEED));
     expect(model[0]?.lockReason).toBe("");
-    expect(model[1]?.lockReason).toBe(DRIP_CUE);
-    expect(model[2]?.lockReason).toBe(CAGE_CUE);
+    expect(model[1]?.lockReason).toBe(TRAVEL_CUE);
+    expect(model[2]?.lockReason).toBe(TRAVEL_CUE);
+  });
+
+  it("names no field 'clear' action in any locked cue (#261)", () => {
+    // The regression the bug filed: the cue must never imply a room is cleared from
+    // within the field, because no such input exists.
+    const model = miniMapModel(startField(SEED));
+    for (const node of model) {
+      expect(node.lockReason).not.toContain("clear");
+    }
   });
 
   it("clears the cue for a node once it becomes reachable (current/visited)", () => {
@@ -126,8 +137,8 @@ describe("field HUD — mini-map lock cues (#250)", () => {
     // Warren Street is now behind Wren, The Drip is current — both reachable.
     expect(model[0]?.lockReason).toBe("");
     expect(model[1]?.lockReason).toBe("");
-    // The Cage is still ahead, gated on clearing The Drip.
-    expect(model[2]?.lockReason).toBe(CAGE_CUE);
+    // The Cage is still ahead, still pointing at the World Map.
+    expect(model[2]?.lockReason).toBe(TRAVEL_CUE);
   });
 
   it("locks nothing in the final room", () => {
@@ -143,10 +154,10 @@ describe("field HUD — mini-map lock cues (#250)", () => {
   });
 
   it("surfaces the next locked node's cue as the single footer detail line", () => {
-    // Mirrors the World Map footer: one cue at a time — the player's next objective.
-    expect(miniMapLockCue(miniMapModel(startField(SEED)))).toBe(DRIP_CUE);
+    // Mirrors the World Map footer: one cue at a time, now the travel signpost.
+    expect(miniMapLockCue(miniMapModel(startField(SEED)))).toBe(TRAVEL_CUE);
     expect(miniMapLockCue(miniMapModel(fieldAtRoom(MarrowRoomIds.b)))).toBe(
-      CAGE_CUE
+      TRAVEL_CUE
     );
   });
 

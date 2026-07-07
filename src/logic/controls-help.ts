@@ -26,15 +26,20 @@ interface HelpSection {
 /**
  * The controls & resource reference, in render order. Field and battle bindings
  * are quoted verbatim from the key maps (WASD/arrows to move, Enter/Space to
- * confirm, `M` for the map, **Esc** to open the pause menu (#233), and **Shift** —
- * not Tab — to cycle battle speed), and
+ * confirm, `M` for the map, **Esc** to open the pause menu (#233), `T` to open the
+ * World Map travel front door (#261), and **Shift** — not Tab — to cycle battle
+ * speed), and
  * the last block glosses the two resources the command menu prices in: `AP`
  * (Craft) and `G`rist (Bind). This array IS the reference the panel shows.
  */
 export const CONTROLS_HELP: readonly HelpSection[] = [
   {
     title: "FIELD",
-    rows: ["Move    WASD / Arrows", "Examine Enter · Map M", "Menu    Esc"],
+    rows: [
+      "Move    WASD / Arrows",
+      "Examine Enter · Map M",
+      "Menu Esc · Travel T",
+    ],
   },
   {
     title: "BATTLE",

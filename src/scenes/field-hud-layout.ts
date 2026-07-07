@@ -30,13 +30,24 @@ export const FieldHudLayout = {
   hintY: 6,
   /** Pause-menu opener hint ("[Esc] menu"), stacked just below the map hint (#233). */
   menuHintY: 18,
+  /** World-map travel hint ("[T] travel"), stacked below the menu hint (#261). */
+  travelHintY: 30,
   /**
    * Touch hit-rect size for each top-right hint (map summon at `hintY`, menu opener
-   * at `menuHintY`, #233). Height is bounded by the `menuHintY − hintY` gap so the
-   * two hit areas never overlap — a tap on "[Esc] menu" opens the menu, never the map.
+   * at `menuHintY`, travel front door at `travelHintY`, #233/#261). Height is bounded
+   * by the per-hint `12px` stack gap so no two hit areas overlap — a tap on one hint
+   * fires only that hint's action.
    */
   hintHitWidth: 48,
   hintHitHeight: 11,
+  /**
+   * The once-per-save travel signpost banner (#261) — a centered one-line hint shown
+   * when the player first lands in the intro Field after the tutorial, dismissed on
+   * their first input. Sits low-centered, clear of the top-right hint stack and the
+   * bottom examine band.
+   */
+  onboardingX: GameView.width / 2,
+  onboardingY: 176,
   /** Floating context prompt anchor (centered above Wren's head height band). */
   promptX: GameView.width / 2,
   promptY: 196,
@@ -82,6 +93,9 @@ export const FieldHudColors = {
   mapTitle: GRIST_GOLD_CSS,
   /** The mini-map footer "why locked" detail line (#250) — the dim cue tone. */
   mapDetail: "#9be7c4",
+  /** The once-per-save travel signpost banner (#261) — grist-gold, so it reads as a
+   *  first-class prompt the player should act on, not quiet chrome. */
+  onboarding: GRIST_GOLD_CSS,
   /** Room-node label colors by visit state. */
   nodeCurrentText: GRIST_GOLD_CSS,
   nodeVisitedText: "#e8e8ea",
@@ -133,5 +147,11 @@ export const FieldHudTextStyles = {
     fontFamily: "monospace",
     fontSize: "8px",
     color: FieldHudColors.mapDetail,
+  },
+  /** The once-per-save travel signpost banner (#261). */
+  onboarding: {
+    fontFamily: "monospace",
+    fontSize: "8px",
+    color: FieldHudColors.onboarding,
   },
 } as const;

@@ -69,6 +69,13 @@ describe("field key -> intent map", () => {
     expect(keyToFieldIntent("Escape")).toEqual({ kind: "open-menu" });
   });
 
+  it("maps the World Map travel front door to T (#261)", () => {
+    // T is the first-class road onward out of the intro Field — the intro Field has
+    // no in-scene action that advances the descent, so a discoverable travel key
+    // keeps a new player from dead-ending.
+    expect(keyToFieldIntent("KeyT")).toEqual({ kind: "open-world-map" });
+  });
+
   it("leaves Tab unbound so it cannot blur the canvas", () => {
     // Tab is the browser's focus-navigation key; binding it without a capture
     // path would move focus off the canvas and stop later keyboard input.

@@ -39,6 +39,13 @@ describe("controls & help reference (#228)", () => {
     expect(BLOB).toContain("Esc");
   });
 
+  it("[EVIDENCE: controls-help-lists-travel-front-door] lists the T World Map travel opener (#261)", () => {
+    // The reference must teach the intro Field's road onward — the T travel front
+    // door wired in field-input-map — so a player who missed the first-landing hint
+    // can always look it up.
+    expect(BLOB).toContain("Travel T");
+  });
+
   it("[EVIDENCE: controls-help-lists-real-bindings] glosses the AP and Grist resources the command menu prices in", () => {
     expect(BLOB).toContain("AP");
     expect(BLOB).toContain("Grist");
