@@ -51,6 +51,20 @@ export interface FinaleLaunchData {
 }
 
 /**
+ * The typed scene-data the World Map hands to the Reunion set-piece when the player selects a
+ * reunion ("story") node (#273): the reunion id to play its own recruit script, and the scene
+ * to return to when the reunion resolves (the World Map). The reunion always plays through
+ * back to the World Map on completion — `returnTo` is that destination. Kept here so a
+ * world-map launch and a reunion-init can never drift on key names.
+ */
+export interface ReunionLaunchData {
+  /** The reunion id to play (a {@link import("./content").ReunionId}). */
+  readonly reunionId: string;
+  /** The scene to return to when the reunion resolves (the World Map). */
+  readonly returnTo: string;
+}
+
+/**
  * The typed scene-data the World Map hands to the Reckoning set-piece when the player selects
  * **The Reckoning** hook (#251): the World Map's *own* onward back target, carried forward so
  * the transformed Ashfall map the set-piece lands the run back on keeps the same exit. The

@@ -157,3 +157,10 @@ export {
   FINALE_SCENE_ID,
 } from "./scenes/finale";
 export { RECKONING_SCRIPT } from "./scenes/reckoning";
+export {
+  buildReunionScript,
+  reunionCompleteFlag,
+  reunionIdFromJoinedSceneId,
+  reunionJoinedSceneId,
+  reunionMeetSceneId,
+} from "./scenes/reunion";

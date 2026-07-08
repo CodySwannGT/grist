@@ -69,6 +69,15 @@ export const SceneKeys = {
    * now-transformed World Map so the Ashfall re-skin reads as the consequence just watched.
    */
   Reckoning: "Reckoning",
+  /**
+   * The Act II reunion set-piece (#273, composing #140) — reached by selecting a reunion
+   * ("story") node on the turned World Map. It mounts the dialogue presenter over the
+   * reunion's own self-contained recruit script (`content/scenes/reunion`) instead of
+   * travelling to the reunion's already-cleared anchor region: the environmental hook, the
+   * meeting, and the companion joining — which writes the `reunion:<id>` completion flag the
+   * finale's standing counts, then hands the run back to the World Map.
+   */
+  Reunion: "Reunion",
 } as const;
 
 /**
