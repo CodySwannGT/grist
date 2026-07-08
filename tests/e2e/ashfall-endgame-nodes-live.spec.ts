@@ -52,6 +52,7 @@ async function waitForBridge(page: Page): Promise<void> {
           () =>
             typeof window.__VERIFY__?.dialogue === "function" &&
             typeof window.__VERIFY__?.advanceDialogue === "function" &&
+            typeof window.__VERIFY__?.branchDialogue === "function" &&
             typeof window.__VERIFY__?.loadSave === "function" &&
             typeof window.__VERIFY__?.save === "function"
         ),

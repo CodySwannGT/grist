@@ -52,6 +52,8 @@ export class Reunion extends Phaser.Scene {
   #input!: DialogueInputService;
   #reunionId: ReunionId = REUNION_ORDER[0]!;
   #returnTo: string = SceneKeys.WorldMap;
+  /** The World Map's OWN back target to restore on exit (its caller — Field/Menu). */
+  #mapReturnTo: string = SceneKeys.Field;
   /** Latches the recruit-completion persist so it fires exactly once. */
   #committed = false;
   /** Whether the terminal (joined) beat has been shown at least once (the #244 latch). */
@@ -75,6 +77,7 @@ export class Reunion extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(DialogueColors.boxFill);
     this.#reunionId = this.#resolveReunionId(data?.reunionId);
     this.#returnTo = data?.returnTo ?? SceneKeys.WorldMap;
+    this.#mapReturnTo = data?.mapReturnTo ?? SceneKeys.Field;
     this.#committed = false;
     this.#seenTerminal = false;
     this.#exited = false;
@@ -201,7 +204,7 @@ export class Reunion extends Phaser.Scene {
     }
     this.#exited = true;
     this.scene.start(this.#returnTo, {
-      returnTo: SceneKeys.Field,
+      returnTo: this.#mapReturnTo,
     } as WorldMapLaunchData);
   }
 

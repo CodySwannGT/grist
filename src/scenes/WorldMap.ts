@@ -305,6 +305,8 @@ export class WorldMap extends Phaser.Scene {
     const launch: ReunionLaunchData = {
       reunionId,
       returnTo: SceneKeys.WorldMap,
+      // Carry the map's own caller through so the restored map keeps the same Back target.
+      ...(this.#returnTo === null ? {} : { mapReturnTo: this.#returnTo }),
     };
     this.scene.start(SceneKeys.Reunion, launch);
   }

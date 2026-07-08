@@ -62,6 +62,12 @@ export interface ReunionLaunchData {
   readonly reunionId: string;
   /** The scene to return to when the reunion resolves (the World Map). */
   readonly returnTo: string;
+  /**
+   * The World Map's OWN onward back target (its caller — the Field/Menu), carried through so
+   * the restored map keeps the same Back destination the player arrived with instead of a
+   * hardcoded default. Absent when the map itself has no caller (the standalone seam).
+   */
+  readonly mapReturnTo?: string;
 }
 
 /**
