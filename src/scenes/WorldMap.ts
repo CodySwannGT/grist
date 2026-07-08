@@ -22,6 +22,7 @@ import {
   type FinaleLaunchData,
   type ReckoningLaunchData,
   type RegionLaunchData,
+  type ReunionLaunchData,
   type WorldMapLaunchData,
 } from "../world-map-consts";
 import { type RegionId } from "../content";
@@ -46,6 +47,7 @@ import {
   moveWorldMapCursor,
   type WorldMapIntent,
 } from "../logic/world-map-nav";
+import { worldMapEntryAction } from "../logic/world-map-select";
 import {
   hasSeenWorldMapOnboarding,
   markWorldMapOnboardingSeen,
@@ -258,8 +260,10 @@ export class WorldMap extends Phaser.Scene {
 
   /**
    * Focus + select the entry at an index (the pointer path and the keyboard `select`
-   * both route here): travel to a region / reunion anchor, trigger the Reckoning, or
-   * surface a locked/finale read.
+   * both route here): travel to a region, enter a reunion's own recruit surface (#273),
+   * trigger the Reckoning, or enter/surface the finale — dispatched off the pure
+   * {@link worldMapEntryAction} projection so the "what does this row do" mapping is
+   * unit-tested headless and a reunion can never fall through to a region travel.
    * @param index - The entry index to select.
    * @returns void
    */
@@ -270,15 +274,41 @@ export class WorldMap extends Phaser.Scene {
     if (entry === undefined) {
       return;
     }
-    if (entry.kind === "region") {
-      this.#travelToRegion(entry.node.id, entry.node.status);
-    } else if (entry.kind === "reunion") {
-      this.#travelToRegion(entry.node.regionId, RegionStatuses.available);
-    } else if (entry.kind === "reckoning") {
-      this.#triggerReckoning(entry.hook.available);
-    } else {
-      this.#enterFinale(entry.finale.available);
+    const action = worldMapEntryAction(entry);
+    switch (action.kind) {
+      case "region":
+        this.#travelToRegion(action.regionId as RegionId, action.status);
+        return;
+      case "reunion":
+        this.#enterReunion(action.reunionId);
+        return;
+      case "reckoning":
+        this.#triggerReckoning(action.available);
+        return;
+      case "finale":
+        this.#enterFinale(action.available);
+        return;
     }
+  }
+
+  /**
+   * Enter a reunion ("story") node's OWN self-contained recruit surface (#273): start the
+   * {@link SceneKeys.Reunion} scene for the selected reunion, which plays its authored beat
+   * and records the recruit — instead of the previous travel to the reunion's already-cleared
+   * anchor region, which dumped the player on that region's stale `region-cleared` summary
+   * and never wrote the `reunion:<id>` completion flag the finale's standing reads. The World
+   * Map is carried as the return target so the reunion lands the run back here on completion.
+   * @param reunionId - The reunion to enter.
+   * @returns void
+   */
+  #enterReunion(reunionId: string): void {
+    const launch: ReunionLaunchData = {
+      reunionId,
+      returnTo: SceneKeys.WorldMap,
+      // Carry the map's own caller through so the restored map keeps the same Back target.
+      ...(this.#returnTo === null ? {} : { mapReturnTo: this.#returnTo }),
+    };
+    this.scene.start(SceneKeys.Reunion, launch);
   }
 
   /**

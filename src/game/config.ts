@@ -21,6 +21,7 @@ import { Menu } from "../scenes/Menu";
 import { WorldMap } from "../scenes/WorldMap";
 import { Finale } from "../scenes/Finale";
 import { Reckoning } from "../scenes/Reckoning";
+import { Reunion } from "../scenes/Reunion";
 
 /** The configuration passed to `new Phaser.Game()`. */
 export const gameConfig: Phaser.Types.Core.GameConfig = {
@@ -62,5 +63,6 @@ export const gameConfig: Phaser.Types.Core.GameConfig = {
     WorldMap,
     Finale,
     Reckoning,
+    Reunion,
   ],
 };
