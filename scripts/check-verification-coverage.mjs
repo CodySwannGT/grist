@@ -31,7 +31,8 @@ const EXEMPT_LABEL = "verification-exempt";
 // A verification spec lives in a top-level e2e/ dir, a nested tests/e2e/ tree,
 // or a tests/verification/ tree — NOT an arbitrary path that merely contains an
 // "e2e" segment (e.g. src/e2e/helpers.ts must not satisfy the gate).
-const VERIFICATION_PATH = /^e2e\/|(^|\/)tests\/(e2e|verification)\//;
+const VERIFICATION_PATH =
+  /(?:^e2e\/)|(?:(?:^|\/)tests\/(?:e2e|verification)\/)/;
 
 /**
  * Parse a comma-delimited label list.
@@ -52,6 +53,7 @@ function parseLabels(value) {
  * @param {string | undefined} input.prNumber - Pull request number
  * @param {string | undefined} input.token - GitHub token
  * @param {typeof fetch} [input.fetchImpl] - Fetch implementation for tests
+ * @param {number} [input.timeoutMs] - Abort the request after this many ms
  * @returns {Promise<string[] | null>} Live labels, or null when context is absent
  */
 export async function fetchLivePullRequestLabels({
@@ -59,6 +61,7 @@ export async function fetchLivePullRequestLabels({
   prNumber,
   token,
   fetchImpl = globalThis.fetch,
+  timeoutMs = 10000,
 }) {
   if (!repository || !prNumber || !token) {
     return null;
@@ -67,16 +70,32 @@ export async function fetchLivePullRequestLabels({
     throw new Error("Live label lookup requires a fetch implementation.");
   }
 
-  const response = await fetchImpl(
-    `https://api.github.com/repos/${repository}/pulls/${prNumber}`,
-    {
-      headers: {
-        Accept: "application/vnd.github+json",
-        Authorization: `Bearer ${token}`,
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
+  // Bound the request so a stalled GitHub connection can't hang the gate until
+  // the outer CI timeout kills the job.
+  let response;
+  try {
+    response = await fetchImpl(
+      `https://api.github.com/repos/${repository}/pulls/${prNumber}`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          Authorization: `Bearer ${token}`,
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+      }
+    );
+  } catch (error) {
+    if (
+      error &&
+      (error.name === "TimeoutError" || error.name === "AbortError")
+    ) {
+      throw new Error(
+        `Failed to fetch live PR labels: GitHub API request timed out after ${timeoutMs}ms.`
+      );
     }
-  );
+    throw error;
+  }
   if (!response.ok) {
     throw new Error(
       `Failed to fetch live PR labels: GitHub API returned ${response.status}.`
