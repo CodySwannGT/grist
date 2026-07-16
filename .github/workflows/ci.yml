@@ -5,36 +5,16 @@ name: 🔍 CI Quality Checks
 
 on:
   pull_request:
-    # Include `labeled`/`unlabeled` so the Verification Coverage gate re-runs
-    # when the `verification-exempt` label is attached after the PR opens. The
-    # default activity types (opened/synchronize/reopened) do NOT fire on label
-    # changes, so an exempt feat/fix PR would otherwise stay red until the next
-    # push — the check reads labels from the (frozen) event payload, so it needs
-    # a fresh `pull_request` event to see a newly-added label.
-    types: [opened, synchronize, reopened, labeled, unlabeled]
   workflow_dispatch:
 
 jobs:
   quality:
     name: 🔍 Quality Checks
-    # Pinned to the last-known-good Lisa release: the floating `@main` reusable
-    # workflow regressed in the 2.186.2 release (2026-06-29) and now `startup_failure`s
-    # for callers at startup (no jobs initialize), blocking every new PR. This pin
-    # runs the identical required quality jobs from a stable ref — no gate is weakened
-    # or skipped. Revert to `@main` once the upstream regression is fixed.
-    uses: CodySwannGT/lisa/.github/workflows/quality.yml@vv2.186.12
+    uses: CodySwannGT/lisa/.github/workflows/quality.yml@main
     with:
       node_version: '22.21.1'
       package_manager: 'bun'
-      # The reusable `playwright_e2e` job hard-codes `npx expo export --platform
-      # web` as its build step — an Expo/Metro assumption that cannot succeed for
-      # this Vite/Phaser project (it errors "No platforms are configured to use
-      # the Metro bundler"). It is NOT a required check. Our real Playwright UAT
-      # runs in the required `test_e2e` job via `bun run test:e2e`, whose script
-      # now installs the Chromium browser itself (`playwright install --with-deps
-      # chromium && playwright test`), so the e2e gate runs green there without
-      # the old admin-bypass. Skip only the Expo-shaped job; everything else runs.
-      skip_jobs: 'playwright_e2e'
+      skip_jobs: ''
       # Verification IS UAT: a feat/fix must ship a tests/e2e verification spec
       # (an agent playing the game), unless labeled verification-exempt.
       verify_enforced: true

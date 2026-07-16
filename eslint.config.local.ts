@@ -30,4 +30,17 @@ export default [
       "max-lines": "off",
     },
   },
+  {
+    // The published enforce-statement-order rule tightened (Lisa 2.189.18+) to
+    // check every function body and awaited call, reddening pre-existing source
+    // that predates the change. Relax it back to its prior scope here — a
+    // config-only opt-out that preserves existing behavior — rather than
+    // hand-refactoring proven code. Mirrors Lisa's own eslint.config.local.ts.
+    rules: {
+      "code-organization/enforce-statement-order": [
+        "error",
+        { checkAllFunctionBodies: false, checkAwaitedCalls: false },
+      ],
+    },
+  },
 ];
